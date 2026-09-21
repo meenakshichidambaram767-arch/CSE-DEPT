@@ -9,7 +9,7 @@ import { Table, Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
-import { BriefcaseBusiness, Sparkles, ExternalLink } from 'lucide-react';
+import { BriefcaseBusiness, CheckCircle2, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Activity } from '@/types';
 
 export default function HodInternshipsPage() {
@@ -24,12 +24,15 @@ export default function HodInternshipsPage() {
       (i.organization && i.organization.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const activeCount = internships.filter((i) => i.status === 'ACTIVE' || i.status === 'APPROVED').length;
+  const pendingCount = internships.filter((i) => i.status === 'SUBMITTED' || i.status === 'UNDER_REVIEW').length;
+
   const columns: Column<Activity>[] = [
     {
       key: 'id',
       header: 'ID',
-      className: 'font-mono text-slate-500 w-28 text-xs',
-      render: (row) => <span className="font-semibold text-slate-700">{row.id}</span>,
+      className: 'font-mono text-slate-500 w-24 text-xs',
+      render: (row) => <span className="font-bold text-slate-700">{row.id}</span>,
     },
     {
       key: 'studentName',
@@ -67,7 +70,7 @@ export default function HodInternshipsPage() {
       header: 'Status',
       render: (row) => (
         <span
-          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
             row.status === 'APPROVED' || row.status === 'ACTIVE'
               ? 'bg-emerald-100 text-emerald-800'
               : row.status === 'REJECTED'
@@ -91,15 +94,15 @@ export default function HodInternshipsPage() {
               variant="primary"
               onClick={() => {
                 approveActivity(row.id);
-                showToast(`Approved ${row.title}`, 'Internship NOC clearance issued.', 'success');
+                showToast(`Approved ${row.title}`, 'NOC clearance issued.', 'success');
               }}
-              className="bg-emerald-700 hover:bg-emerald-800"
+              className="bg-emerald-700 hover:bg-emerald-800 text-xs font-bold"
             >
               Issue NOC
             </Button>
           )}
           <Link href={`/student/projects/${row.id}`}>
-            <Button size="sm" variant="outline" rightIcon={<ExternalLink className="w-3 h-3" />}>
+            <Button size="sm" variant="outline" rightIcon={<ExternalLink className="w-3.5 h-3.5" />} className="text-xs font-semibold">
               Details
             </Button>
           </Link>
@@ -109,35 +112,60 @@ export default function HodInternshipsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12">
+      {/* 1. Page Header */}
       <PageHeader
-        title="Corporate Internships &amp; NOC Clearances"
-        description="Verify industry offer letters, track company placement NOCs, and monitor corporate internships."
+        title="Corporate Internships"
+        description="Verify industry offers and track corporate internship NOC clearances."
         breadcrumbs={[
           { label: 'Dashboard', href: '/hod/dashboard' },
           { label: 'Internships', current: true },
         ]}
         badge={
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 inline-flex items-center gap-1.5 shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
             <span>{internships.length} Corporate Tracks</span>
           </span>
         }
       />
 
+      {/* 2. Metrics Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <MetricCard
+          label="Total Internships"
+          value={internships.length}
+          description="Corporate offers"
+          icon={<BriefcaseBusiness className="w-5 h-5 text-indigo-600" />}
+        />
+        <MetricCard
+          label="Approved NOCs"
+          value={activeCount}
+          description="Clearance issued"
+          icon={<CheckCircle2 className="w-5 h-5 text-emerald-700" />}
+          variant="highlight"
+        />
+        <MetricCard
+          label="Pending Clearance"
+          value={pendingCount}
+          description="Awaiting NOC review"
+          icon={<BriefcaseBusiness className="w-5 h-5 text-amber-600" />}
+        />
+      </div>
+
+      {/* 3. Table & Search */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-2xs">
         <SearchBar
           value={searchQuery}
           onChange={(val) => setSearchQuery(val)}
-          placeholder="Search internships by company or student..."
+          placeholder="Search by company, role, or student..."
           className="w-full sm:w-96"
         />
 
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <Table
             columns={columns}
             data={filtered}
-            emptyState={<div className="p-8 text-center text-xs text-slate-400">No corporate internships found.</div>}
+            emptyState={<div className="p-8 text-center text-xs text-slate-400">No matching internships found.</div>}
           />
         </div>
       </div>

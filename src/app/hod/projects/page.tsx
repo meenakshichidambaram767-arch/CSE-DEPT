@@ -8,14 +8,13 @@ import { SearchBar } from '@/components/common/SearchBar';
 import { FilterDropdown, FilterGroup } from '@/components/common/FilterDropdown';
 import { Table, Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/common/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
-import { FolderKanban, Sparkles, ExternalLink, Check, X, ShieldCheck } from 'lucide-react';
+import { FolderKanban, ExternalLink, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Activity } from '@/types';
 
 export default function HodProjectsPage() {
-  const { projects, approveActivity, rejectActivity } = useData();
+  const { projects, approveActivity } = useData();
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,8 +35,8 @@ export default function HodProjectsPage() {
     {
       key: 'id',
       header: 'ID',
-      className: 'font-mono text-slate-500 w-28 text-xs',
-      render: (row) => <span className="font-semibold text-slate-700">{row.id}</span>,
+      className: 'font-mono text-slate-500 w-24 text-xs',
+      render: (row) => <span className="font-bold text-slate-700">{row.id}</span>,
     },
     {
       key: 'studentName',
@@ -51,7 +50,7 @@ export default function HodProjectsPage() {
     },
     {
       key: 'title',
-      header: 'Project Title & Scope',
+      header: 'Project Title',
       render: (row) => (
         <div className="max-w-md">
           <span className="font-bold text-xs text-slate-900 block line-clamp-1">
@@ -65,7 +64,7 @@ export default function HodProjectsPage() {
       key: 'guideName',
       header: 'Faculty Guide',
       render: (row) => (
-        <span className="text-xs text-slate-700">
+        <span className="text-xs text-slate-700 font-medium">
           {row.guideName || 'Dr. Priya Kumar'}
         </span>
       ),
@@ -75,7 +74,7 @@ export default function HodProjectsPage() {
       header: 'Status',
       render: (row) => (
         <span
-          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
             row.status === 'ACTIVE' || row.status === 'APPROVED'
               ? 'bg-emerald-100 text-emerald-800'
               : row.status === 'REJECTED'
@@ -94,22 +93,20 @@ export default function HodProjectsPage() {
       render: (row) => (
         <div className="flex items-center justify-end gap-2">
           {row.status === 'SUBMITTED' && (
-            <>
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => {
-                  approveActivity(row.id);
-                  showToast(`Approved ${row.title}`, 'Project status is now ACTIVE.', 'success');
-                }}
-                className="bg-emerald-700 hover:bg-emerald-800"
-              >
-                Approve
-              </Button>
-            </>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                approveActivity(row.id);
+                showToast(`Approved ${row.title}`, 'Status updated to ACTIVE.', 'success');
+              }}
+              className="bg-emerald-700 hover:bg-emerald-800 text-xs"
+            >
+              Approve
+            </Button>
           )}
           <Link href={`/student/projects/${row.id}`}>
-            <Button size="sm" variant="outline" rightIcon={<ExternalLink className="w-3 h-3" />}>
+            <Button size="sm" variant="outline" rightIcon={<ExternalLink className="w-3.5 h-3.5" />} className="text-xs">
               Details
             </Button>
           </Link>
@@ -123,58 +120,59 @@ export default function HodProjectsPage() {
   const rejectedCount = projects.filter((p) => p.status === 'REJECTED').length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto font-sans">
+      {/* 1. Page Header */}
       <PageHeader
-        title="Department Projects Directory"
-        description="Monitor student capstone projects, guide assignments, active weekly reviews, and submissions."
+        title="Department Projects"
+        description="Monitor student capstone projects, guide assignments, and status clearances."
         breadcrumbs={[
           { label: 'Dashboard', href: '/hod/dashboard' },
           { label: 'Projects', current: true },
         ]}
         badge={
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{projects.length} Total Registered Projects</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{projects.length} Total Projects</span>
           </span>
         }
       />
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Metrics Overview Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard
-          label="Total Registered"
+          label="Total Projects"
           value={projects.length}
-          description="Capstone Proposals"
+          description="Registered capstones"
           icon={<FolderKanban className="w-5 h-5 text-emerald-600" />}
         />
         <MetricCard
           label="Active Projects"
           value={activeCount}
-          description="Approved &amp; Scheduled"
-          icon={<FolderKanban className="w-5 h-5 text-emerald-700" />}
+          description="Approved & ongoing"
+          icon={<CheckCircle2 className="w-5 h-5 text-emerald-700" />}
           variant="highlight"
         />
         <MetricCard
-          label="Awaiting Clearance"
+          label="Pending Review"
           value={pendingCount}
-          description="Pending in Approval Inbox"
+          description="Awaiting HOD approval"
           icon={<FolderKanban className="w-5 h-5 text-amber-600" />}
         />
         <MetricCard
           label="Revision Required"
           value={rejectedCount}
-          description="Awaiting student resubmission"
+          description="Awaiting student update"
           icon={<FolderKanban className="w-5 h-5 text-red-600" />}
         />
       </div>
 
-      {/* Table & Search */}
+      {/* 3. Filter & Table Section */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <SearchBar
             value={searchQuery}
             onChange={(val) => setSearchQuery(val)}
-            placeholder="Search projects by student name, title, guide, or ID..."
+            placeholder="Search by student name, title, or ID..."
             className="flex-1 w-full"
           />
 
@@ -193,13 +191,13 @@ export default function HodProjectsPage() {
           </FilterGroup>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <Table
             columns={columns}
             data={filteredProjects}
             emptyState={
               <div className="p-8 text-center text-xs text-slate-400">
-                No matching capstone projects found.
+                No matching projects found.
               </div>
             }
           />

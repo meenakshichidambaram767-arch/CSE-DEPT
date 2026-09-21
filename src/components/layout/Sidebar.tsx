@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
   BadgeCheck,
   FileCheck,
+  FileText,
   ChevronLeft,
   ChevronRight,
   GraduationCap,
@@ -105,7 +106,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'internships', label: 'Internships', href: '/hod/internships', icon: BriefcaseBusiness },
     { id: 'hackathons', label: 'Hackathons', href: '/hod/hackathons', icon: Trophy },
     { id: 'reviews', label: 'Reviews', href: '/hod/reviews', icon: ClipboardCheck },
-    { id: 'od-submissions', label: 'OD Submissions', href: '/hod/od-submissions', icon: FileCheck, badge: pendingODCount > 0 ? pendingODCount : undefined },
+    { id: 'od-submissions', label: 'OD Clearances', href: '/hod/od-submissions', icon: FileCheck, badge: pendingODCount > 0 ? pendingODCount : undefined },
+    { id: 'reports', label: 'NAAC / NBA Reports', href: '/hod/reports', icon: FileText },
   ];
 
   const currentNav = role === 'STUDENT' ? studentNav : hodNav;

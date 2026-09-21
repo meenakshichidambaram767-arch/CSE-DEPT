@@ -101,56 +101,56 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Yellow Main Heading from Reference */}
-          <div className="pt-4 space-y-3">
+          {/* Main Heading */}
+          <div className="pt-2 space-y-2">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#facc15] tracking-tight font-serif drop-shadow-sm">
-              Welcome to SIET-LMS
+              SIET CSE Portal
             </h1>
             <h2 className="text-base sm:text-lg font-bold text-amber-200">
-              Student Hackathon, Project &amp; Internship Tracking Platform
+              Hackathon, Project &amp; Internship Tracking Platform
             </h2>
           </div>
 
           {/* Introductory Text */}
-          <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed text-justify">
-            The <strong className="text-white font-semibold">Sri Shakthi Institute of Engineering and Technology Tracking System</strong> is your centralized department platform designed to streamline student hackathons, capstone projects, corporate internships, on-duty (OD) requests, and weekly progress discussions.
+          <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+            Centralized academic portal designed to streamline student projects, hackathons, corporate internships, on-duty requests, and weekly reviews.
           </p>
 
-          {/* Yellow Section Subtitle */}
+          {/* Section Subtitle */}
           <div className="pt-2">
             <h3 className="text-base sm:text-lg font-bold text-[#facc15] tracking-wide">
-              SIET - CSE Platform Provides:
+              SIET CSE Platform Provides:
             </h3>
 
-            <ul className="mt-3 space-y-3 text-xs sm:text-sm text-emerald-50">
+            <ul className="mt-3 space-y-2 text-xs sm:text-sm text-emerald-50">
               <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-tight">•</span>
+                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
                 <span>
-                  <strong className="text-white">Unified Activity Submission:</strong> Seamless registration and validation for Projects, National Hackathons, and Corporate Internships.
+                  <strong className="text-white">Unified Activity Submissions:</strong> Projects, Hackathons &amp; Internships
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-tight">•</span>
+                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
                 <span>
-                  <strong className="text-white">HOD Administrative Automation:</strong> 1-click approvals, bulk clearances, and automated recurring weekly review scheduling without manual spreadsheets.
+                  <strong className="text-white">HOD Approvals:</strong> 1-click clearances &amp; automated review schedules
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-tight">•</span>
+                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
                 <span>
-                  <strong className="text-white">Optional On-Duty (OD) Workflow:</strong> Independent OD requests with automated project data pre-population and attendance concession tracking.
+                  <strong className="text-white">On-Duty (OD) Tracking:</strong> Seamless OD requests &amp; attendance credits
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-tight">•</span>
+                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
                 <span>
-                  <strong className="text-white">Non-Evaluative Weekly Reviews:</strong> Structured 4-question student progress logs, concise HOD meeting summaries, and QR/manual attendance.
+                  <strong className="text-white">Weekly Progress Logs:</strong> Simple 4-question updates &amp; attendance tracking
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-tight">•</span>
+                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
                 <span>
-                  <strong className="text-white">Automated Project Timelines &amp; Reminders:</strong> Digital audit trail eliminating manual WhatsApp communication and paper notices.
+                  <strong className="text-white">Automated Timelines:</strong> Real-time notifications without paper notices
                 </span>
               </li>
             </ul>
