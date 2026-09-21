@@ -1,0 +1,384 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/Button';
+import { Dialog } from '@/components/ui/Dialog';
+import { Textarea } from '@/components/ui/Textarea';
+import { Input } from '@/components/ui/Input';
+import { Tabs } from '@/components/ui/Tabs';
+import { EmptyState } from '@/components/common/EmptyState';
+import { useToast } from '@/components/ui/Toast';
+import { useData } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
+import {
+  ClipboardCheck,
+  Calendar,
+  Clock,
+  MapPin,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  Users,
+  ExternalLink,
+  AlertTriangle,
+  QrCode,
+} from 'lucide-react';
+import { GithubIcon } from '@/components/common/GithubIcon';
+import { ReviewSession } from '@/types';
+
+export default function StudentReviewsPage() {
+  const { reviews, submitWeeklyProgress, markAttendanceViaQR } = useData();
+  const { user } = useSession();
+  const { showToast } = useToast();
+
+  const [activeTab, setActiveTab] = useState('ALL');
+
+  // Submit progress state
+  const [selectedReview, setSelectedReview] = useState<ReviewSession | null>(null);
+  const [completedThisWeek, setCompletedThisWeek] = useState('');
+  const [currentlyWorkingOn, setCurrentlyWorkingOn] = useState('');
+  const [nextWeekGoal, setNextWeekGoal] = useState('');
+  const [blockers, setBlockers] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // View progress modal
+  const [viewingProgress, setViewingProgress] = useState<ReviewSession | null>(null);
+
+  const filteredReviews = reviews.filter((r) => {
+    if (activeTab === 'SCHEDULED') return r.status === 'SCHEDULED';
+    if (activeTab === 'COMPLETED') return r.status === 'COMPLETED';
+    if (activeTab === 'WITH_PROGRESS') return !!r.progress;
+    return true;
+  });
+
+  const handleOpenSubmit = (rev: ReviewSession) => {
+    setSelectedReview(rev);
+    if (rev.progress) {
+      setCompletedThisWeek(rev.progress.completedThisWeek);
+      setCurrentlyWorkingOn(rev.progress.currentlyWorkingOn);
+      setNextWeekGoal(rev.progress.nextWeekGoal);
+      setBlockers(rev.progress.blockers);
+      setGithubUrl(rev.progress.githubUrl || '');
+    } else {
+      setCompletedThisWeek('');
+      setCurrentlyWorkingOn('');
+      setNextWeekGoal('');
+      setBlockers('');
+      setGithubUrl('');
+    }
+  };
+
+  const handleConfirmSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReview) return;
+
+    if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
+      showToast('Please answer what you completed, current work, and next week goals.', 'warning');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    setTimeout(() => {
+      submitWeeklyProgress(selectedReview.id, {
+        studentId: user?.id || 'usr-student-001',
+        studentName: user?.name || 'Meena C',
+        completedThisWeek,
+        currentlyWorkingOn,
+        nextWeekGoal,
+        blockers: blockers.trim() || 'No active blocking issues',
+        githubUrl: githubUrl.trim() || undefined,
+      });
+
+      setIsSubmitting(false);
+      setSelectedReview(null);
+      showToast('Weekly Progress Logged!', 'HOD summary updated for meeting discussion.', 'success');
+    }, 400);
+  };
+
+  const tabItems = [
+    { id: 'ALL', label: `All Reviews (${reviews.length})` },
+    { id: 'SCHEDULED', label: `Upcoming (${reviews.filter((r) => r.status === 'SCHEDULED').length})` },
+    { id: 'WITH_PROGRESS', label: `Progress Submitted (${reviews.filter((r) => !!r.progress).length})` },
+    { id: 'COMPLETED', label: `Completed (${reviews.filter((r) => r.status === 'COMPLETED').length})` },
+  ];
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Weekly Project Progress Reviews"
+        description="Submit your weekly work logs, view scheduled discussion sessions, track attendance, and read faculty meeting notes."
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/student/dashboard' },
+          { label: 'Weekly Reviews', current: true },
+        ]}
+        badge={
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200 inline-flex items-center gap-1.5 shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>Discussion &amp; Blocker Clearing (No Grading)</span>
+          </span>
+        }
+      />
+
+      <Tabs tabs={tabItems} activeTab={activeTab} onChange={(id) => setActiveTab(id)} />
+
+      {filteredReviews.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs">
+          <EmptyState
+            title="No reviews in this category"
+            description="Upcoming scheduled weekly review sessions will appear here once generated by HOD."
+            icon={<ClipboardCheck className="w-8 h-8 text-slate-400" />}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {filteredReviews.map((rev) => {
+            const hasProgress = !!rev.progress;
+            const myAttendance = rev.attendance.find(
+              (a) => a.studentId === user?.id || a.name.toLowerCase().includes('meena')
+            );
+
+            return (
+              <div
+                key={rev.id}
+                className="p-5 sm:p-6 rounded-3xl border border-slate-200 bg-white shadow-2xs space-y-4 hover:border-purple-300 transition-colors flex flex-col justify-between"
+              >
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-slate-400">{rev.id}</span>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                        Review #{rev.reviewNumber}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {hasProgress && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          ✓ Progress Submitted
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                          rev.status === 'COMPLETED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {rev.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      {rev.activityTitle}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-0.5">
+                      <Users className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{rev.studentTeam.map((m) => m.name.split(' ')[0]).join(', ')}</span>
+                    </div>
+                  </div>
+
+                  {/* Date, Time & Venue */}
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{rev.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{rev.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2 col-span-2">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{rev.venue}</span>
+                    </div>
+                  </div>
+
+                  {/* Attendance status */}
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <span className="text-slate-500">My Attendance:</span>
+                    {myAttendance?.attended ? (
+                      <span className="text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        Present ({myAttendance.checkInTime || 'Recorded'})
+                      </span>
+                    ) : (
+                      <span className="text-amber-700 font-medium">Awaiting Meeting Check-in</span>
+                    )}
+                  </div>
+
+                  {/* Notes if recorded */}
+                  {rev.meetingNotes && (
+                    <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 space-y-1">
+                      <strong className="text-[10px] font-black uppercase text-emerald-900 block">
+                        HOD Meeting Discussion Notes:
+                      </strong>
+                      <p className="italic leading-relaxed">&ldquo;{rev.meetingNotes}&rdquo;</p>
+                      {rev.nextWeekGoal && (
+                        <p className="text-[11px] text-emerald-800 font-medium pt-1">
+                          <strong>Next Directive:</strong> {rev.nextWeekGoal}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  {hasProgress ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setViewingProgress(rev)}
+                    >
+                      View Submitted Progress
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-amber-700 font-medium">
+                      Submit before Friday 2:00 PM
+                    </span>
+                  )}
+
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => handleOpenSubmit(rev)}
+                    className="bg-purple-700 hover:bg-purple-800"
+                  >
+                    {hasProgress ? 'Update Progress' : 'Submit Weekly Progress'}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Progress Submission Modal */}
+      <Dialog
+        isOpen={!!selectedReview}
+        onClose={() => setSelectedReview(null)}
+        title={`Weekly Progress Submission: Review #${selectedReview?.reviewNumber}`}
+        variant="information"
+        confirmLabel={isSubmitting ? 'Submitting...' : 'Submit Progress'}
+        onConfirm={() => handleConfirmSubmit({ preventDefault: () => {} } as any)}
+        cancelLabel="Cancel"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-0.5">
+            <strong className="text-emerald-900 block text-xs">{selectedReview?.activityTitle}</strong>
+            <span className="text-[11px] text-emerald-700">
+              Meeting: {selectedReview?.date} at {selectedReview?.time} ({selectedReview?.venue})
+            </span>
+          </div>
+
+          <Textarea
+            label="1. What did you complete this week?"
+            placeholder="e.g. Dataset collection (12,000 images), YOLO model training, initial inference testing..."
+            value={completedThisWeek}
+            onChange={(e) => setCompletedThisWeek(e.target.value)}
+            rows={3}
+            isRequired
+          />
+
+          <Textarea
+            label="2. What are you currently working on?"
+            placeholder="e.g. Multi-head gaze detection and head pose estimation pipeline..."
+            value={currentlyWorkingOn}
+            onChange={(e) => setCurrentlyWorkingOn(e.target.value)}
+            rows={2}
+            isRequired
+          />
+
+          <Textarea
+            label="3. What will you complete next week?"
+            placeholder="e.g. Integrate tracking across 4 classroom camera streams and optimize FPS..."
+            value={nextWeekGoal}
+            onChange={(e) => setNextWeekGoal(e.target.value)}
+            rows={2}
+            isRequired
+          />
+
+          <Textarea
+            label="4. Any blockers / problems?"
+            placeholder="e.g. False positive detections during occlusion when students lean forward..."
+            value={blockers}
+            onChange={(e) => setBlockers(e.target.value)}
+            rows={2}
+          />
+
+          <Input
+            label="GitHub / Demo / Documentation Link (Optional)"
+            placeholder="https://github.com/meena-c/ai-exam-monitor"
+            value={githubUrl}
+            onChange={(e) => setGithubUrl(e.target.value)}
+          />
+        </div>
+      </Dialog>
+
+      {/* View Submitted Progress Modal */}
+      <Dialog
+        isOpen={!!viewingProgress}
+        onClose={() => setViewingProgress(null)}
+        title={`Review #${viewingProgress?.reviewNumber} Progress Record`}
+        variant="information"
+        confirmLabel="Close"
+        onConfirm={() => setViewingProgress(null)}
+      >
+        {viewingProgress?.progress && (
+          <div className="space-y-3.5 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Submitted By</span>
+              <strong className="text-slate-900">{viewingProgress.progress.studentName}</strong>
+            </div>
+
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-emerald-800 block">Completed This Week</span>
+              <p className="text-xs text-slate-900 whitespace-pre-line font-medium">
+                {viewingProgress.progress.completedThisWeek}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-blue-800 block">Currently Working On</span>
+              <p className="text-xs text-slate-900 whitespace-pre-line font-medium">
+                {viewingProgress.progress.currentlyWorkingOn}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-purple-800 block">Next Week's Goal</span>
+              <p className="text-xs text-slate-900 whitespace-pre-line font-medium">
+                {viewingProgress.progress.nextWeekGoal}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-amber-800 block">Blockers &amp; Problems</span>
+              <p className="text-xs text-slate-900 whitespace-pre-line font-medium">
+                {viewingProgress.progress.blockers}
+              </p>
+            </div>
+
+            {viewingProgress.progress.githubUrl && (
+              <a
+                href={viewingProgress.progress.githubUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:underline"
+              >
+                <GithubIcon className="w-4 h-4" />
+                <span>View Submitted Repository Link</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+        )}
+      </Dialog>
+    </div>
+  );
+}
