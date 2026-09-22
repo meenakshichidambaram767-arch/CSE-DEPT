@@ -43,6 +43,7 @@ export interface DataContextType {
   addHackathon: (data: Partial<Activity>) => Activity;
   addODApplication: (data: Partial<ODApplication>) => ODApplication;
   addODSubmission: (data: Partial<ODApplication>) => ODApplication; // alias
+  addODEvent: (event: ODEvent) => ODEvent;
   submitWeeklyProgress: (
     reviewSessionId: string,
     progressData: {
@@ -838,6 +839,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
   };
 
+  const addODEvent = (event: ODEvent): ODEvent => {
+    setODEvents((prev) => [event, ...prev]);
+    return event;
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -856,6 +862,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         addHackathon,
         addODApplication,
         addODSubmission,
+        addODEvent,
         submitWeeklyProgress,
         markAttendanceViaQR,
         approveActivity,
