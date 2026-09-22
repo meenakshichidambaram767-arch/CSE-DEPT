@@ -4,10 +4,19 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
-import { Search, ArrowRight, Check, X, Calendar, Users, Filter } from 'lucide-react';
+import { Search, ArrowRight, Check, X, Users, Filter, GraduationCap } from 'lucide-react';
+
+const CATEGORY_TABS = [
+  { id: 'ALL', label: 'All Categories' },
+  { id: 'HACKATHON', label: 'Hackathons' },
+  { id: 'INTERNSHIP', label: 'Internships' },
+  { id: 'PROJECT', label: 'Projects' },
+  { id: 'WORKSHOP', label: 'Workshops' },
+  { id: 'CONFERENCE', label: 'Conferences' },
+];
 
 function RequestsContent() {
-  const { odApplications, odEvents, bulkApproveOD } = useData();
+  const { odApplications, bulkApproveOD } = useData();
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventQueryParam = searchParams.get('event');
@@ -16,55 +25,46 @@ function RequestsContent() {
   const [activeTab, setActiveTab] = useState<'PENDING' | 'APPROVED' | 'ALL'>('PENDING');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Events Filter & Students Filter
-  const [selectedEvent, setSelectedEvent] = useState<string>('ALL');
-  const [selectedStudentYear, setSelectedStudentYear] = useState<string>('ALL');
+  // 1. Category Filter (Pills)
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
-  // If query param ?event=... is provided, match to event
-  useEffect(() => {
-    if (eventQueryParam) {
-      const matchingEvt = odEvents.find((e) => e.id === eventQueryParam);
-      if (matchingEvt) {
-        setSelectedEvent(matchingEvt.title);
-      } else {
-        setSelectedEvent(eventQueryParam);
-      }
-    }
-  }, [eventQueryParam, odEvents]);
+  // 2. Students Filter: Academic Year & Section
+  const [selectedYear, setSelectedYear] = useState<string>('ALL');
+  const [selectedSection, setSelectedSection] = useState<string>('ALL');
 
   // Quiet Select Mode for Bulk Actions (hidden by default)
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Calculate distinct events from applications + odEvents
-  const uniqueEvents = Array.from(
-    new Set([
-      ...odEvents.map((e) => e.title),
-      ...odApplications.map((a) => a.eventName).filter(Boolean),
-    ])
-  );
-
   const pendingCount = odApplications.filter((r) => r.status === 'PENDING').length;
   const approvedCount = odApplications.filter((r) => r.status === 'APPROVED').length;
 
   const filtered = odApplications.filter((app) => {
-    // 1. Status Tab
+    // Status Tab
     if (activeTab === 'PENDING' && app.status !== 'PENDING') return false;
     if (activeTab === 'APPROVED' && app.status !== 'APPROVED') return false;
 
-    // 2. Events Filter
-    if (selectedEvent !== 'ALL') {
-      const matchTitle = app.eventName.toLowerCase() === selectedEvent.toLowerCase();
-      const matchId = app.eventId === selectedEvent;
-      if (!matchTitle && !matchId) return false;
+    // Category Filter
+    if (selectedCategory !== 'ALL') {
+      if (selectedCategory === 'CONFERENCE') {
+        if (app.purpose !== 'CONFERENCE' && app.purpose !== 'COMPETITION') return false;
+      } else if (app.purpose !== selectedCategory) {
+        return false;
+      }
     }
 
-    // 3. Students (Year) Filter
-    if (selectedStudentYear !== 'ALL') {
-      if (app.year !== selectedStudentYear) return false;
+    // Students Filter: Year
+    if (selectedYear !== 'ALL') {
+      if (app.year !== selectedYear) return false;
     }
 
-    // 4. Search Filter
+    // Students Filter: Section
+    if (selectedSection !== 'ALL') {
+      const appSec = app.section || 'A';
+      if (appSec !== selectedSection) return false;
+    }
+
+    // Search Filter
     if (searchTerm.trim() !== '') {
       const q = searchTerm.toLowerCase();
       return (
@@ -100,12 +100,16 @@ function RequestsContent() {
     setIsSelectMode(false);
   };
 
-  const hasActiveSecondaryFilters =
-    selectedEvent !== 'ALL' || selectedStudentYear !== 'ALL' || searchTerm.trim() !== '';
+  const hasActiveFilters =
+    selectedCategory !== 'ALL' ||
+    selectedYear !== 'ALL' ||
+    selectedSection !== 'ALL' ||
+    searchTerm.trim() !== '';
 
-  const handleResetFilters = () => {
-    setSelectedEvent('ALL');
-    setSelectedStudentYear('ALL');
+  const handleClearAll = () => {
+    setSelectedCategory('ALL');
+    setSelectedYear('ALL');
+    setSelectedSection('ALL');
     setSearchTerm('');
   };
 
@@ -245,93 +249,168 @@ function RequestsContent() {
         </div>
       </div>
 
-      {/* 3. DEDICATED EVENTS & STUDENTS FILTER SECTION */}
-      <div className="flex flex-wrap items-center gap-2.5 p-2.5 rounded-lg bg-[#f7f9f5] border border-[#dfe6dc]">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#586658] shrink-0 mr-1">
-          <Filter className="w-3.5 h-3.5 text-[#0a5c36]" />
-          <span>Filters:</span>
+      {/* 3. CATEGORY PILLS & STUDENTS FILTERS BAR */}
+      <div className="space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-2.5 rounded-lg bg-[#f7f9f5] border border-[#dfe6dc]">
+          {/* Category Horizontal Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+            {CATEGORY_TABS.map((cat) => {
+              const isActive = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'bg-[#0a5c36] text-white shadow-2xs'
+                      : 'bg-white text-[#586658] border border-[#dfe6dc] hover:bg-[#eaf7e8] hover:text-[#0a5c36]'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Students Filter: Academic Year & Section */}
+          <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#dfe6dc]">
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#586658]">
+              <GraduationCap className="w-3.5 h-3.5 text-[#0a5c36]" />
+              <span>Students:</span>
+            </div>
+
+            {/* Year Selector */}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className={`py-1 px-2 rounded-md border text-xs font-semibold focus:outline-none ${
+                selectedYear !== 'ALL'
+                  ? 'bg-[#eaf7e8] border-[#0a5c36] text-[#0a5c36]'
+                  : 'bg-white border-[#dfe6dc] text-[#172017]'
+              }`}
+            >
+              <option value="ALL">All Years</option>
+              <option value="II">II Year</option>
+              <option value="III">III Year</option>
+              <option value="IV">IV Year</option>
+              <option value="I">I Year</option>
+            </select>
+
+            {/* Section Selector */}
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className={`py-1 px-2 rounded-md border text-xs font-semibold focus:outline-none ${
+                selectedSection !== 'ALL'
+                  ? 'bg-[#eaf7e8] border-[#0a5c36] text-[#0a5c36]'
+                  : 'bg-white border-[#dfe6dc] text-[#172017]'
+              }`}
+            >
+              <option value="ALL">All Sections</option>
+              <option value="A">Section CSE-A</option>
+              <option value="B">Section CSE-B</option>
+            </select>
+          </div>
         </div>
 
-        {/* Events Filter */}
-        <div className="flex items-center gap-1.5">
-          <label htmlFor="event-filter" className="text-[11px] font-semibold text-[#586658] hidden sm:inline">
-            Event:
-          </label>
-          <select
-            id="event-filter"
-            value={selectedEvent}
-            onChange={(e) => setSelectedEvent(e.target.value)}
-            className={`py-1 px-2.5 rounded-md border text-xs font-semibold transition-colors focus:outline-none max-w-[200px] truncate ${
-              selectedEvent !== 'ALL'
-                ? 'bg-[#eaf7e8] border-[#0a5c36] text-[#0a5c36]'
-                : 'bg-white border-[#dfe6dc] text-[#172017]'
-            }`}
-          >
-            <option value="ALL">All Events ({uniqueEvents.length})</option>
-            {uniqueEvents.map((evtName) => (
-              <option key={evtName} value={evtName}>
-                {evtName}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* 4. REMOVABLE CHIP BADGES */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs">
+            <span className="text-[11px] font-semibold text-[#586658] mr-1">Active filters:</span>
 
-        {/* Students Filter (by Academic Year / Class) */}
-        <div className="flex items-center gap-1.5">
-          <label htmlFor="student-filter" className="text-[11px] font-semibold text-[#586658] hidden sm:inline">
-            Students:
-          </label>
-          <select
-            id="student-filter"
-            value={selectedStudentYear}
-            onChange={(e) => setSelectedStudentYear(e.target.value)}
-            className={`py-1 px-2.5 rounded-md border text-xs font-semibold transition-colors focus:outline-none ${
-              selectedStudentYear !== 'ALL'
-                ? 'bg-[#eaf7e8] border-[#0a5c36] text-[#0a5c36]'
-                : 'bg-white border-[#dfe6dc] text-[#172017]'
-            }`}
-          >
-            <option value="ALL">All Students (All Years)</option>
-            <option value="II">II Year Students (2023-27)</option>
-            <option value="III">III Year Students (2022-26)</option>
-            <option value="IV">IV Year Students (2021-25)</option>
-            <option value="I">I Year Students (2024-28)</option>
-          </select>
-        </div>
+            {/* Category Tag */}
+            {selectedCategory !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
+                <span>Category: {CATEGORY_TABS.find((c) => c.id === selectedCategory)?.label}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('ALL')}
+                  className="hover:text-red-700 ml-0.5"
+                  title="Remove category filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
 
-        {/* Reset Filters button */}
-        {hasActiveSecondaryFilters && (
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="text-[11px] font-semibold text-[#0a5c36] hover:underline inline-flex items-center gap-1 ml-auto transition-colors"
-          >
-            <X className="w-3 h-3" />
-            <span>Clear filters</span>
-          </button>
+            {/* Year Tag */}
+            {selectedYear !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
+                <span>Year: {selectedYear} Year</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedYear('ALL')}
+                  className="hover:text-red-700 ml-0.5"
+                  title="Remove year filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {/* Section Tag */}
+            {selectedSection !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
+                <span>Section: CSE-{selectedSection}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSection('ALL')}
+                  className="hover:text-red-700 ml-0.5"
+                  title="Remove section filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {/* Search Query Tag */}
+            {searchTerm.trim() !== '' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
+                <span>Search: &ldquo;{searchTerm}&rdquo;</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="hover:text-red-700 ml-0.5"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {/* Clear All Button */}
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-[11px] font-semibold text-[#0a5c36] hover:underline ml-2"
+            >
+              Clear all
+            </button>
+          </div>
         )}
       </div>
 
-      {/* 4. EDITORIAL 2-LINE REQUEST ROWS */}
+      {/* 5. EDITORIAL 2-LINE REQUEST ROWS */}
       {filtered.length === 0 ? (
         <div className="py-14 text-center bg-white rounded-lg border border-[#dfe6dc] space-y-1">
           <p className="text-xs font-bold text-[#172017]">
-            {activeTab === 'PENDING' && !hasActiveSecondaryFilters
+            {activeTab === 'PENDING' && !hasActiveFilters
               ? '✓ No pending requests.'
               : 'No matching requests found.'}
           </p>
           <p className="text-[11px] text-[#586658]">
-            {hasActiveSecondaryFilters
-              ? 'Try changing or clearing your event and student filters.'
+            {hasActiveFilters
+              ? 'Try removing or resetting some of your category and student filters.'
               : 'All student OD applications have been reviewed.'}
           </p>
-          {hasActiveSecondaryFilters && (
+          {hasActiveFilters && (
             <button
               type="button"
-              onClick={handleResetFilters}
+              onClick={handleClearAll}
               className="mt-2 text-xs font-bold text-[#0a5c36] hover:underline"
             >
-              Reset all filters
+              Clear all filters
             </button>
           )}
         </div>
@@ -374,9 +453,9 @@ function RequestsContent() {
                       )}
                     </div>
 
-                    {/* Line 2: Roll No · Year · Date · Category · Venue */}
+                    {/* Line 2: Roll No · Year · Section · Date · Category · Venue */}
                     <p className="text-[11px] text-[#586658] font-mono tabular-nums truncate">
-                      {req.studentRegNo} · Year {req.year} · {req.date || req.startDate} · <span className="font-sans text-[#0a5c36] font-semibold">{req.purpose}</span> · {req.venue || 'CSE'}
+                      {req.studentRegNo} · Year {req.year} {req.section ? `(${req.section})` : '(A)'} · {req.date || req.startDate} · <span className="font-sans text-[#0a5c36] font-semibold">{req.purpose}</span> · {req.venue || 'CSE'}
                     </p>
                   </div>
                 </div>
