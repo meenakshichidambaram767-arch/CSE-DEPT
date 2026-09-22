@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import {
@@ -13,11 +13,11 @@ import {
   Calendar as CalendarIcon,
   MapPin,
   Search,
-  Filter,
   PlusCircle,
   ArrowRight,
-  FileText,
-  Users
+  Users,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { ODPurpose } from '@/types';
 
@@ -98,6 +98,17 @@ export default function StudentEventsPage() {
   const [activeTab, setActiveTab] = useState<EventCategoryKey>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Refs for scrolling carousels
+  const carouselRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  const scrollCarousel = (catKey: string, direction: 'left' | 'right') => {
+    const el = carouselRefs.current[catKey];
+    if (el) {
+      const scrollAmount = direction === 'left' ? -360 : 360;
+      el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   // Filter events by search query
   const searchFilteredEvents = odEvents.filter((evt) => {
     const q = searchQuery.toLowerCase().trim();
@@ -156,7 +167,7 @@ export default function StudentEventsPage() {
                 : 'bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <span>All Events</span>
+            <span>All Categories</span>
             <span
               className={`px-1.5 py-0.2 rounded-full text-[10px] ${
                 activeTab === 'ALL'
@@ -211,7 +222,7 @@ export default function StudentEventsPage() {
         </div>
       </div>
 
-      {/* Dedicated Category Sections */}
+      {/* Category Horizontal Carousels */}
       <div className="space-y-10">
         {CATEGORIES.filter((cat) => activeTab === 'ALL' || activeTab === cat.key).map((cat) => {
           const catEvents = searchFilteredEvents.filter((e) => cat.purposes.includes(e.purpose));
@@ -240,8 +251,8 @@ export default function StudentEventsPage() {
 
           return (
             <section key={cat.key} className="space-y-4">
-              {/* Category Header Banner */}
-              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-l-4 ${cat.headerBorder} pl-4 py-1`}>
+              {/* Category Banner with Carousel Controls */}
+              <div className={`flex items-center justify-between border-l-4 ${cat.headerBorder} pl-4 py-1`}>
                 <div className="flex items-center gap-2.5">
                   <div className={`p-2 rounded-xl border text-xs ${cat.badgeBg} ${cat.badgeText}`}>
                     <Icon className="w-4 h-4" />
@@ -258,14 +269,35 @@ export default function StudentEventsPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Carousel Navigation Buttons */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => scrollCarousel(cat.key, 'left')}
+                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
+                    title="Scroll Left"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => scrollCarousel(cat.key, 'right')}
+                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
+                    title="Scroll Right"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Event Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {/* Horizontal Scrollable Carousel Container */}
+              <div
+                ref={(el) => { carouselRefs.current[cat.key] = el; }}
+                className="flex items-stretch gap-5 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800"
+              >
                 {catEvents.map((evt) => (
                   <div
                     key={evt.id}
-                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group hover:border-emerald-700/50"
+                    className="w-[310px] md:w-[350px] shrink-0 snap-start bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group hover:border-emerald-700/50"
                   >
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-2">
@@ -277,7 +309,7 @@ export default function StudentEventsPage() {
                         </span>
                       </div>
 
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">
                         {evt.title}
                       </h3>
 
@@ -297,12 +329,12 @@ export default function StudentEventsPage() {
                     <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
                         <Users className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{evt.studentCount} Participants</span>
+                        <span>{evt.studentCount} Enrolled</span>
                       </div>
 
                       <Link
                         href={`/student/apply-od?eventId=${evt.id}&purpose=${evt.purpose}`}
-                        className="px-3 py-1.5 bg-slate-900 hover:bg-emerald-800 text-amber-300 dark:bg-slate-800 dark:hover:bg-emerald-800 text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-1 shadow-2xs"
+                        className="px-3.5 py-1.5 bg-slate-900 hover:bg-emerald-800 text-amber-300 dark:bg-slate-800 dark:hover:bg-emerald-800 text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-1 shadow-2xs"
                       >
                         Apply OD
                         <ArrowRight className="w-3 h-3" />
@@ -318,4 +350,5 @@ export default function StudentEventsPage() {
     </div>
   );
 }
+
 

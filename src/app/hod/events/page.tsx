@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import {
@@ -16,8 +16,8 @@ import {
   ArrowRight,
   Plus,
   Search,
-  CheckCircle2,
-  Clock,
+  ChevronLeft,
+  ChevronRight,
   X
 } from 'lucide-react';
 import { ODPurpose, ODEvent } from '@/types';
@@ -106,6 +106,17 @@ export default function HODEventsPage() {
   const [newDate, setNewDate] = useState('');
   const [newVenue, setNewVenue] = useState('');
   const [newCity, setNewCity] = useState('');
+
+  // Carousel refs for smooth scroll
+  const carouselRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  const scrollCarousel = (catKey: string, direction: 'left' | 'right') => {
+    const el = carouselRefs.current[catKey];
+    if (el) {
+      const scrollAmount = direction === 'left' ? -360 : 360;
+      el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Filter events by search query
   const searchFilteredEvents = odEvents.filter((evt) => {
@@ -253,7 +264,7 @@ export default function HODEventsPage() {
         </div>
       </div>
 
-      {/* Categorized Visual Sections */}
+      {/* Categorized Horizontal Carousels */}
       <div className="space-y-10">
         {CATEGORIES.filter((cat) => activeTab === 'ALL' || activeTab === cat.key).map((cat) => {
           const catEvents = searchFilteredEvents.filter((e) => cat.purposes.includes(e.purpose));
@@ -282,8 +293,8 @@ export default function HODEventsPage() {
 
           return (
             <section key={cat.key} className="space-y-4">
-              {/* Category Header */}
-              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-l-4 ${cat.headerBorder} pl-4 py-1`}>
+              {/* Category Header Banner with Carousel Controls */}
+              <div className={`flex items-center justify-between border-l-4 ${cat.headerBorder} pl-4 py-1`}>
                 <div className="flex items-center gap-2.5">
                   <div className={`p-2 rounded-xl border text-xs ${cat.badgeBg} ${cat.badgeText}`}>
                     <Icon className="w-4 h-4" />
@@ -300,10 +311,31 @@ export default function HODEventsPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Carousel Scroll Buttons */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => scrollCarousel(cat.key, 'left')}
+                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
+                    title="Scroll Left"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => scrollCarousel(cat.key, 'right')}
+                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
+                    title="Scroll Right"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Event Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {/* Horizontal Scrollable Carousel */}
+              <div
+                ref={(el) => { carouselRefs.current[cat.key] = el; }}
+                className="flex items-stretch gap-5 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800"
+              >
                 {catEvents.map((evt) => {
                   const eventODs = odApplications.filter(
                     (od) => od.eventId === evt.id || od.eventName === evt.title
@@ -315,7 +347,7 @@ export default function HODEventsPage() {
                   return (
                     <div
                       key={evt.id}
-                      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-4 flex flex-col justify-between hover:shadow-md transition-all group hover:border-emerald-700/50"
+                      className="w-[310px] md:w-[350px] shrink-0 snap-start bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-4 flex flex-col justify-between hover:shadow-md transition-all group hover:border-emerald-700/50"
                     >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2">
@@ -327,7 +359,7 @@ export default function HODEventsPage() {
                           </span>
                         </div>
 
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">
                           {evt.title}
                         </h3>
 
@@ -494,4 +526,5 @@ export default function HODEventsPage() {
     </div>
   );
 }
+
 
