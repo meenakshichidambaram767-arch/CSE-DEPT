@@ -48,6 +48,7 @@ export interface User {
   registerNumber?: string;
   department: string;
   year?: string;
+  section?: string;
   role: UserRole;
   avatar?: string;
   designation?: string;

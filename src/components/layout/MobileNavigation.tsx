@@ -61,7 +61,6 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
     { label: 'Requests', href: '/hod/requests', icon: Inbox },
     { label: 'Calendar', href: '/hod/calendar', icon: CalendarIcon },
     { label: 'Events', href: '/hod/events', icon: Sparkles },
-    { label: 'Students', href: '/hod/students', icon: Users },
     { label: 'Records', href: '/hod/records', icon: FileSpreadsheet },
   ];
 

@@ -26,11 +26,11 @@ export default function StudentProfilePage({ params }: { params: Promise<{ regNo
     <div className="space-y-6 max-w-3xl mx-auto py-2">
       <div>
         <Link
-          href="/hod/students"
+          href="/hod/records"
           className="text-xs font-semibold text-[#586658] hover:text-[#0a5c36] flex items-center gap-1 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Students Directory
+          Back to Records Directory
         </Link>
       </div>
 

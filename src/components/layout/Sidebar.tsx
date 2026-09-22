@@ -48,13 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
     { id: 'events', label: 'Events', href: '/student/events', icon: Sparkles },
   ];
 
-  // HOD Navigation: Home, Requests, Calendar, Events, Students, Records
+  // HOD Navigation: Home, Requests, Calendar, Events, Records
   const hodNav: NavItem[] = [
     { id: 'home', label: 'Home', href: '/hod/dashboard', icon: Home },
     { id: 'requests', label: 'Requests', href: '/hod/requests', icon: Inbox, badge: pendingODCount > 0 ? pendingODCount : undefined },
     { id: 'calendar', label: 'Calendar', href: '/hod/calendar', icon: CalendarIcon },
     { id: 'events', label: 'Events', href: '/hod/events', icon: Sparkles },
-    { id: 'students', label: 'Students', href: '/hod/students', icon: Users },
     { id: 'records', label: 'Records', href: '/hod/records', icon: FileSpreadsheet },
   ];
 
