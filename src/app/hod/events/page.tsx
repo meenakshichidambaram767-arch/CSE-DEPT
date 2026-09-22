@@ -7,9 +7,12 @@ import {
   Plus,
   Search,
   ArrowRight,
-  X
+  X,
+  MapPin,
+  Users,
 } from 'lucide-react';
 import { ODPurpose, ODEvent } from '@/types';
+import StatusIndicator from '@/components/ui/StatusIndicator';
 
 type EventCategoryKey = 'ALL' | 'HACKATHON' | 'INTERNSHIP' | 'PROJECT' | 'WORKSHOP' | 'COMPETITION_CONFERENCE';
 
@@ -81,38 +84,41 @@ export default function HODEventsPage() {
   };
 
   return (
-    <div className="space-y-10 py-2">
+    <div className="space-y-6 py-2">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#dfe6dc] pb-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Events
+          <div className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wider">
+            SIET CSE Catalog
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172017]">
+            Academic Events &amp; Opportunities
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Department events and group OD enrollment records.
+          <p className="text-xs text-[#586658] mt-0.5">
+            Verified department hackathons, industry internships, and student OD groups.
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => setIsCreateModalOpen(true)}
-          className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-medium rounded-lg shadow-xs transition-colors inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+          className="px-3.5 py-1.5 bg-[#0a5c36] hover:bg-[#084c2c] text-white text-xs font-semibold rounded-md shadow-xs transition-colors inline-flex items-center gap-1.5 shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>New event</span>
+          <span>New Event</span>
         </button>
       </div>
 
       {/* Filter Tabs & Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveTab('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors ${
               activeTab === 'ALL'
-                ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                ? 'bg-[#0a5c36] text-white shadow-2xs'
+                : 'text-[#586658] hover:bg-[#f2f9f1] hover:text-[#172017]'
             }`}
           >
             All ({odEvents.length})
@@ -124,10 +130,10 @@ export default function HODEventsPage() {
                 key={cat.key}
                 type="button"
                 onClick={() => setActiveTab(cat.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors ${
                   activeTab === cat.key
-                    ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold'
-                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    ? 'bg-[#0a5c36] text-white shadow-2xs'
+                    : 'text-[#586658] hover:bg-[#f2f9f1] hover:text-[#172017]'
                 }`}
               >
                 {cat.label} ({count})
@@ -137,32 +143,35 @@ export default function HODEventsPage() {
         </div>
 
         <div className="relative w-full sm:w-64 shrink-0">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#889688]" />
           <input
             type="text"
-            placeholder="Search events, venues..."
+            placeholder="Search events, cities..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+            className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#dfe6dc] rounded-md text-xs text-[#172017] placeholder:text-[#889688] focus:outline-none focus:border-[#0a5c36]"
           />
         </div>
       </div>
 
       {/* Categorized Events Lists */}
-      <div className="space-y-12">
+      <div className="space-y-6">
         {CATEGORIES.filter((cat) => activeTab === 'ALL' || activeTab === cat.key).map((cat) => {
           const catEvents = searchFilteredEvents.filter((e) => cat.purposes.includes(e.purpose));
           if (catEvents.length === 0) return null;
 
           return (
-            <section key={cat.key} className="space-y-3">
-              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                  {cat.label} ({catEvents.length})
-                </h2>
+            <section key={cat.key} className="bg-white rounded-lg border border-[#dfe6dc] p-4 sm:p-5 shadow-2xs space-y-3">
+              <div className="border-b border-[#dfe6dc] pb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#facc15]" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#172017]">
+                    {cat.label} ({catEvents.length})
+                  </h2>
+                </div>
               </div>
 
-              <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+              <div className="divide-y divide-[#edf2ea]">
                 {catEvents.map((evt) => {
                   const eventODs = odApplications.filter(
                     (od) => od.eventId === evt.id || od.eventName === evt.title
@@ -174,26 +183,34 @@ export default function HODEventsPage() {
                   return (
                     <div
                       key={evt.id}
-                      className="py-4 flex items-center justify-between gap-6 group hover:bg-zinc-50/60 dark:hover:bg-zinc-900/40 px-3 -mx-3 rounded-lg transition-colors"
+                      className="py-3.5 flex items-center justify-between gap-4 hover:bg-[#f2f9f1] px-2 -mx-2 rounded-md transition-colors group"
                     >
                       <div className="space-y-1 min-w-0">
-                        <Link
-                          href={`/hod/events/${evt.id}`}
-                          className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-emerald-800 dark:hover:text-emerald-400 transition-colors block truncate"
-                        >
-                          {evt.title}
-                        </Link>
-                        <p className="text-xs text-zinc-400">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#facc15]" />
+                          <Link
+                            href={`/hod/events/${evt.id}`}
+                            className="text-sm font-semibold text-[#172017] group-hover:text-[#0a5c36] transition-colors truncate"
+                          >
+                            {evt.title}
+                          </Link>
+                        </div>
+
+                        <p className="text-xs text-[#586658] pl-3.5">
                           {evt.formattedDate} · {evt.city || evt.venue}
                         </p>
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                          {totalStudents} students · {approvedCount} approved{pendingCount > 0 ? ` · ${pendingCount} pending` : ''}
+
+                        <p className="text-[11px] text-[#586658] pl-3.5 tabular-nums">
+                          <span className="font-semibold text-[#172017]">{totalStudents} students</span> · <span className="text-[#0a5c36] font-semibold">{approvedCount} approved</span>
+                          {pendingCount > 0 && (
+                            <span className="text-[#eab308] font-semibold"> · {pendingCount} pending</span>
+                          )}
                         </p>
                       </div>
 
                       <Link
                         href={`/hod/events/${evt.id}`}
-                        className="text-xs font-semibold text-zinc-400 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 inline-flex items-center gap-1 transition-colors shrink-0"
+                        className="text-xs font-semibold text-[#0a5c36] inline-flex items-center gap-1 group-hover:underline shrink-0"
                       >
                         <span>View</span>
                         <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -209,118 +226,109 @@ export default function HODEventsPage() {
 
       {/* Create Event Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-zinc-950/40 backdrop-blur-2xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 max-w-md w-full space-y-5 shadow-xl animate-in fade-in zoom-in-95 duration-100 text-xs">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                New Department Event
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <form
+            onSubmit={handleCreateEvent}
+            className="bg-white rounded-xl p-6 max-w-md w-full space-y-4 border border-[#dfe6dc] shadow-xl animate-in fade-in"
+          >
+            <div className="flex items-center justify-between border-b border-[#dfe6dc] pb-3">
+              <h3 className="text-sm font-bold text-[#172017] uppercase">
+                Add Department Event
               </h3>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-zinc-400 hover:text-zinc-700"
+                className="text-[#889688] hover:text-[#172017]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                  Event Title
-                </label>
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-[#172017]">Event Title</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Smart India Hackathon 2026"
+                  placeholder="e.g. SIET HackSprint 2026"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-[#172017] focus:outline-none focus:border-[#0a5c36]"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                  Purpose Category
-                </label>
-                <select
-                  value={newPurpose}
-                  onChange={(e) => setNewPurpose(e.target.value as ODPurpose)}
-                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
-                >
-                  <option value="HACKATHON">Hackathon</option>
-                  <option value="INTERNSHIP">Internship</option>
-                  <option value="PROJECT">Project Review</option>
-                  <option value="WORKSHOP">Workshop</option>
-                  <option value="COMPETITION">Competition</option>
-                  <option value="CONFERENCE">Conference</option>
-                </select>
-              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-semibold text-[#172017]">Category</label>
+                  <select
+                    value={newPurpose}
+                    onChange={(e) => setNewPurpose(e.target.value as ODPurpose)}
+                    className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-[#172017]"
+                  >
+                    <option value="HACKATHON">Hackathon</option>
+                    <option value="INTERNSHIP">Internship</option>
+                    <option value="PROJECT">Project</option>
+                    <option value="WORKSHOP">Workshop</option>
+                    <option value="COMPETITION">Competition</option>
+                  </select>
+                </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                    Date
-                  </label>
+                <div className="space-y-1">
+                  <label className="font-semibold text-[#172017]">Date</label>
                   <input
                     type="date"
                     required
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                    className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-[#172017]"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                    City
-                  </label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-semibold text-[#172017]">Venue</label>
                   <input
                     type="text"
-                    placeholder="e.g. Coimbatore"
+                    required
+                    placeholder="e.g. Convention Center"
+                    value={newVenue}
+                    onChange={(e) => setNewVenue(e.target.value)}
+                    className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-[#172017]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-[#172017]">City</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Chennai / Coimbatore"
                     value={newCity}
                     onChange={(e) => setNewCity(e.target.value)}
-                    className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                    className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-[#172017]"
                   />
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                  Venue / Host Institution
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. IIT Madras Research Park"
-                  value={newVenue}
-                  onChange={(e) => setNewVenue(e.target.value)}
-                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-3.5 py-1.5 text-xs text-zinc-500 hover:text-zinc-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-emerald-800 text-white text-xs font-medium rounded-md hover:bg-emerald-900 shadow-xs"
-                >
-                  Create Event
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#dfe6dc]">
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="px-3 py-1.5 text-xs text-[#586658] hover:text-[#172017]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 bg-[#0a5c36] text-white text-xs font-semibold rounded-md hover:bg-[#084c2c]"
+              >
+                Create Event
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
   );
 }
-
-
-

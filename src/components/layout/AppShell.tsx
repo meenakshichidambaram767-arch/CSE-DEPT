@@ -25,14 +25,14 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#fbfbfa] dark:bg-zinc-950 flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-emerald-800 border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-[#f7f9f5] flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-[#0a5c36] border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen bg-[#fbfbfa] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-row ${className}`}>
+    <div className={`min-h-screen bg-[#f7f9f5] text-[#172017] flex flex-row ${className}`}>
       {/* Desktop Responsive Sidebar */}
       <Sidebar role={role} />
 
@@ -43,7 +43,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         onClose={() => setMobileNavOpen(false)}
       />
 
-      {/* Main Area */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           role={role}
@@ -51,7 +51,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
 
-        <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 sm:px-10 sm:py-12">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 sm:px-10 sm:py-10">
           {children}
         </main>
       </div>
@@ -59,3 +59,4 @@ export const AppShell: React.FC<AppShellProps> = ({
   );
 };
 
+export default AppShell;

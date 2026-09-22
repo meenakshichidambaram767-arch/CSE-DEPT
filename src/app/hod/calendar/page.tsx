@@ -3,54 +3,54 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
-import { ChevronLeft, ChevronRight, MapPin, Users, ArrowRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Users, ArrowRight, Calendar as CalendarIcon } from 'lucide-react';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 
 export default function HODCalendarPage() {
-  const { odEvents, odApplications } = useData();
+  const { odEvents } = useData();
   const [currentMonth, setCurrentMonth] = useState('September 2026');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>('2026-09-25');
 
-  // Month days for September 2026 (1 to 30)
-  // Sept 1, 2026 is Tuesday. So Monday is empty offset: 1 empty day.
   const daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
 
-  // Filter events matching selected date or all upcoming
   const eventsForSelectedDate = selectedDate
     ? odEvents.filter((e) => e.date === selectedDate)
     : odEvents;
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto py-2">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#dfe6dc] pb-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Department Schedule
+          <div className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wider">
+            SIET Academic Schedule
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172017]">
+            OD Calendar &amp; Schedule
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Departmental OD calendar, verified student leaves, and academic events
+          <p className="text-xs text-[#586658] mt-0.5">
+            Departmental timeline of approved On-Duty leaves, hackathons, and company visits.
           </p>
         </div>
 
         {/* Month Navigator Controls */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-200 px-3 py-1.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
-            <CalendarIcon className="w-3.5 h-3.5 text-emerald-700" />
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#172017] px-3 py-1.5 bg-white rounded-md border border-[#dfe6dc] shadow-2xs">
+            <CalendarIcon className="w-3.5 h-3.5 text-[#0a5c36]" />
             <span>{currentMonth}</span>
           </div>
-          <div className="flex items-center rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 shadow-2xs">
+          <div className="flex items-center rounded-md border border-[#dfe6dc] bg-white p-0.5 shadow-2xs">
             <button
               type="button"
               aria-label="Previous month"
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-600 dark:text-zinc-400 transition-colors"
+              className="p-1 hover:bg-[#f2f9f1] rounded text-[#586658] transition-colors"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
               aria-label="Next month"
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-600 dark:text-zinc-400 transition-colors"
+              className="p-1 hover:bg-[#f2f9f1] rounded text-[#586658] transition-colors"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -58,40 +58,40 @@ export default function HODCalendarPage() {
         </div>
       </div>
 
-      {/* Main Layout: Calendar Grid + Agenda Side-by-Side */}
+      {/* Calendar Grid + Upcoming Agenda */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Calendar Grid (8 cols) */}
-        <div className="lg:col-span-8 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-5 shadow-2xs space-y-4">
+        {/* Calendar Grid (7 cols on lg) */}
+        <div className="lg:col-span-7 bg-white rounded-xl border border-[#dfe6dc] p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-400 uppercase">
-              Monthly Schedule
+            <span className="text-xs font-bold tracking-wider text-[#172017] uppercase">
+              September 2026
             </span>
             {selectedDate && (
               <button
                 type="button"
                 onClick={() => setSelectedDate(null)}
-                className="text-[11px] font-medium text-emerald-800 dark:text-emerald-400 hover:underline"
+                className="text-[11px] font-semibold text-[#0a5c36] hover:underline"
               >
-                Clear filter (Show all)
+                Show all events
               </button>
             )}
           </div>
 
           {/* Weekday labels */}
-          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-500 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-            <span>Mon</span>
-            <span>Tue</span>
-            <span>Wed</span>
-            <span>Thu</span>
-            <span>Fri</span>
-            <span>Sat</span>
-            <span>Sun</span>
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-[#586658] pb-2 border-b border-[#edf2ea]">
+            <span>M</span>
+            <span>T</span>
+            <span>W</span>
+            <span>T</span>
+            <span>F</span>
+            <span>S</span>
+            <span>S</span>
           </div>
 
-          {/* Calendar Day Grid */}
-          <div className="grid grid-cols-7 gap-1.5 min-h-[460px]">
-            {/* Sept 1 2026 is Tuesday -> 1 empty cell on Monday */}
-            <div className="p-2 rounded-lg bg-zinc-50/40 dark:bg-zinc-900/40 border border-transparent min-h-[92px]" />
+          {/* Day Grid */}
+          <div className="grid grid-cols-7 gap-1.5">
+            {/* Sept 1, 2026 is Tuesday -> 1 empty cell on Monday */}
+            <div className="p-2 rounded-md bg-[#f7f9f5] min-h-[56px]" />
 
             {daysInMonth.map((dayNum) => {
               const dayStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
@@ -99,109 +99,113 @@ export default function HODCalendarPage() {
               const isSelected = selectedDate === dayStr;
 
               return (
-                <div
+                <button
                   key={dayNum}
-                  onClick={() => setSelectedDate(matchingEvt ? dayStr : null)}
-                  className={`p-2 rounded-lg border flex flex-col justify-between transition-all min-h-[92px] cursor-pointer text-left ${
+                  type="button"
+                  onClick={() => setSelectedDate(dayStr)}
+                  className={`p-2 rounded-lg border flex flex-col justify-between items-center transition-all min-h-[56px] relative cursor-pointer ${
                     isSelected
-                      ? 'border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/30 ring-1 ring-emerald-700'
+                      ? 'bg-[#0a5c36] text-white border-[#0a5c36] shadow-xs'
                       : matchingEvt
-                      ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/10 hover:border-emerald-400'
-                      : 'border-zinc-100 dark:border-zinc-800/80 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40'
+                      ? 'bg-[#eaf7e8] border-[#dfe6dc] text-[#0a5c36] font-bold hover:border-[#0a5c36]'
+                      : 'border-transparent text-[#172017] hover:bg-[#f2f9f1]'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs font-semibold ${
-                        isSelected
-                          ? 'text-emerald-900 dark:text-emerald-200'
-                          : matchingEvt
-                          ? 'text-emerald-950 dark:text-emerald-300'
-                          : 'text-zinc-600 dark:text-zinc-400'
-                      }`}
-                    >
-                      {dayNum}
-                    </span>
-                    {matchingEvt && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-700" />
-                    )}
-                  </div>
+                  <span className={`text-xs ${isSelected ? 'font-bold text-white' : 'font-semibold'}`}>
+                    {dayNum}
+                  </span>
 
+                  {/* Small Yellow Event Dot */}
                   {matchingEvt && (
-                    <div className="mt-2 p-1.5 rounded bg-white/90 dark:bg-zinc-850 border border-emerald-200/80 dark:border-emerald-900/60 text-[10px] space-y-0.5">
-                      <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                        {matchingEvt.title}
-                      </p>
-                      <p className="text-zinc-500 dark:text-zinc-400 tabular-nums">
-                        {matchingEvt.studentCount} students
-                      </p>
-                    </div>
+                    <span
+                      className={`w-2 h-2 rounded-full shadow-xs ${
+                        isSelected ? 'bg-[#facc15]' : 'bg-[#eab308]'
+                      }`}
+                      title={matchingEvt.title}
+                    />
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
+
+          {/* Legend */}
+          <div className="pt-2 border-t border-[#edf2ea] flex items-center gap-4 text-[11px] text-[#586658]">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0a5c36]" />
+              <span>Selected date</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#facc15]" />
+              <span>OD Event scheduled</span>
+            </div>
+          </div>
         </div>
 
-        {/* Agenda Column (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
+        {/* Upcoming Agenda (5 cols on lg) */}
+        <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-400 uppercase">
+            <span className="text-xs font-bold tracking-wider text-[#172017] uppercase">
               {selectedDate ? `Events on ${selectedDate}` : 'Upcoming Agenda'}
             </span>
-            <span className="text-[11px] text-zinc-400 tabular-nums">
-              {eventsForSelectedDate.length} items
+            <span className="text-[11px] text-[#586658] tabular-nums font-semibold">
+              {eventsForSelectedDate.length} item{eventsForSelectedDate.length !== 1 ? 's' : ''}
             </span>
           </div>
 
           <div className="space-y-3">
             {eventsForSelectedDate.length === 0 ? (
-              <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 text-xs text-zinc-400">
-                No events scheduled for this date.
+              <div className="p-8 text-center bg-white rounded-xl border border-[#dfe6dc] text-xs text-[#889688]">
+                No OD events scheduled on this date.
               </div>
             ) : (
-              eventsForSelectedDate.map((evt) => (
-                <div
-                  key={evt.id}
-                  className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-4 space-y-3 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                        {evt.purpose}
+              eventsForSelectedDate.map((evt) => {
+                const dateParts = evt.formattedDate.split(' ');
+                const dayMonth = `${dateParts[0]} ${dateParts[1]?.toUpperCase() || ''}`;
+
+                return (
+                  <div
+                    key={evt.id}
+                    className="bg-white rounded-xl border border-[#dfe6dc] p-4 space-y-3 shadow-2xs hover:border-[#0a5c36] transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#0a5c36] bg-[#eaf7e8] px-2 py-0.5 rounded">
+                          {evt.purpose}
+                        </span>
+                        <h3 className="text-sm font-bold text-[#172017] leading-snug">
+                          {evt.title}
+                        </h3>
+                      </div>
+                      <span className="shrink-0 px-2 py-1 bg-[#f7f9f5] border border-[#dfe6dc] text-[#0a5c36] text-[10px] font-bold rounded tabular-nums">
+                        {dayMonth}
                       </span>
-                      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">
-                        {evt.title}
-                      </h2>
                     </div>
-                    <span className="shrink-0 px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] font-semibold rounded tabular-nums">
-                      {evt.formattedDate}
-                    </span>
-                  </div>
 
-                  <div className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 shrink-0 text-zinc-400" />
-                      <span className="truncate">{evt.venue}</span>
+                    <div className="space-y-1 text-xs text-[#586658] pt-1 border-t border-[#edf2ea]">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 shrink-0 text-[#889688]" />
+                        <span className="truncate">{evt.venue}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 tabular-nums">
+                        <Users className="w-3.5 h-3.5 shrink-0 text-[#889688]" />
+                        <span>{evt.studentCount} approved students</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 tabular-nums">
-                      <Users className="w-3.5 h-3.5 shrink-0 text-zinc-400" />
-                      <span>{evt.studentCount} approved students</span>
-                    </div>
-                  </div>
 
-                  <div className="pt-2 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800">
-                    <StatusIndicator status="APPROVED" text="Approved OD" />
-                    <Link
-                      href={`/hod/events/${evt.id}`}
-                      className="text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:text-emerald-900 inline-flex items-center gap-1"
-                    >
-                      View Details
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    <div className="pt-2 flex items-center justify-between border-t border-[#edf2ea]">
+                      <StatusIndicator status="APPROVED" text="Approved Leave" />
+                      <Link
+                        href={`/hod/events/${evt.id}`}
+                        className="text-xs font-semibold text-[#0a5c36] hover:underline inline-flex items-center gap-1"
+                      >
+                        View Details
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

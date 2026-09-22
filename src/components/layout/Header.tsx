@@ -5,12 +5,12 @@ import { UserRole } from '@/types';
 import { UserMenu } from './UserMenu';
 import { Breadcrumbs, BreadcrumbItem } from './Breadcrumbs';
 import { useData } from '@/context/DataContext';
-import { useSession } from '@/context/SessionContext';
 import {
   Menu,
   Bell,
   CheckCheck,
   ArrowRightLeft,
+  Building,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -53,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className={`h-14 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-[#fbfbfa]/90 dark:bg-zinc-950/90 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between transition-colors ${className}`}
+      className={`h-14 border-b border-[#dfe6dc] bg-white sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between shadow-2xs ${className}`}
     >
       {/* Left side: Mobile menu toggle + Location */}
       <div className="flex items-center gap-3 truncate">
@@ -62,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onOpenMobileNav}
             aria-label="Open mobile navigation"
-            className="lg:hidden p-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+            className="lg:hidden p-1.5 rounded-md border border-[#dfe6dc] text-[#586658] hover:bg-[#f2f9f1]"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-2">
           {breadcrumbs ? (
-            <div className="truncate text-xs text-zinc-500">
+            <div className="truncate text-xs text-[#586658]">
               {Array.isArray(breadcrumbs) ? (
                 <Breadcrumbs items={breadcrumbs} />
               ) : (
@@ -78,23 +78,34 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
           ) : (
-            <div className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Department of Computer Science & Engineering
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#172017]">
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-[#eaf7e8] text-[#0a5c36] text-[10px] font-bold uppercase tracking-wider">
+                SIET Autonomous
+              </span>
+              <span className="text-[#586658] font-normal truncate">
+                Department of Computer Science &amp; Engineering
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Right side: Notifications + Role switch + User Menu */}
+      {/* Right side: Role badge + Role switcher + Notifications + User Menu */}
       <div className="flex items-center gap-3 shrink-0">
+        {/* Institutional Role Badge */}
+        <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide uppercase bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#0a5c36]" />
+          <span>{role === 'HOD' ? 'HOD · CSE' : 'STUDENT · CSE'}</span>
+        </span>
+
         {/* Quick Role Switcher */}
         <Link
           href={role === 'HOD' ? '/student/od-requests' : '/hod/dashboard'}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-[#586658] hover:text-[#0a5c36] hover:bg-[#f2f9f1] border border-[#dfe6dc] transition-colors"
           title={`Switch view to ${role === 'HOD' ? 'Student' : 'HOD'}`}
         >
-          <ArrowRightLeft className="w-3 h-3 text-zinc-400" />
-          <span>Switch to {role === 'HOD' ? 'Student' : 'HOD'}</span>
+          <ArrowRightLeft className="w-3 h-3 text-[#889688]" />
+          <span className="hidden sm:inline">Switch to {role === 'HOD' ? 'Student' : 'HOD'}</span>
         </Link>
 
         {/* Notifications Popover */}
@@ -102,26 +113,26 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setShowNotifs(!showNotifs)}
-            className="relative p-1.5 rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
             aria-label="Notifications"
+            className="p-2 rounded-md hover:bg-[#f2f9f1] text-[#586658] hover:text-[#0a5c36] relative transition-colors"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-700" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#facc15] ring-2 ring-white" />
             )}
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 mt-2 w-80 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-lg z-50 overflow-hidden text-xs">
-              <div className="p-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  Notifications
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg border border-[#dfe6dc] shadow-lg z-50 overflow-hidden">
+              <div className="p-3 border-b border-[#dfe6dc] flex items-center justify-between bg-[#f2f9f1]">
+                <span className="text-xs font-bold text-[#0a5c36] uppercase tracking-wider">
+                  Notifications ({unreadCount} unread)
                 </span>
                 {unreadCount > 0 && (
                   <button
                     type="button"
                     onClick={clearAllNotifications}
-                    className="text-[11px] text-zinc-400 hover:text-zinc-900 flex items-center gap-1"
+                    className="text-[11px] text-[#0a5c36] hover:underline flex items-center gap-1 font-medium"
                   >
                     <CheckCheck className="w-3 h-3" />
                     Mark all read
@@ -129,31 +140,27 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
 
-              <div className="max-h-72 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
+              <div className="max-h-72 overflow-y-auto divide-y divide-[#edf2ea]">
                 {userNotifs.length === 0 ? (
-                  <div className="p-6 text-center text-zinc-400">
-                    No new notifications
+                  <div className="p-6 text-center text-xs text-[#889688]">
+                    No notifications
                   </div>
                 ) : (
-                  userNotifs.map((n) => (
+                  userNotifs.slice(0, 6).map((n) => (
                     <div
                       key={n.id}
                       onClick={() => markNotificationAsRead(n.id)}
-                      className={`p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer ${
-                        !n.isRead ? 'bg-zinc-50/60 dark:bg-zinc-800/30' : ''
+                      className={`p-3 text-xs cursor-pointer hover:bg-[#f2f9f1] transition-colors ${
+                        !n.isRead ? 'bg-[#eaf7e8]/40' : ''
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-100 line-clamp-1">
-                          {n.title}
-                        </span>
-                        {!n.isRead && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 shrink-0 mt-1" />
-                        )}
-                      </div>
-                      <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed line-clamp-2">
+                      <p className="font-semibold text-[#172017]">{n.title}</p>
+                      <p className="text-[#586658] mt-0.5 text-[11px] line-clamp-2">
                         {n.message}
                       </p>
+                      <span className="text-[10px] text-[#889688] mt-1 block">
+                        {n.createdAt}
+                      </span>
                     </div>
                   ))
                 )}
@@ -162,9 +169,11 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
+        {/* User Menu */}
         <UserMenu />
       </div>
     </header>
   );
 };
 
+export default Header;

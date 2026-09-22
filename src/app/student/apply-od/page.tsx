@@ -8,24 +8,19 @@ import { ODPurpose } from '@/types';
 import {
   ArrowLeft,
   Upload,
-  CheckCircle2,
   AlertCircle,
   FileText,
-  User,
   Plus,
   Trash2,
-  Calendar,
-  MapPin,
-  Building,
-  Check
+  Check,
 } from 'lucide-react';
 
 const STEPS = [
-  { id: 1, label: 'Purpose', desc: 'Select category' },
-  { id: 2, label: 'Details', desc: 'Event information' },
-  { id: 3, label: 'Students', desc: 'Applicant & team' },
-  { id: 4, label: 'Documents', desc: 'Supporting proof' },
-  { id: 5, label: 'Review', desc: 'Confirm submission' },
+  { id: 1, label: 'Purpose', desc: 'Category' },
+  { id: 2, label: 'Details', desc: 'Schedule' },
+  { id: 3, label: 'Students', desc: 'Team' },
+  { id: 4, label: 'Documents', desc: 'Proof' },
+  { id: 5, label: 'Review', desc: 'Submit' },
 ];
 
 export default function ApplyODPage() {
@@ -49,7 +44,7 @@ export default function ApplyODPage() {
   const [companyName, setCompanyName] = useState('');
   const [companyRole, setCompanyRole] = useState('');
   const [reason, setReason] = useState('');
-  const [docName, setDocName] = useState('Hackathon_Invitation_2026.pdf');
+  const [docName, setDocName] = useState('Registration_Proof_SIET.pdf');
   const [uploadedFile, setUploadedFile] = useState<boolean>(true);
 
   // Additional teammates
@@ -69,7 +64,7 @@ export default function ApplyODPage() {
       if (!endDate) errs.endDate = 'End date is required';
     } else {
       if (!eventName.trim()) errs.eventName = 'Event name is required';
-      if (!venue.trim()) errs.venue = 'Venue/location is required';
+      if (!venue.trim()) errs.venue = 'Venue/city is required';
       if (!eventDate) errs.eventDate = 'Event date is required';
     }
     if (!reason.trim()) errs.reason = 'Please state purpose & expected outcome';
@@ -115,7 +110,7 @@ export default function ApplyODPage() {
       year: 'II',
       section: 'A',
       purpose: purpose,
-      eventName: eventName || (purpose === 'HACKATHON' ? 'Hackathon OD' : purpose === 'INTERNSHIP' ? `${companyName} Internship` : 'Academic Event'),
+      eventName: eventName || (purpose === 'HACKATHON' ? 'SIET Hackathon OD' : purpose === 'INTERNSHIP' ? `${companyName} Internship` : 'Academic OD Event'),
       organization: organization,
       venue: venue || (purpose === 'INTERNSHIP' ? companyName : 'CSE Department'),
       date: eventDate || startDate || new Date().toISOString().split('T')[0],
@@ -127,7 +122,7 @@ export default function ApplyODPage() {
       companyName: companyName,
       role: companyRole,
       location: location,
-      reason: reason || `Attending approved ${purpose.toLowerCase()} event.`,
+      reason: reason || `Attending approved ${purpose.toLowerCase()} event representing SIET.`,
       proofDocName: docName,
       status: 'PENDING',
     });
@@ -136,74 +131,95 @@ export default function ApplyODPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-2xl mx-auto py-2">
       {/* Back Link */}
       <div>
         <Link
           href="/student/od-requests"
-          className="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1 transition-colors"
+          className="text-xs font-semibold text-[#586658] hover:text-[#0a5c36] flex items-center gap-1.5 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to Applications
         </Link>
       </div>
 
-      {/* Form Container */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 space-y-8 shadow-2xs">
-        {/* Step Header */}
-        <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6 space-y-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Apply for On-Duty (OD)
-            </h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Step {currentStep} of 5 · {STEPS[currentStep - 1].desc}
-            </p>
+      {/* Main Centered Form Surface */}
+      <div className="bg-white rounded-xl border border-[#dfe6dc] p-6 sm:p-8 space-y-6 shadow-sm">
+        {/* Form Header */}
+        <div className="border-b border-[#dfe6dc] pb-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wider">
+              SIET CSE · OD Application
+            </span>
+            <span className="text-xs font-bold text-[#586658]">
+              Step {currentStep} of 5
+            </span>
           </div>
 
-          {/* Stepper Indicator */}
-          <div className="grid grid-cols-5 gap-2 pt-2">
-            {STEPS.map((s) => {
-              const isActive = s.id === currentStep;
-              const isPast = s.id < currentStep;
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172017]">
+            Apply for On-Duty (OD) Leave
+          </h1>
 
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    if (s.id < currentStep) setCurrentStep(s.id);
-                  }}
-                  className={`text-left pb-2 border-b-2 transition-colors ${
-                    isActive
-                      ? 'border-emerald-800 text-zinc-900 dark:text-zinc-100'
-                      : isPast
-                      ? 'border-emerald-600 text-zinc-600 dark:text-zinc-400 cursor-pointer'
-                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-400 cursor-not-allowed'
-                  }`}
-                >
-                  <span className="text-[10px] font-semibold block uppercase tracking-wider">
-                    0{s.id} {s.label}
-                  </span>
-                </button>
-              );
-            })}
+          {/* Yellow Progress Stepper (01 ─── 02 ─── 03 ─── 04 ─── 05) */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between relative">
+              {/* Background track */}
+              <div className="absolute top-1/2 left-4 right-4 -translate-y-1/2 h-0.5 bg-[#dfe6dc] z-0" />
+              {/* Active track */}
+              <div
+                className="absolute top-1/2 left-4 -translate-y-1/2 h-0.5 bg-[#facc15] transition-all duration-300 z-0"
+                style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 92}%` }}
+              />
+
+              {STEPS.map((s) => {
+                const isActive = s.id === currentStep;
+                const isPast = s.id < currentStep;
+
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      if (s.id < currentStep) setCurrentStep(s.id);
+                    }}
+                    className={`relative z-10 flex flex-col items-center group ${
+                      s.id <= currentStep ? 'cursor-pointer' : 'cursor-not-allowed'
+                    }`}
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                        isActive
+                          ? 'bg-[#0a5c36] text-white ring-4 ring-[#facc15]/30'
+                          : isPast
+                          ? 'bg-[#facc15] text-[#172017]'
+                          : 'bg-[#f7f9f5] border border-[#dfe6dc] text-[#889688]'
+                      }`}
+                    >
+                      0{s.id}
+                    </div>
+                    <span className="text-[10px] font-bold text-[#586658] mt-1 hidden sm:block">
+                      {s.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {/* STEP 1: PURPOSE SELECTION */}
         {currentStep === 1 && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                Select OD Purpose
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172017]">
+                What are you attending?
               </h2>
-              <p className="text-xs text-zinc-500">
-                Choose the academic or industry category that fits your leave request.
+              <p className="text-xs text-[#586658]">
+                Select the academic, competition, or corporate purpose for this OD leave.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
               {(
                 [
                   'HACKATHON',
@@ -221,19 +237,25 @@ export default function ApplyODPage() {
                     key={p}
                     type="button"
                     onClick={() => setPurpose(p)}
-                    className={`p-4 rounded-xl border text-left transition-all ${
+                    className={`p-3.5 rounded-lg border text-left flex items-center justify-between transition-all ${
                       isSelected
-                        ? 'border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 ring-1 ring-emerald-800'
-                        : 'border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900'
+                        ? 'border-[#0a5c36] bg-[#eaf7e8] ring-1 ring-[#0a5c36]'
+                        : 'border-[#dfe6dc] hover:border-[#0a5c36] bg-white'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                          isSelected
+                            ? 'border-[#0a5c36] bg-[#0a5c36] text-white'
+                            : 'border-[#889688]'
+                        }`}
+                      >
+                        {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#facc15]" />}
+                      </span>
+                      <span className="text-xs font-bold text-[#172017]">
                         {p}
                       </span>
-                      {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
-                      )}
                     </div>
                   </button>
                 );
@@ -244,274 +266,209 @@ export default function ApplyODPage() {
 
         {/* STEP 2: EVENT DETAILS */}
         {currentStep === 2 && (
-          <div className="space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172017]">
                 {purpose === 'INTERNSHIP' ? 'Internship & Company Details' : 'Event & Schedule Details'}
               </h2>
-              <p className="text-xs text-zinc-500">
-                Provide accurate details matching your official invitation or acceptance email.
+              <p className="text-xs text-[#586658]">
+                Provide official information matching your invitation or acceptance letter.
               </p>
             </div>
 
             {purpose === 'INTERNSHIP' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Company Name</label>
+                  <label className="text-xs font-semibold text-[#172017]">Company Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Zoho Corporation / Robert Bosch"
+                    placeholder="e.g. Zoho Corporation"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
                   {errors.companyName && (
-                    <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] text-red-600 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> {errors.companyName}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Role / Designation</label>
+                  <label className="text-xs font-semibold text-[#172017]">Internship Role</label>
                   <input
                     type="text"
-                    placeholder="e.g. AI Research Intern"
+                    placeholder="e.g. Software Engineering Intern"
                     value={companyRole}
                     onChange={(e) => setCompanyRole(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
-                  {errors.companyRole && (
-                    <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
-                      <AlertCircle className="w-3 h-3" /> {errors.companyRole}
-                    </p>
-                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Start Date</label>
+                  <label className="text-xs font-semibold text-[#172017]">Start Date</label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
-                  {errors.startDate && (
-                    <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
-                      <AlertCircle className="w-3 h-3" /> {errors.startDate}
-                    </p>
-                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">End Date</label>
+                  <label className="text-xs font-semibold text-[#172017]">End Date</label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
-                  {errors.endDate && (
-                    <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
-                      <AlertCircle className="w-3 h-3" /> {errors.endDate}
-                    </p>
-                  )}
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Event Name</label>
+                  <label className="text-xs font-semibold text-[#172017]">Event Name</label>
                   <input
                     type="text"
                     placeholder="e.g. Smart India Hackathon 2026"
                     value={eventName}
                     onChange={(e) => setEventName(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
                   {errors.eventName && (
-                    <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] text-red-600 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> {errors.eventName}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Host / Organization</label>
+                  <label className="text-xs font-semibold text-[#172017]">Host Organization</label>
                   <input
                     type="text"
-                    placeholder="e.g. IIT Madras / CSI Chapter"
+                    placeholder="e.g. IIT Madras / IEEE Chapter"
                     value={organization}
                     onChange={(e) => setOrganization(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Venue & City</label>
+                  <label className="text-xs font-semibold text-[#172017]">Venue &amp; City</label>
                   <input
                     type="text"
                     placeholder="e.g. Chennai Trade Centre"
                     value={venue}
                     onChange={(e) => setVenue(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
                   {errors.venue && (
-                    <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] text-red-600 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> {errors.venue}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Registration ID (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. SIH-2026-TEAM-894"
-                    value={registrationId}
-                    onChange={(e) => setRegistrationId(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Event Date</label>
+                  <label className="text-xs font-semibold text-[#172017]">Event Date</label>
                   <input
                     type="date"
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
-                  {errors.eventDate && (
-                    <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
-                      <AlertCircle className="w-3 h-3" /> {errors.eventDate}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Start Time</label>
-                    <input
-                      type="text"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">End Time</label>
-                    <input
-                      type="text"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none"
-                    />
-                  </div>
                 </div>
               </div>
             )}
 
-            {/* Justification Textarea */}
-            <div className="space-y-1 pt-2">
-              <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                Purpose & Academic Justification
+            <div className="space-y-1 pt-1">
+              <label className="text-xs font-semibold text-[#172017]">
+                Purpose &amp; Academic Justification
               </label>
               <textarea
                 rows={3}
-                placeholder="Briefly describe the purpose of attending and expected deliverables / outcomes..."
+                placeholder="State your objective, expected project deliverable, or learning outcome..."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full p-3 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 shadow-2xs"
+                className="w-full p-2.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
               />
-              {errors.reason && (
-                <p className="text-[11px] text-rose-600 flex items-center gap-1 mt-0.5">
-                  <AlertCircle className="w-3 h-3" /> {errors.reason}
-                </p>
-              )}
             </div>
           </div>
         )}
 
         {/* STEP 3: STUDENTS */}
         {currentStep === 3 && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                Applicant & Teammates
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172017]">
+                Applicant &amp; Group Teammates
               </h2>
-              <p className="text-xs text-zinc-500">
-                Primary applicant and any CSE classmates participating with you.
+              <p className="text-xs text-[#586658]">
+                Add any CSE classmates attending this event together with you.
               </p>
             </div>
 
-            {/* Primary Applicant Pill */}
-            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-850/60 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-emerald-900 text-emerald-100 text-xs font-semibold flex items-center justify-center">
-                  MC
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    Meena C (Primary Applicant)
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 tabular-nums">
-                    Register No: 714023104088 · Year II · CSE-A
-                  </p>
-                </div>
+            <div className="p-3.5 rounded-lg bg-[#eaf7e8] border border-[#dfe6dc] flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-[#172017]">
+                  Meena C (Lead Applicant)
+                </p>
+                <p className="text-[11px] text-[#586658] font-mono tabular-nums">
+                  Roll No: 714023104088 · Year II · CSE-A
+                </p>
               </div>
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                Lead
+              <span className="text-[10px] font-bold text-[#0a5c36] bg-white px-2 py-0.5 rounded border border-[#dfe6dc]">
+                Primary
               </span>
             </div>
 
-            {/* Additional Teammates List */}
-            <div className="space-y-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block">
-                Additional Teammates ({teammates.length})
+            {/* Teammates List */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#586658]">
+                Additional Team Members ({teammates.length})
               </span>
 
               {teammates.map((tm, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-lg border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between text-xs"
+                  className="p-2.5 rounded-md border border-[#dfe6dc] flex items-center justify-between text-xs"
                 >
                   <div>
-                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">{tm.name}</p>
-                    <p className="text-zinc-500 tabular-nums">Reg: {tm.regNo}</p>
+                    <p className="font-semibold text-[#172017]">{tm.name}</p>
+                    <p className="text-[11px] text-[#586658] font-mono tabular-nums">{tm.regNo}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRemoveTeammate(idx)}
-                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-rose-600 rounded transition-colors"
+                    className="p-1 text-[#889688] hover:text-[#dc2626]"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ))}
 
-              {/* Add Teammate Inline Row */}
               <div className="flex flex-col sm:flex-row gap-2 pt-1">
                 <input
                   type="text"
                   placeholder="Teammate Full Name"
                   value={newTeammateName}
                   onChange={(e) => setNewTeammateName(e.target.value)}
-                  className="flex-1 px-3 py-1.5 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none"
+                  className="flex-1 px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                 />
                 <input
                   type="text"
-                  placeholder="Register No (e.g. 714023104090)"
+                  placeholder="Roll No (e.g. 714023104090)"
                   value={newTeammateReg}
                   onChange={(e) => setNewTeammateReg(e.target.value)}
-                  className="w-full sm:w-48 px-3 py-1.5 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none tabular-nums"
+                  className="w-full sm:w-44 px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] font-mono"
                 />
                 <button
                   type="button"
                   onClick={handleAddTeammate}
-                  className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                  className="px-3 py-1.5 bg-[#eaf7e8] hover:bg-[#d8edd6] text-[#0a5c36] text-xs font-bold rounded-md transition-colors flex items-center justify-center gap-1 border border-[#dfe6dc]"
                 >
-                  <Plus className="w-3 h-3" />
+                  <Plus className="w-3.5 h-3.5" />
                   Add
                 </button>
               </div>
@@ -521,34 +478,34 @@ export default function ApplyODPage() {
 
         {/* STEP 4: DOCUMENTS */}
         {currentStep === 4 && (
-          <div className="space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172017]">
                 Supporting Verification Documents
               </h2>
-              <p className="text-xs text-zinc-500">
-                Attach acceptance letter, registration ticket, or event invitation required for HOD signoff.
+              <p className="text-xs text-[#586658]">
+                Upload invitation, registration receipt, or acceptance email required for HOD signoff.
               </p>
             </div>
 
-            <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl p-8 text-center bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-col items-center justify-center space-y-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 flex items-center justify-center">
+            <div className="border-2 border-dashed border-[#dfe6dc] rounded-xl p-8 text-center bg-[#f7f9f5] flex flex-col items-center justify-center space-y-3">
+              <div className="w-10 h-10 rounded-full bg-[#eaf7e8] text-[#0a5c36] flex items-center justify-center">
                 <Upload className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                  {uploadedFile ? docName : 'Click or drag verification file here'}
+                <p className="text-xs font-bold text-[#172017]">
+                  {uploadedFile ? docName : 'Click to select document'}
                 </p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
-                  PDF, PNG, JPG up to 10MB (Official department format)
+                <p className="text-[11px] text-[#586658]">
+                  PDF, JPG, or PNG up to 10MB (Official SIET format)
                 </p>
               </div>
 
               {uploadedFile && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-850 rounded-lg border border-zinc-200/80 dark:border-zinc-700 text-xs text-zinc-700 dark:text-zinc-300">
-                  <FileText className="w-3.5 h-3.5 text-emerald-700" />
-                  <span className="font-mono text-[11px]">{docName}</span>
-                  <span className="text-[10px] text-emerald-700 font-medium ml-1">✓ Ready</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-md border border-[#dfe6dc] text-xs text-[#0a5c36] font-semibold">
+                  <FileText className="w-3.5 h-3.5 text-[#0a5c36]" />
+                  <span>{docName}</span>
+                  <span className="text-[10px] text-[#0a5c36] ml-1">✓ Attached</span>
                 </div>
               )}
             </div>
@@ -557,78 +514,61 @@ export default function ApplyODPage() {
 
         {/* STEP 5: REVIEW */}
         {currentStep === 5 && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172017]">
                 Review Application Details
               </h2>
-              <p className="text-xs text-zinc-500">
-                Verify all information before submitting for departmental verification.
+              <p className="text-xs text-[#586658]">
+                Confirm all particulars before submitting to HOD office.
               </p>
             </div>
 
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-5 space-y-4 text-xs">
+            <div className="divide-y divide-[#edf2ea] border border-[#dfe6dc] rounded-lg p-4 space-y-3 text-xs">
               <div className="flex justify-between items-baseline pt-1">
-                <span className="text-zinc-500 font-medium">Purpose</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-                  {purpose}
+                <span className="text-[#586658] font-medium">Purpose</span>
+                <span className="font-bold text-[#0a5c36] uppercase">{purpose}</span>
+              </div>
+
+              <div className="flex justify-between items-baseline pt-2">
+                <span className="text-[#586658] font-medium">Activity Name</span>
+                <span className="font-bold text-[#172017]">
+                  {purpose === 'INTERNSHIP' ? `${companyName} (${companyRole})` : eventName || 'Department Hackathon'}
                 </span>
               </div>
 
-              <div className="flex justify-between items-baseline pt-3">
-                <span className="text-zinc-500 font-medium">Activity / Event</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {purpose === 'INTERNSHIP' ? `${companyName} (${companyRole})` : eventName || 'Departmental Hackathon'}
+              <div className="flex justify-between items-baseline pt-2">
+                <span className="text-[#586658] font-medium">Schedule</span>
+                <span className="font-semibold text-[#172017] tabular-nums">
+                  {purpose === 'INTERNSHIP' ? `${startDate} to ${endDate}` : eventDate}
                 </span>
               </div>
 
-              <div className="flex justify-between items-baseline pt-3">
-                <span className="text-zinc-500 font-medium">Schedule</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                  {purpose === 'INTERNSHIP' ? `${startDate} to ${endDate}` : `${eventDate} (${startTime} – ${endTime})`}
-                </span>
+              <div className="flex justify-between items-baseline pt-2">
+                <span className="text-[#586658] font-medium">Venue</span>
+                <span className="font-semibold text-[#172017]">{venue || companyName || 'SIET'}</span>
               </div>
 
-              <div className="flex justify-between items-baseline pt-3">
-                <span className="text-zinc-500 font-medium">Venue / Organization</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {venue || companyName || 'CSE Department'}
-                </span>
+              <div className="flex justify-between items-baseline pt-2">
+                <span className="text-[#586658] font-medium">Lead Applicant</span>
+                <span className="font-bold text-[#172017] font-mono">Meena C (714023104088)</span>
               </div>
 
-              <div className="flex justify-between items-baseline pt-3">
-                <span className="text-zinc-500 font-medium">Applicant</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                  Meena C (714023104088)
-                </span>
-              </div>
-
-              {teammates.length > 0 && (
-                <div className="flex justify-between items-baseline pt-3">
-                  <span className="text-zinc-500 font-medium">Teammates</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                    {teammates.map((t) => t.name).join(', ')}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex justify-between items-baseline pt-3">
-                <span className="text-zinc-500 font-medium">Document Proof</span>
-                <span className="font-semibold text-emerald-800 dark:text-emerald-400">
-                  {docName}
-                </span>
+              <div className="flex justify-between items-baseline pt-2">
+                <span className="text-[#586658] font-medium">Proof Document</span>
+                <span className="font-semibold text-[#0a5c36]">{docName}</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Step Navigation Controls */}
-        <div className="flex items-center justify-between pt-6 border-t border-zinc-100 dark:border-zinc-800">
+        <div className="flex items-center justify-between pt-4 border-t border-[#dfe6dc]">
           {currentStep > 1 ? (
             <button
               type="button"
               onClick={handleBack}
-              className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-[#586658] hover:text-[#172017] transition-colors"
             >
               ← Back
             </button>
@@ -640,7 +580,7 @@ export default function ApplyODPage() {
             <button
               type="button"
               onClick={handleNext}
-              className="px-5 py-2 bg-emerald-900 hover:bg-emerald-950 text-white text-xs font-medium rounded-lg shadow-2xs transition-colors"
+              className="px-5 py-2 bg-[#0a5c36] hover:bg-[#084c2c] text-white text-xs font-bold rounded-md shadow-xs transition-colors"
             >
               Continue →
             </button>
@@ -648,9 +588,10 @@ export default function ApplyODPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              className="px-6 py-2 bg-emerald-900 hover:bg-emerald-950 text-white text-xs font-medium rounded-lg shadow-2xs transition-colors"
+              className="px-6 py-2 bg-[#0a5c36] hover:bg-[#084c2c] text-white text-xs font-bold rounded-md shadow-xs transition-colors flex items-center gap-1.5"
             >
-              Submit Application
+              <span>Submit OD Application</span>
+              <Check className="w-3.5 h-3.5 text-[#facc15]" />
             </button>
           )}
         </div>

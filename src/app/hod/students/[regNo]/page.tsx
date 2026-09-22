@@ -23,83 +23,83 @@ export default function StudentProfilePage({ params }: { params: Promise<{ regNo
   const stats = getStudentStats(regNo);
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto py-2">
       <div>
         <Link
           href="/hod/students"
-          className="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1 transition-colors"
+          className="text-xs font-semibold text-[#586658] hover:text-[#0a5c36] flex items-center gap-1 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to Students Directory
         </Link>
       </div>
 
-      {/* Student Overview Header */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 space-y-6 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 pb-6">
+      {/* Student Overview Card */}
+      <div className="bg-white rounded-xl border border-[#dfe6dc] p-6 sm:p-8 space-y-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#dfe6dc] pb-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-lg flex items-center justify-center shrink-0 border border-zinc-200/80 dark:border-zinc-700">
+            <div className="w-12 h-12 rounded-full bg-[#0a5c36] text-white font-bold text-base flex items-center justify-center shrink-0 border border-[#064024]">
               {student.name.charAt(0)}
             </div>
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+            <div className="space-y-0.5">
+              <h1 className="text-xl font-bold text-[#172017]">
                 {student.name}
               </h1>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
-                Register No: <span className="font-medium text-zinc-800 dark:text-zinc-200">{student.registerNumber}</span> · Year {student.year || 'II'} · Section CSE-A
+              <p className="text-xs text-[#586658] font-mono tabular-nums">
+                Roll No: <span className="font-bold text-[#172017]">{student.registerNumber}</span> · Year {student.year || 'II'} · Section CSE-A
               </p>
             </div>
           </div>
 
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-1.5 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
-            Status: <span className="font-medium text-emerald-800 dark:text-emerald-400">{stats.standing || 'Good Standing'}</span>
+          <div className="text-xs font-semibold bg-[#eaf7e8] text-[#0a5c36] px-3 py-1.5 rounded-md border border-[#dfe6dc]">
+            Academic Standing: {stats.standing || 'Good Standing'}
           </div>
         </div>
 
-        {/* Totals Summary - Typography First */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 py-2 border-b border-zinc-100 dark:border-zinc-800">
+        {/* Metrics Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 py-2 border-b border-[#dfe6dc]">
           <div>
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#586658] uppercase tracking-wider">
               Total OD Events
             </span>
-            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 tabular-nums">
+            <p className="text-2xl font-bold text-[#172017] mt-1 tabular-nums">
               {studentODs.length || stats.totalODs || 3}
             </p>
           </div>
 
           <div>
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#586658] uppercase tracking-wider">
               Approved OD Days
             </span>
-            <p className="text-2xl font-semibold text-emerald-900 dark:text-emerald-300 mt-1 tabular-nums">
+            <p className="text-2xl font-bold text-[#0a5c36] mt-1 tabular-nums">
               {stats.totalODDays || 7}
             </p>
           </div>
 
           <div className="col-span-2 sm:col-span-1">
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-              Academic Attendance
+            <span className="text-[11px] font-bold text-[#586658] uppercase tracking-wider">
+              Attendance Clearance
             </span>
-            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 tabular-nums">
+            <p className="text-2xl font-bold text-[#172017] mt-1 tabular-nums">
               89.4%
             </p>
           </div>
         </div>
 
-        {/* OD History Chronological List */}
-        <div className="space-y-4 pt-2">
+        {/* OD History List */}
+        <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-400 uppercase">
+            <span className="text-xs font-bold tracking-wider text-[#172017] uppercase">
               OD Leave History
             </span>
-            <span className="text-xs text-zinc-400 tabular-nums">
-              {studentODs.length} recorded applications
+            <span className="text-xs text-[#586658] tabular-nums font-semibold">
+              {studentODs.length} applications
             </span>
           </div>
 
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-800 border border-zinc-200/80 dark:border-zinc-800 rounded-xl overflow-hidden">
+          <div className="divide-y divide-[#edf2ea] border border-[#dfe6dc] rounded-lg overflow-hidden">
             {studentODs.length === 0 ? (
-              <div className="p-8 text-center text-xs text-zinc-400">
+              <div className="p-8 text-center text-xs text-[#889688]">
                 No OD applications found for this student.
               </div>
             ) : (
@@ -107,28 +107,28 @@ export default function StudentProfilePage({ params }: { params: Promise<{ regNo
                 <Link
                   key={od.id}
                   href={`/hod/requests/${od.id}`}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-zinc-50/70 dark:hover:bg-zinc-850/40 transition-colors group block"
+                  className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#f2f9f1] transition-colors group block"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 uppercase">
+                      <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-[#eaf7e8] text-[#0a5c36] uppercase">
                         {od.purpose}
                       </span>
-                      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors">
+                      <h2 className="text-xs font-bold text-[#172017] group-hover:text-[#0a5c36] transition-colors">
                         {od.eventName}
                       </h2>
                     </div>
 
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-2 tabular-nums">
-                      <CalendarIcon className="w-3.5 h-3.5 text-zinc-400" />
+                    <p className="text-[11px] text-[#586658] flex items-center gap-2 tabular-nums">
+                      <CalendarIcon className="w-3.5 h-3.5 text-[#889688]" />
                       <span>{od.date || od.startDate}</span>
                       {od.fromTime && <span>· {od.fromTime} – {od.toTime}</span>}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-4 shrink-0">
+                  <div className="flex items-center gap-3 shrink-0">
                     <StatusIndicator status={od.status} />
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-800 transition-colors hidden sm:block" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#889688] group-hover:text-[#0a5c36] transition-colors" />
                   </div>
                 </Link>
               ))

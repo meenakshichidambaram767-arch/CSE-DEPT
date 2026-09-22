@@ -79,15 +79,18 @@ export default function HODRequestsPage() {
     (selectedYear !== 'ALL' ? 1 : 0);
 
   return (
-    <div className="space-y-10 py-2">
+    <div className="space-y-6 py-2">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#dfe6dc] pb-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Requests
+          <div className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wider">
+            SIET OD Review
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172017]">
+            OD Requests Inbox
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Review and clear student On-Duty applications.
+          <p className="text-xs text-[#586658] mt-0.5">
+            Review, verify supporting documents, and grant official attendance clearance.
           </p>
         </div>
 
@@ -95,7 +98,7 @@ export default function HODRequestsPage() {
           <button
             type="button"
             onClick={handleBulkApprove}
-            className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-medium rounded-lg shadow-xs transition-colors inline-flex items-center gap-1.5"
+            className="px-3.5 py-1.5 bg-[#0a5c36] hover:bg-[#084c2c] text-white text-xs font-semibold rounded-md shadow-xs transition-colors inline-flex items-center gap-1.5"
           >
             <Check className="w-3.5 h-3.5" />
             Approve selected ({selectedIds.length})
@@ -105,16 +108,16 @@ export default function HODRequestsPage() {
 
       {/* Search & Filter Bar */}
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Global Search Input */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#889688]" />
             <input
               type="text"
-              placeholder="Search students, events, register numbers..."
+              placeholder="Search student, event, register number..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+              className="w-full pl-9 pr-4 py-2 bg-white border border-[#dfe6dc] rounded-md text-xs text-[#172017] placeholder:text-[#889688] focus:outline-none focus:border-[#0a5c36] focus:ring-1 focus:ring-[#0a5c36]"
             />
           </div>
 
@@ -123,31 +126,31 @@ export default function HODRequestsPage() {
             <button
               type="button"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={`px-3 py-2 rounded-lg border text-xs font-medium inline-flex items-center gap-1.5 transition-colors ${
+              className={`px-3 py-2 rounded-md border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors ${
                 isFilterOpen || activeFiltersCount > 0
-                  ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100'
-                  : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
+                  ? 'bg-[#eaf7e8] border-[#0a5c36] text-[#0a5c36]'
+                  : 'bg-white border-[#dfe6dc] text-[#586658] hover:text-[#172017]'
               }`}
             >
               <FilterIcon className="w-3.5 h-3.5" />
               <span>Filter</span>
               {activeFiltersCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] flex items-center justify-center font-bold">
+                <span className="w-4 h-4 rounded-full bg-[#0a5c36] text-white text-[10px] flex items-center justify-center font-bold">
                   {activeFiltersCount}
                 </span>
               )}
             </button>
 
             {isFilterOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl z-40 p-4 space-y-4 animate-in fade-in zoom-in-95 duration-100 text-xs">
+              <div className="absolute right-0 mt-2 w-64 rounded-lg bg-white border border-[#dfe6dc] shadow-lg z-40 p-4 space-y-3 animate-in fade-in zoom-in-95 duration-100 text-xs">
                 <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-bold text-[#586658] uppercase tracking-wider mb-1">
                     Status
                   </label>
                   <select
                     value={activeStatus}
                     onChange={(e) => setActiveStatus(e.target.value)}
-                    className="w-full p-2 bg-zinc-50 dark:bg-zinc-800 rounded-md border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100"
+                    className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-xs text-[#172017]"
                   >
                     <option value="ALL">All Statuses</option>
                     <option value="PENDING">Pending</option>
@@ -157,13 +160,13 @@ export default function HODRequestsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-bold text-[#586658] uppercase tracking-wider mb-1">
                     Purpose
                   </label>
                   <select
                     value={selectedPurpose}
                     onChange={(e) => setSelectedPurpose(e.target.value)}
-                    className="w-full p-2 bg-zinc-50 dark:bg-zinc-800 rounded-md border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100"
+                    className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-xs text-[#172017]"
                   >
                     <option value="ALL">All Purposes</option>
                     <option value="HACKATHON">Hackathon</option>
@@ -176,13 +179,13 @@ export default function HODRequestsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-bold text-[#586658] uppercase tracking-wider mb-1">
                     Year
                   </label>
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    className="w-full p-2 bg-zinc-50 dark:bg-zinc-800 rounded-md border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100"
+                    className="w-full p-2 bg-[#f7f9f5] rounded-md border border-[#dfe6dc] text-xs text-[#172017]"
                   >
                     <option value="ALL">All Years</option>
                     <option value="I">I Year</option>
@@ -192,7 +195,7 @@ export default function HODRequestsPage() {
                   </select>
                 </div>
 
-                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                <div className="pt-2 border-t border-[#dfe6dc] flex justify-between items-center">
                   <button
                     type="button"
                     onClick={() => {
@@ -200,14 +203,14 @@ export default function HODRequestsPage() {
                       setSelectedPurpose('ALL');
                       setSelectedYear('ALL');
                     }}
-                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-[11px]"
+                    className="text-[#889688] hover:text-[#172017] text-[11px]"
                   >
                     Reset
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsFilterOpen(false)}
-                    className="px-2.5 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[11px] font-medium rounded"
+                    className="px-2.5 py-1 bg-[#0a5c36] text-white text-[11px] font-medium rounded"
                   >
                     Apply
                   </button>
@@ -220,12 +223,12 @@ export default function HODRequestsPage() {
         {/* Removable Active Filter Chips */}
         <div className="flex flex-wrap items-center gap-2">
           {activeStatus !== 'ALL' && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
               Status: {activeStatus.toLowerCase()}
               <button
                 type="button"
                 onClick={() => setActiveStatus('ALL')}
-                className="hover:text-zinc-900"
+                className="hover:text-[#172017]"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -233,12 +236,12 @@ export default function HODRequestsPage() {
           )}
 
           {selectedPurpose !== 'ALL' && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
               Purpose: {selectedPurpose.toLowerCase()}
               <button
                 type="button"
                 onClick={() => setSelectedPurpose('ALL')}
-                className="hover:text-zinc-900"
+                className="hover:text-[#172017]"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -246,12 +249,12 @@ export default function HODRequestsPage() {
           )}
 
           {selectedYear !== 'ALL' && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#eaf7e8] text-[#0a5c36] border border-[#dfe6dc]">
               Year: {selectedYear}
               <button
                 type="button"
                 onClick={() => setSelectedYear('ALL')}
-                className="hover:text-zinc-900"
+                className="hover:text-[#172017]"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -262,47 +265,47 @@ export default function HODRequestsPage() {
 
       {/* Requests List */}
       {filtered.length === 0 ? (
-        <div className="py-16 text-center text-sm text-zinc-400">
-          No OD requests found matching your filters.
+        <div className="py-16 text-center text-xs text-[#889688] bg-white rounded-lg border border-[#dfe6dc]">
+          No OD requests found matching your parameters.
         </div>
       ) : (
-        <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800/80 border-t border-b border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="bg-white rounded-lg border border-[#dfe6dc] divide-y divide-[#edf2ea] shadow-2xs overflow-hidden">
           {filtered.map((req) => (
             <div
               key={req.id}
               onClick={() => router.push(`/hod/requests/${req.id}`)}
-              className="py-5 flex items-center justify-between gap-6 group hover:bg-zinc-50/80 dark:hover:bg-zinc-900/50 px-3 -mx-3 rounded-lg transition-colors cursor-pointer"
+              className="p-4 flex items-center justify-between gap-4 hover:bg-[#f2f9f1] transition-colors cursor-pointer group"
             >
-              <div className="flex items-start gap-4 min-w-0">
+              <div className="flex items-start gap-3 min-w-0">
                 {activeStatus === 'PENDING' && (
                   <input
                     type="checkbox"
                     checked={selectedIds.includes(req.id)}
                     onClick={(e) => handleSelectOne(e, req.id)}
-                    className="mt-1 rounded border-zinc-300 dark:border-zinc-700 text-emerald-800 focus:ring-emerald-700 shrink-0"
+                    className="mt-1 rounded border-[#dfe6dc] text-[#0a5c36] focus:ring-[#0a5c36] shrink-0"
                   />
                 )}
 
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-sm font-semibold text-[#172017] group-hover:text-[#0a5c36] transition-colors truncate">
                       {req.eventName}
                     </h2>
                     <StatusIndicator status={req.status} />
                   </div>
 
-                  <p className="text-xs text-zinc-600 dark:text-zinc-300">
-                    {req.studentName} · {req.studentRegNo} · Year {req.year}
+                  <p className="text-xs text-[#586658]">
+                    {req.studentName} · <span className="tabular-nums font-mono text-[11px]">{req.studentRegNo}</span> · Year {req.year}
                   </p>
 
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-[11px] text-[#889688] tabular-nums">
                     {req.date || req.startDate} · {req.venue || 'CSE Department'}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-semibold text-zinc-400 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 inline-flex items-center gap-1 transition-colors">
+                <span className="text-xs font-semibold text-[#0a5c36] inline-flex items-center gap-1 group-hover:underline">
                   <span>Review</span>
                   <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
@@ -314,4 +317,3 @@ export default function HODRequestsPage() {
     </div>
   );
 }
-

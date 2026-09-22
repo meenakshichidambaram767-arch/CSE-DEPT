@@ -1,29 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbfbfa;
+  /* SIET Brand Colors */
+  --siet-green: #0a5c36;
+  --siet-green-dark: #064024;
+  --siet-green-hover: #084c2c;
+  --siet-green-light: #eaf7e8;
+  --siet-green-surface: #f2f9f1;
+
+  --siet-yellow: #facc15;
+  --siet-yellow-hover: #eab308;
+  --siet-yellow-soft: #fef9c3;
+
+  /* Surfaces & Canvas */
+  --background: #f7f9f5;
   --surface: #ffffff;
-  --foreground: #18181b;
-  --foreground-muted: #71717a;
-  --foreground-subtle: #a1a1aa;
-  
-  --border: #e4e4e7;
-  --border-subtle: #f4f4f5;
-  
-  --accent: #064e3b;
-  --accent-hover: #043d2e;
-  --accent-light: #ecfdf5;
-  --accent-foreground: #ffffff;
-  
-  --warn: #b45309;
+  --surface-subtle: #fbfdfa;
+
+  /* Typography */
+  --foreground: #172017;
+  --foreground-muted: #586658;
+  --foreground-subtle: #889688;
+
+  /* Dividers & Borders */
+  --border: #dfe6dc;
+  --border-subtle: #edf2ea;
+
+  /* Feedback */
+  --warn: #d97706;
   --warn-light: #fef3c7;
-  
-  --error: #b91c1c;
+  --error: #dc2626;
   --error-light: #fee2e2;
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -52,16 +64,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e4e4e7;
+  background: #dfe6dc;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #d4d4d8;
+  background: #cbd5c8;
 }
-
-/* Smooth micro-interactions */
-button, a, input, select {
-  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-

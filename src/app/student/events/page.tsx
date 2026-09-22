@@ -16,7 +16,7 @@ import {
   ArrowRight,
   Users,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react';
 import { ODPurpose } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
@@ -80,18 +80,16 @@ export default function StudentEventsPage() {
   const [activeTab, setActiveTab] = useState<EventCategoryKey>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Refs for scrolling carousels
   const carouselRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const scrollCarousel = (catKey: string, direction: 'left' | 'right') => {
     const el = carouselRefs.current[catKey];
     if (el) {
-      const scrollAmount = direction === 'left' ? -360 : 360;
+      const scrollAmount = direction === 'left' ? -340 : 340;
       el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
-  // Filter events by search query
   const searchFilteredEvents = odEvents.filter((evt) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -108,24 +106,27 @@ export default function StudentEventsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto py-2">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800 pb-5">
+      <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-4 border-b border-[#dfe6dc] pb-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Events & Opportunities
+          <div className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wider">
+            SIET Opportunities
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172017]">
+            Events &amp; OD Opportunities
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Department-approved hackathons, corporate internships, projects, and academic workshops
+          <p className="text-xs text-[#586658] mt-0.5">
+            Department-approved hackathons, corporate internships, projects, and academic workshops.
           </p>
         </div>
 
         <Link
           href="/student/apply-od"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-900 hover:bg-emerald-950 text-white font-medium text-xs rounded-lg shadow-2xs transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0a5c36] hover:bg-[#084c2c] text-white font-bold text-xs rounded-md shadow-xs transition-colors shrink-0"
         >
-          <Plus className="w-3.5 h-3.5" />
-          Apply for OD
+          <Plus className="w-3.5 h-3.5 text-[#facc15]" />
+          <span>Apply for OD</span>
         </Link>
       </div>
 
@@ -136,20 +137,19 @@ export default function StudentEventsPage() {
           <button
             type="button"
             onClick={() => setActiveTab('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 border ${
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border ${
               activeTab === 'ALL'
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent shadow-2xs'
-                : 'bg-white text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                ? 'bg-[#0a5c36] text-white border-[#0a5c36] shadow-2xs'
+                : 'bg-white text-[#586658] border-[#dfe6dc] hover:bg-[#f2f9f1]'
             }`}
           >
-            <span>All Categories</span>
-            <span className="text-[10px] tabular-nums text-zinc-400">
+            <span>All</span>
+            <span className="text-[10px] tabular-nums text-emerald-200">
               {odEvents.length}
             </span>
           </button>
 
           {CATEGORIES.map((cat) => {
-            const Icon = cat.icon;
             const count = getCategoryCount(cat);
             const isActive = activeTab === cat.key;
             return (
@@ -157,15 +157,14 @@ export default function StudentEventsPage() {
                 key={cat.key}
                 type="button"
                 onClick={() => setActiveTab(cat.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 border ${
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border ${
                   isActive
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent shadow-2xs'
-                    : 'bg-white text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                    ? 'bg-[#0a5c36] text-white border-[#0a5c36] shadow-2xs'
+                    : 'bg-white text-[#586658] border-[#dfe6dc] hover:bg-[#f2f9f1]'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
                 <span>{cat.shortLabel}</span>
-                <span className="text-[10px] tabular-nums text-zinc-400">
+                <span className="text-[10px] tabular-nums opacity-80">
                   {count}
                 </span>
               </button>
@@ -174,20 +173,20 @@ export default function StudentEventsPage() {
         </div>
 
         {/* Search Input */}
-        <div className="relative w-full sm:w-64 shrink-0">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+        <div className="relative w-full sm:w-60 shrink-0">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#889688]" />
           <input
             type="text"
-            placeholder="Search event, venue, city..."
+            placeholder="Search event, venue..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 placeholder:text-zinc-400 shadow-2xs"
+            className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#dfe6dc] rounded-md text-xs text-[#172017] focus:outline-none focus:border-[#0a5c36] placeholder:text-[#889688]"
           />
         </div>
       </div>
 
-      {/* Category Carousels / Sections */}
-      <div className="space-y-8">
+      {/* Category Carousels */}
+      <div className="space-y-6">
         {CATEGORIES.filter((cat) => activeTab === 'ALL' || activeTab === cat.key).map((cat) => {
           const catEvents = searchFilteredEvents.filter((e) => cat.purposes.includes(e.purpose));
           const Icon = cat.icon;
@@ -196,13 +195,13 @@ export default function StudentEventsPage() {
             return (
               <div
                 key={cat.key}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-10 text-center space-y-2"
+                className="bg-white rounded-xl border border-[#dfe6dc] p-8 text-center space-y-2"
               >
-                <Icon className="w-6 h-6 text-zinc-400 mx-auto" />
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                <Icon className="w-6 h-6 text-[#889688] mx-auto" />
+                <h2 className="text-sm font-bold text-[#172017]">
                   No {cat.shortLabel} Found
                 </h2>
-                <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                <p className="text-xs text-[#586658] max-w-sm mx-auto">
                   There are currently no events under {cat.label} matching your query.
                 </p>
               </div>
@@ -212,25 +211,24 @@ export default function StudentEventsPage() {
           if (catEvents.length === 0) return null;
 
           return (
-            <section key={cat.key} className="space-y-3">
+            <section key={cat.key} className="bg-white rounded-xl border border-[#dfe6dc] p-4 sm:p-5 space-y-3 shadow-2xs">
               {/* Category Header */}
-              <div className="flex items-center justify-between pb-1 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center justify-between pb-2 border-b border-[#dfe6dc]">
                 <div className="flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-emerald-800 dark:text-emerald-400" />
-                  <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  <Icon className="w-4 h-4 text-[#0a5c36]" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#172017]">
                     {cat.label}
                   </h2>
-                  <span className="text-xs text-zinc-400 tabular-nums">
+                  <span className="text-xs text-[#586658] tabular-nums font-semibold">
                     ({catEvents.length})
                   </span>
                 </div>
 
-                {/* Carousel Navigation Buttons */}
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => scrollCarousel(cat.key, 'left')}
-                    className="p-1 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors shadow-2xs"
+                    className="p-1 rounded border border-[#dfe6dc] bg-white hover:bg-[#f2f9f1] text-[#586658] transition-colors"
                     aria-label="Scroll Left"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
@@ -238,7 +236,7 @@ export default function StudentEventsPage() {
                   <button
                     type="button"
                     onClick={() => scrollCarousel(cat.key, 'right')}
-                    className="p-1 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors shadow-2xs"
+                    className="p-1 rounded border border-[#dfe6dc] bg-white hover:bg-[#f2f9f1] text-[#586658] transition-colors"
                     aria-label="Scroll Right"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -246,7 +244,7 @@ export default function StudentEventsPage() {
                 </div>
               </div>
 
-              {/* Horizontal Scrollable Carousel Container */}
+              {/* Horizontal Scrollable Container */}
               <div
                 ref={(el) => { carouselRefs.current[cat.key] = el; }}
                 className="flex items-stretch gap-4 overflow-x-auto pb-2 pt-1 snap-x snap-mandatory scrollbar-none"
@@ -254,42 +252,41 @@ export default function StudentEventsPage() {
                 {catEvents.map((evt) => (
                   <div
                     key={evt.id}
-                    className="w-[300px] md:w-[320px] shrink-0 snap-start bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-4 flex flex-col justify-between space-y-4 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group"
+                    className="w-[280px] md:w-[300px] shrink-0 snap-start bg-[#f7f9f5] rounded-lg border border-[#dfe6dc] p-4 flex flex-col justify-between space-y-3 shadow-2xs hover:border-[#0a5c36] transition-all group"
                   >
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#0a5c36] bg-[#eaf7e8] px-2 py-0.5 rounded border border-[#dfe6dc]">
                           {evt.purpose}
                         </span>
-                        <StatusIndicator status="APPROVED" text="Open for OD" />
+                        <StatusIndicator status="APPROVED" text="Open" />
                       </div>
 
-                      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">
+                      <h3 className="text-xs font-bold text-[#172017] group-hover:text-[#0a5c36] transition-colors leading-snug line-clamp-2">
                         {evt.title}
                       </h3>
 
-                      <div className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                      <div className="space-y-1 text-xs text-[#586658] pt-1 border-t border-[#dfe6dc]">
                         <div className="flex items-center gap-1.5 tabular-nums">
-                          <CalendarIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <CalendarIcon className="w-3.5 h-3.5 text-[#889688] shrink-0" />
                           <span>{evt.formattedDate}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                          <span className="truncate">{evt.venue} {evt.city ? `(${evt.city})` : ''}</span>
+                          <MapPin className="w-3.5 h-3.5 text-[#889688] shrink-0" />
+                          <span className="truncate">{evt.venue}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Footer Actions */}
-                    <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1 text-[11px] text-zinc-500 tabular-nums">
-                        <Users className="w-3.5 h-3.5 text-zinc-400" />
+                    <div className="border-t border-[#dfe6dc] pt-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1 text-[11px] text-[#586658] tabular-nums">
+                        <Users className="w-3.5 h-3.5 text-[#889688]" />
                         <span>{evt.studentCount} applied</span>
                       </div>
 
                       <Link
                         href={`/student/apply-od?eventId=${evt.id}&purpose=${evt.purpose}`}
-                        className="text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:text-emerald-950 dark:hover:text-emerald-300 inline-flex items-center gap-1"
+                        className="text-xs font-bold text-[#0a5c36] hover:underline inline-flex items-center gap-1"
                       >
                         Apply OD
                         <ArrowRight className="w-3 h-3" />

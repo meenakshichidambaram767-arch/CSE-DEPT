@@ -26,42 +26,42 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
 }) => {
   const norm = (status || '').toUpperCase();
 
-  let dotColor = 'bg-zinc-400';
-  let textColor = 'text-zinc-600 dark:text-zinc-400';
+  let dotColor = 'bg-[#687268]';
+  let textColor = 'text-[#586658]';
   let label = text || status;
 
   switch (norm) {
     case 'APPROVED':
     case 'COMPLETED':
-      dotColor = 'bg-emerald-700';
-      textColor = 'text-emerald-800 dark:text-emerald-400';
+      dotColor = 'bg-[#0a5c36]';
+      textColor = 'text-[#0a5c36]';
       if (!text) label = norm === 'COMPLETED' ? 'Completed' : 'Approved';
       break;
     case 'PENDING':
     case 'SUBMITTED':
-      dotColor = 'bg-amber-500';
-      textColor = 'text-amber-800 dark:text-amber-300';
+      dotColor = 'bg-[#eab308]';
+      textColor = 'text-[#92400e]';
       if (!text) label = 'Pending';
       break;
     case 'REJECTED':
-      dotColor = 'bg-red-600';
-      textColor = 'text-red-700 dark:text-red-400';
+      dotColor = 'bg-[#dc2626]';
+      textColor = 'text-[#b91c1c]';
       if (!text) label = 'Rejected';
       break;
     case 'REVISION_REQUESTED':
-      dotColor = 'bg-amber-600';
-      textColor = 'text-amber-800 dark:text-amber-400';
+      dotColor = 'bg-[#d97706]';
+      textColor = 'text-[#92400e]';
       if (!text) label = 'Clarification Needed';
       break;
     case 'UPCOMING':
     case 'SCHEDULED':
-      dotColor = 'bg-zinc-700 dark:bg-zinc-300';
-      textColor = 'text-zinc-700 dark:text-zinc-300';
+      dotColor = 'bg-[#0a5c36]';
+      textColor = 'text-[#172017]';
       if (!text) label = 'Upcoming';
       break;
     case 'ONGOING':
-      dotColor = 'bg-emerald-600 animate-pulse';
-      textColor = 'text-emerald-700 dark:text-emerald-300';
+      dotColor = 'bg-[#0a5c36] animate-pulse';
+      textColor = 'text-[#0a5c36]';
       if (!text) label = 'Ongoing';
       break;
     default:
@@ -71,7 +71,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
 
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${textColor} ${className}`}>
-      {showDot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />}
+      {showDot && <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />}
       <span>{label}</span>
     </span>
   );

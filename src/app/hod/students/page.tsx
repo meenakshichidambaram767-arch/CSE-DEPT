@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import { mockUsers } from '@/data/mock';
-import { Search, ArrowRight, GraduationCap } from 'lucide-react';
+import { Search, ArrowRight } from 'lucide-react';
 
 export default function HODStudentsPage() {
   const { odApplications } = useData();
@@ -21,38 +21,41 @@ export default function HODStudentsPage() {
   });
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto py-2">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#dfe6dc] pb-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <div className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wider">
+            SIET Student Directory
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172017]">
             Students Directory
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Department student roster, registered roll numbers, and academic OD leave summaries
+          <p className="text-xs text-[#586658] mt-0.5">
+            CSE student rolls, registration numbers, and individual OD clearance histories.
           </p>
         </div>
-        <span className="text-xs text-zinc-400 tabular-nums">
-          {filteredStudents.length} students enrolled
+        <span className="text-xs font-semibold text-[#0a5c36] bg-[#eaf7e8] px-2.5 py-1 rounded-md tabular-nums border border-[#dfe6dc]">
+          {filteredStudents.length} Students
         </span>
       </div>
 
       {/* Search Input */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#889688]" />
         <input
           type="text"
-          placeholder="Search by student name or register number..."
+          placeholder="Search student name or register number..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 rounded-lg border border-zinc-200/80 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors shadow-2xs"
+          className="w-full pl-9 pr-4 py-2 bg-white text-xs text-[#172017] placeholder:text-[#889688] rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] transition-colors"
         />
       </div>
 
       {/* Students Directory List */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-800 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-lg border border-[#dfe6dc] divide-y divide-[#edf2ea] shadow-2xs overflow-hidden">
         {filteredStudents.length === 0 ? (
-          <div className="p-12 text-center text-xs text-zinc-400">
+          <div className="p-10 text-center text-xs text-[#889688]">
             No students found matching &ldquo;{searchTerm}&rdquo;.
           </div>
         ) : (
@@ -66,27 +69,27 @@ export default function HODStudentsPage() {
               <Link
                 key={s.id}
                 href={`/hod/students/${s.registerNumber}`}
-                className="p-4 sm:p-5 flex items-center justify-between hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors group block"
+                className="p-4 flex items-center justify-between hover:bg-[#f2f9f1] transition-colors group block"
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center font-medium text-xs shrink-0 border border-zinc-200/80 dark:border-zinc-700">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-[#0a5c36] text-white flex items-center justify-center font-bold text-xs shrink-0">
                     {s.name.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors">
+                    <h2 className="text-xs font-bold text-[#172017] group-hover:text-[#0a5c36] transition-colors truncate">
                       {s.name}
                     </h2>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 tabular-nums">
+                    <p className="text-[11px] text-[#586658] font-mono tabular-nums">
                       {s.registerNumber} · Year {s.year || 'II'} · Section CSE-A
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
+                  <span className="text-[11px] font-semibold text-[#586658] tabular-nums">
                     {totalEvents} {totalEvents === 1 ? 'event' : 'events'}
                   </span>
-                  <span className="text-xs font-medium text-emerald-800 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline-flex items-center gap-1">
+                  <span className="text-xs font-semibold text-[#0a5c36] group-hover:underline inline-flex items-center gap-1">
                     Profile
                     <ArrowRight className="w-3.5 h-3.5" />
                   </span>
