@@ -1,162 +1,169 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
-import { Tabs } from '@/components/ui/Tabs';
-import { EmptyState } from '@/components/common/EmptyState';
 import { useData } from '@/context/DataContext';
-import {
-  FileCheck,
-  Calendar,
-  Clock,
-  MapPin,
-  Plus,
-  Sparkles,
-  AlertTriangle,
-  CheckCircle2,
-  AlertCircle,
-} from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, MapPin, FileText, CheckCircle2 } from 'lucide-react';
+import StatusIndicator from '@/components/ui/StatusIndicator';
 
-export default function StudentODRequestsPage() {
+export default function StudentODPortalPage() {
   const { odApplications } = useData();
-  const [activeTab, setActiveTab] = useState('ALL');
 
-  const filtered = odApplications.filter((o) => {
-    if (activeTab === 'PENDING') return o.status === 'PENDING';
-    if (activeTab === 'APPROVED') return o.status === 'APPROVED';
-    if (activeTab === 'REJECTED') return o.status === 'REJECTED';
-    return true;
-  });
+  // Filter for student "Meena C" (usr-student-001 / 714023104088)
+  const myODs = odApplications.filter(
+    (od) => od.studentId === 'usr-student-001' || od.studentRegNo === '714023104088'
+  );
 
-  const tabItems = [
-    { id: 'ALL', label: `All Requests (${odApplications.length})` },
-    { id: 'PENDING', label: `Pending (${odApplications.filter((o) => o.status === 'PENDING').length})` },
-    { id: 'APPROVED', label: `Approved (${odApplications.filter((o) => o.status === 'APPROVED').length})` },
-    { id: 'REJECTED', label: `Rejected (${odApplications.filter((o) => o.status === 'REJECTED').length})` },
-  ];
+  const approvedCount = myODs.filter((od) => od.status === 'APPROVED').length;
+  const pendingCount = myODs.filter((od) => od.status === 'PENDING').length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <PageHeader
-        title="On-Duty (OD) Permissions"
-        description="Track academic attendance concessions for approved project testing, lab deployments, and hackathons."
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/student/dashboard' },
-          { label: 'OD Requests', current: true },
-        ]}
-        badge={
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 inline-flex items-center gap-1.5 shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Independent Academic Concessions</span>
-          </span>
-        }
-        primaryAction={
-          <Link href="/student/od-requests/new">
-            <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
-              Apply for OD
-            </Button>
-          </Link>
-        }
-      />
+    <div className="space-y-8 max-w-4xl mx-auto py-2">
+      {/* Student Welcome Card with SIET Identity */}
+      <div className="relative overflow-hidden rounded-xl bg-[#eaf7e8] border border-[#dfe6dc] p-6 sm:p-8 space-y-3">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-[#facc15]" />
 
-      {/* Tabs */}
-      <Tabs tabs={tabItems} activeTab={activeTab} onChange={(id) => setActiveTab(id)} />
-
-      {/* OD List */}
-      {filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs">
-          <EmptyState
-            title="No OD applications found"
-            description="You have not submitted any On-Duty requests in this status category."
-            icon={<FileCheck className="w-8 h-8 text-slate-400" />}
-          />
+        <div className="flex items-center justify-between text-[11px] font-bold tracking-wider text-[#0a5c36] uppercase">
+          <span>SIET OD Management</span>
+          <span>CSE Department · II Year</span>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filtered.map((od) => (
-            <div
-              key={od.id}
-              className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-4 hover:border-indigo-300 transition-colors flex flex-col justify-between"
+
+        <div className="space-y-1 pt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#172017]">
+            Hello, Meena C
+          </h1>
+          <p className="text-xs text-[#586658]">
+            Roll Number: <span className="font-mono font-bold text-[#172017]">714023104088</span> · Academic Section CSE-A
+          </p>
+        </div>
+
+        {/* Primary CTA + Summary Pill */}
+        <div className="pt-2 flex flex-wrap items-center gap-3">
+          <Link
+            href="/student/apply-od"
+            className="px-4 py-2 bg-[#0a5c36] hover:bg-[#084c2c] text-white text-xs font-bold rounded-lg shadow-xs transition-colors inline-flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4 text-[#facc15]" />
+            <span>Apply for New OD</span>
+          </Link>
+
+          <span className="text-xs text-[#0a5c36] bg-white px-3 py-1.5 rounded-lg border border-[#dfe6dc] font-semibold">
+            {approvedCount} Approved ODs · {pendingCount} Pending
+          </span>
+        </div>
+      </div>
+
+      {/* Applications List */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-[#dfe6dc] pb-2">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[#172017]">
+            Your Upcoming &amp; Past OD Requests
+          </h2>
+          <span className="text-xs text-[#586658] tabular-nums font-semibold">
+            {myODs.length} total
+          </span>
+        </div>
+
+        {myODs.length === 0 ? (
+          <div className="p-10 text-center bg-white rounded-xl border border-[#dfe6dc] space-y-3">
+            <p className="text-sm font-bold text-[#172017]">No OD applications yet</p>
+            <p className="text-xs text-[#586658]">Apply for your upcoming hackathon, internship, or conference.</p>
+            <Link
+              href="/student/apply-od"
+              className="inline-block mt-2 px-4 py-2 bg-[#0a5c36] text-white text-xs font-bold rounded-lg hover:bg-[#084c2c] transition-colors"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-mono font-bold text-slate-400">{od.id}</span>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                      od.status === 'APPROVED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : od.status === 'REJECTED'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {od.status}
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {od.eventName}
+              + Apply for OD
+            </Link>
+          </div>
+        ) : (
+          myODs.map((req) => (
+            <div
+              key={req.id}
+              className="bg-white rounded-xl border border-[#dfe6dc] p-5 space-y-4 shadow-2xs hover:border-[#0a5c36] transition-colors"
+            >
+              {/* Header inside item */}
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-[#edf2ea] pb-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#facc15]" />
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-[#0a5c36] bg-[#eaf7e8] px-2 py-0.5 rounded">
+                      {req.purpose || 'EVENT'}
+                    </span>
+                    <span className="text-xs text-[#889688] font-mono tabular-nums">· ID {req.id}</span>
+                  </div>
+                  <h3 className="text-base font-bold text-[#172017]">
+                    {req.eventName}
                   </h3>
-                  {od.activityTitle && (
-                    <p className="text-xs text-indigo-700 font-semibold mt-0.5">
-                      Connected: {od.activityTitle}
-                    </p>
-                  )}
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {od.reason}
-                </p>
+                <StatusIndicator status={req.status} />
+              </div>
 
-                {/* Date, Time & Venue */}
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1 text-xs text-slate-600">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{od.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{od.fromTime} to {od.toTime}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{od.venue}</span>
-                  </div>
-                </div>
-
-                {/* Explicit Rejection Reason (Section 9) */}
-                {od.status === 'REJECTED' && od.rejectionReason && (
-                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-red-800">
-                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-                      <span>HOD Rejection Reason:</span>
-                    </div>
-                    <p className="text-xs text-red-700 leading-relaxed font-medium">
-                      {od.rejectionReason}
-                    </p>
-                  </div>
-                )}
-
-                {/* Remarks if Approved */}
-                {od.status === 'APPROVED' && od.remarks && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{od.remarks}</span>
-                  </div>
+              {/* Event Metadata */}
+              <div className="flex flex-wrap items-center gap-4 text-xs text-[#586658]">
+                <span className="flex items-center gap-1.5 tabular-nums">
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#889688]" />
+                  {req.date || req.startDate}
+                  {req.fromTime && ` (${req.fromTime} – ${req.toTime})`}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#889688]" />
+                  {req.venue || 'CSE Department'}
+                </span>
+                {req.proofDocName && (
+                  <span className="flex items-center gap-1.5 text-[#172017]">
+                    <FileText className="w-3.5 h-3.5 text-[#0a5c36]" />
+                    {req.proofDocName}
+                  </span>
                 )}
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                <span>Submitted: {od.submittedDate}</span>
-                {od.proofDocName && <span className="text-indigo-600 font-medium">Proof Attached ✓</span>}
+              {/* Lifecycle Progress Bar */}
+              <div className="p-3 bg-[#f7f9f5] rounded-lg border border-[#dfe6dc] space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#586658]">
+                  Clearing Lifecycle
+                </span>
+
+                <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-[#0a5c36] font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-[#0a5c36]" />
+                    <span>Submitted</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-[#0a5c36] font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-[#0a5c36]" />
+                    <span>Under Review</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    {req.status === 'APPROVED' ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-[#0a5c36]" />
+                        <span className="text-[#0a5c36]">HOD Approved</span>
+                      </>
+                    ) : req.status === 'REJECTED' ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
+                        <span className="text-[#dc2626]">Rejected</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-[#eab308] animate-pulse" />
+                        <span className="text-[#92400e]">Pending Signoff</span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 font-semibold text-[#889688]">
+                    <span className={`w-2 h-2 rounded-full ${req.status === 'APPROVED' ? 'bg-[#0a5c36]' : 'bg-[#dfe6dc]'}`} />
+                    <span>NAAC Archived</span>
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

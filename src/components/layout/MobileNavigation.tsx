@@ -4,17 +4,16 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserRole } from '@/types';
+import { SietLogo } from '@/components/common/SietLogo';
 import {
-  LayoutDashboard,
-  Layers,
-  FolderKanban,
-  BriefcaseBusiness,
-  Trophy,
-  ClipboardCheck,
-  BadgeCheck,
-  FileCheck,
+  Home,
+  Inbox,
+  Calendar as CalendarIcon,
+  Sparkles,
+  Users,
+  FileSpreadsheet,
+  PlusCircle,
   X,
-  GraduationCap
 } from 'lucide-react';
 
 export interface MobileNavigationProps {
@@ -51,23 +50,18 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
   if (!isOpen) return null;
 
   const studentNav = [
-    { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
-    { label: 'My Activities', href: '/student/activities', icon: Layers },
-    { label: 'Projects', href: '/student/projects', icon: FolderKanban },
-    { label: 'Internships', href: '/student/internships', icon: BriefcaseBusiness },
-    { label: 'Hackathons', href: '/student/hackathons', icon: Trophy },
-    { label: 'Reviews', href: '/student/reviews', icon: ClipboardCheck },
-    { label: 'On-Duty (OD)', href: '/student/od-requests', icon: FileCheck },
+    { label: 'Home', href: '/student/od-requests', icon: Home },
+    { label: 'Apply for OD', href: '/student/apply-od', icon: PlusCircle },
+    { label: 'Calendar', href: '/student/calendar', icon: CalendarIcon },
+    { label: 'Events', href: '/student/events', icon: Sparkles },
   ];
 
   const hodNav = [
-    { label: 'Dashboard', href: '/hod/dashboard', icon: LayoutDashboard },
-    { label: 'Approvals', href: '/hod/approvals', icon: BadgeCheck },
-    { label: 'Projects', href: '/hod/projects', icon: FolderKanban },
-    { label: 'Internships', href: '/hod/internships', icon: BriefcaseBusiness },
-    { label: 'Hackathons', href: '/hod/hackathons', icon: Trophy },
-    { label: 'Reviews', href: '/hod/reviews', icon: ClipboardCheck },
-    { label: 'OD Submissions', href: '/hod/od-submissions', icon: FileCheck },
+    { label: 'Home', href: '/hod/dashboard', icon: Home },
+    { label: 'Requests', href: '/hod/requests', icon: Inbox },
+    { label: 'Calendar', href: '/hod/calendar', icon: CalendarIcon },
+    { label: 'Events', href: '/hod/events', icon: Sparkles },
+    { label: 'Records', href: '/hod/records', icon: FileSpreadsheet },
   ];
 
   const navItems = role === 'STUDENT' ? studentNav : hodNav;
@@ -76,24 +70,24 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
     <div className="lg:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-2xs transition-opacity"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Drawer panel */}
-      <div className="relative flex flex-col w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 animate-in slide-in-from-left duration-200">
+      <div className="relative flex flex-col w-64 max-w-[80vw] bg-[#064024] text-white shadow-2xl border-r border-[#042f1a] z-10 animate-in slide-in-from-left duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between p-4 border-b border-[#0a5c36]/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-2xs">
-              <GraduationCap className="w-4 h-4" />
-            </div>
+            <SietLogo size="sm" variant="dark" />
             <div>
-              <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
-                CSE Activity Hub
-              </h2>
-              <p className="text-[10px] text-slate-500 font-medium">Department of CSE</p>
+              <div className="text-xs font-black tracking-wider text-[#fed403] uppercase">
+                SIET
+              </div>
+              <div className="text-[10px] text-emerald-200 uppercase font-semibold">
+                OD MANAGEMENT
+              </div>
             </div>
           </div>
 
@@ -101,30 +95,33 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close menu"
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+            className="p-1 rounded-md text-emerald-300 hover:text-white hover:bg-[#0a5c36]"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Nav list */}
+        {/* Navigation list */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== '/hod/dashboard' && item.href !== '/student/od-requests' && pathname.startsWith(item.href));
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-md text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-semibold shadow-2xs border border-emerald-200/60 dark:border-emerald-800/40'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-[#0a5c36] text-white font-semibold'
+                    : 'text-emerald-100 hover:bg-[#0a5c36]/50 hover:text-white'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                {isActive && (
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-[#fed403] rounded-r" />
+                )}
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#fed403]' : 'text-emerald-300'}`} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -132,12 +129,17 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-100 dark:border-slate-800 text-center">
-          <p className="text-[11px] text-slate-400 font-medium">
-            Logged in as <span className="font-semibold text-slate-700 dark:text-slate-300">{role}</span>
-          </p>
+        <div className="p-4 border-t border-[#0a5c36]/60 bg-[#042f1a]/60">
+          <div className="text-xs font-semibold text-white">
+            {role === 'STUDENT' ? 'Meena C' : 'Dr. Priya Kumar'}
+          </div>
+          <div className="text-[10px] text-emerald-200">
+            {role === 'STUDENT' ? 'Student · CSE Department' : 'Head of Department · CSE'}
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default MobileNavigation;
