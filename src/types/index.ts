@@ -190,6 +190,53 @@ export interface ReviewSession {
 
 export type Review = ReviewSession;
 
+export type ODPurpose =
+  | 'HACKATHON'
+  | 'PROJECT'
+  | 'INTERNSHIP'
+  | 'WORKSHOP'
+  | 'COMPETITION'
+  | 'CONFERENCE'
+  | 'OTHER';
+
+export interface AuditLog {
+  id: string;
+  date: string;
+  time: string;
+  actorName: string;
+  actorRole: UserRole;
+  actionTitle: string;
+  details: string;
+  targetId?: string;
+}
+
+export interface ODConflict {
+  hasConflict: boolean;
+  conflictingEventName?: string;
+  conflictingDate?: string;
+  conflictingTime?: string;
+  conflictingStudentRegNo?: string;
+  conflictingStudentName?: string;
+}
+
+export interface ODEvent {
+  id: string;
+  title: string;
+  purpose: ODPurpose;
+  date: string; // e.g. "2026-09-25"
+  formattedDate: string; // e.g. "25 Sep 2026"
+  endDate?: string;
+  venue: string;
+  city?: string;
+  studentCount: number;
+  approvedCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+  status: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CLOSED';
+  documents: DocumentItem[];
+  odRequestIds: string[];
+}
+
 export interface ODApplication {
   id: string;
   studentId: string;
@@ -197,11 +244,15 @@ export interface ODApplication {
   studentRegNo: string;
   department: string;
   year: string;
+  section?: string;
+  eventId?: string;
+  purpose: ODPurpose;
   activityId?: string;
   activityTitle?: string;
   activityType?: ActivityType;
   reason: string;
   eventName: string;
+  organization?: string;
   date?: string;
   startDate?: string;
   endDate?: string;
@@ -209,9 +260,30 @@ export interface ODApplication {
   toTime?: string;
   totalDays?: number;
   venue?: string;
+
+  // Hackathon specific fields
+  hackathonName?: string;
+  registrationId?: string;
+  teamMembers?: TeamMember[];
+
+  // Project specific fields
+  projectName?: string;
+  projectType?: string;
+
+  // Internship specific fields
+  companyName?: string;
+  role?: string;
+  location?: string;
+  internshipStartDate?: string;
+  internshipEndDate?: string;
+
+  // Document management
   proofUrl?: string;
   proofDocName?: string;
   documents?: DocumentItem[];
+  postEventDocsSubmitted?: boolean;
+  postEventCertUrl?: string;
+
   additionalNotes?: string;
   status: ODStatus;
   rejectionReason?: string;
@@ -219,6 +291,9 @@ export interface ODApplication {
   submittedDate: string;
   approvedDate?: string;
   remarks?: string;
+  timeline?: TimelineEvent[];
+  auditTrail?: AuditLog[];
+  conflict?: ODConflict;
 }
 
 export type ODSubmission = ODApplication;
@@ -228,6 +303,7 @@ export interface StudentStats {
   approvedActivities: number;
   totalODs: number;
   approvedODs: number;
+  totalODDays: number;
   attendanceRate: string;
   standing: string;
   recentActivityTitles: string[];
@@ -252,3 +328,4 @@ export interface MetricItem {
   description?: string;
   icon?: string;
 }
+

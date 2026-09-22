@@ -1,162 +1,108 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
-import { Tabs } from '@/components/ui/Tabs';
-import { EmptyState } from '@/components/common/EmptyState';
 import { useData } from '@/context/DataContext';
-import {
-  FileCheck,
-  Calendar,
-  Clock,
-  MapPin,
-  Plus,
-  Sparkles,
-  AlertTriangle,
-  CheckCircle2,
-  AlertCircle,
-} from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, CheckCircle2, Clock, MapPin, ArrowRight } from 'lucide-react';
 
-export default function StudentODRequestsPage() {
+export default function StudentODPortalPage() {
   const { odApplications } = useData();
-  const [activeTab, setActiveTab] = useState('ALL');
 
-  const filtered = odApplications.filter((o) => {
-    if (activeTab === 'PENDING') return o.status === 'PENDING';
-    if (activeTab === 'APPROVED') return o.status === 'APPROVED';
-    if (activeTab === 'REJECTED') return o.status === 'REJECTED';
-    return true;
-  });
-
-  const tabItems = [
-    { id: 'ALL', label: `All Requests (${odApplications.length})` },
-    { id: 'PENDING', label: `Pending (${odApplications.filter((o) => o.status === 'PENDING').length})` },
-    { id: 'APPROVED', label: `Approved (${odApplications.filter((o) => o.status === 'APPROVED').length})` },
-    { id: 'REJECTED', label: `Rejected (${odApplications.filter((o) => o.status === 'REJECTED').length})` },
-  ];
+  // Filter for student "Meena C" (usr-student-001 / 714023104088)
+  const myODs = odApplications.filter(
+    (od) => od.studentId === 'usr-student-001' || od.studentRegNo === '714023104088'
+  );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <PageHeader
-        title="On-Duty (OD) Permissions"
-        description="Track academic attendance concessions for approved project testing, lab deployments, and hackathons."
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/student/dashboard' },
-          { label: 'OD Requests', current: true },
-        ]}
-        badge={
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 inline-flex items-center gap-1.5 shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Independent Academic Concessions</span>
-          </span>
-        }
-        primaryAction={
-          <Link href="/student/od-requests/new">
-            <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
-              Apply for OD
-            </Button>
-          </Link>
-        }
-      />
-
-      {/* Tabs */}
-      <Tabs tabs={tabItems} activeTab={activeTab} onChange={(id) => setActiveTab(id)} />
-
-      {/* OD List */}
-      {filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs">
-          <EmptyState
-            title="No OD applications found"
-            description="You have not submitted any On-Duty requests in this status category."
-            icon={<FileCheck className="w-8 h-8 text-slate-400" />}
-          />
+    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 p-6 lg:p-10 space-y-8 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            MY ON-DUTY (OD) REQUESTS
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Track application status, submit supporting documents, and view clearance history
+          </p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filtered.map((od) => (
-            <div
-              key={od.id}
-              className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-4 hover:border-indigo-300 transition-colors flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-mono font-bold text-slate-400">{od.id}</span>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                      od.status === 'APPROVED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : od.status === 'REJECTED'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {od.status}
+
+        <Link
+          href="/student/apply-od"
+          className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-amber-300 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 w-fit"
+        >
+          <PlusCircle className="w-4 h-4 text-amber-300" />
+          Apply for New OD
+        </Link>
+      </div>
+
+      {/* Applications List with Lifecycle Tracker */}
+      <div className="space-y-6">
+        {myODs.map((req) => (
+          <div
+            key={req.id}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-6 shadow-2xs"
+          >
+            {/* Top Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 uppercase">
+                    {req.purpose || 'EVENT'}
                   </span>
+                  <span className="text-xs text-slate-400">ID: {req.id}</span>
                 </div>
 
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {od.eventName}
-                  </h3>
-                  {od.activityTitle && (
-                    <p className="text-xs text-indigo-700 font-semibold mt-0.5">
-                      Connected: {od.activityTitle}
-                    </p>
-                  )}
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {od.reason}
-                </p>
-
-                {/* Date, Time & Venue */}
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1 text-xs text-slate-600">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{od.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{od.fromTime} to {od.toTime}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{od.venue}</span>
-                  </div>
-                </div>
-
-                {/* Explicit Rejection Reason (Section 9) */}
-                {od.status === 'REJECTED' && od.rejectionReason && (
-                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-red-800">
-                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-                      <span>HOD Rejection Reason:</span>
-                    </div>
-                    <p className="text-xs text-red-700 leading-relaxed font-medium">
-                      {od.rejectionReason}
-                    </p>
-                  </div>
-                )}
-
-                {/* Remarks if Approved */}
-                {od.status === 'APPROVED' && od.remarks && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{od.remarks}</span>
-                  </div>
-                )}
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {req.eventName}
+                </h2>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                <span>Submitted: {od.submittedDate}</span>
-                {od.proofDocName && <span className="text-indigo-600 font-medium">Proof Attached ✓</span>}
+              <span className={`px-3 py-1 text-xs font-bold rounded-lg w-fit ${
+                req.status === 'APPROVED'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+              }`}>
+                {req.status === 'APPROVED' ? 'Approved' : 'Pending Review'}
+              </span>
+            </div>
+
+            {/* Event Info */}
+            <p className="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center gap-4">
+              <span className="flex items-center gap-1">
+                <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
+                {req.date || req.startDate}
+              </span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                {req.venue || 'CSE Department'}
+              </span>
+            </p>
+
+            {/* OD Status Lifecycle Component (Prompt Section 15) */}
+            <div className="space-y-2 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">OD LIFECYCLE STATUS</p>
+              
+              <div className="grid grid-cols-5 gap-2 text-center text-[10px] font-bold">
+                <div className="p-2 rounded-lg bg-emerald-800 text-amber-300">
+                  ✓ Submitted
+                </div>
+                <div className="p-2 rounded-lg bg-emerald-800 text-amber-300">
+                  ✓ Under Review
+                </div>
+                <div className={`p-2 rounded-lg ${req.status === 'APPROVED' ? 'bg-emerald-800 text-amber-300' : 'bg-slate-200 text-slate-500 dark:bg-slate-800'}`}>
+                  {req.status === 'APPROVED' ? '✓ Approved' : '○ Pending'}
+                </div>
+                <div className={`p-2 rounded-lg ${req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-200 text-slate-500 dark:bg-slate-800'}`}>
+                  Upcoming
+                </div>
+                <div className="p-2 rounded-lg bg-slate-200 text-slate-500 dark:bg-slate-800">
+                  Completed
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

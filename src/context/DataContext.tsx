@@ -7,16 +7,20 @@ import {
   ActivityStatus,
   ODApplication,
   ODStatus,
+  ODEvent,
+  AuditLog,
   ReviewSession,
   WeeklyProgress,
   AttendanceItem,
   Notification,
   TeamMember,
+  StudentStats,
 } from '@/types';
 import {
   mockActivities,
   mockReviewSessions,
   mockODApplications,
+  mockODEvents,
   mockNotifications,
   mockUsers,
 } from '@/data/mock';
@@ -29,6 +33,7 @@ export interface DataContextType {
   reviews: ReviewSession[];
   odApplications: ODApplication[];
   odSubmissions: ODApplication[]; // alias
+  odEvents: ODEvent[];
   notifications: Notification[];
 
   // Student Actions
@@ -82,11 +87,13 @@ export interface DataContextType {
   getActivityById: (id: string) => Activity | undefined;
   getReviewById: (id: string) => ReviewSession | undefined;
   getODById: (id: string) => ODApplication | undefined;
-  getStudentStats: (studentRegNo: string) => import('@/types').StudentStats;
+  getEventById: (id: string) => ODEvent | undefined;
+  getStudentStats: (studentRegNo: string) => StudentStats;
   getPendingApprovals: () => Activity[];
   getPendingODSubmissions: () => ODApplication[];
   getScheduledReviews: () => ReviewSession[];
   getReviewsForProject: (projectId: string) => ReviewSession[];
+  checkODConflict: (studentRegNo: string, date?: string) => { hasConflict: boolean; conflictingEventName?: string; conflictingDate?: string; conflictingTime?: string } | null;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -236,6 +243,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       studentRegNo: data.studentRegNo || '714023104088',
       department: data.department || 'CSE',
       year: data.year || 'II',
+      purpose: data.purpose || 'HACKATHON',
       activityId: data.activityId,
       activityTitle: data.activityTitle,
       activityType: data.activityType,
@@ -745,23 +753,66 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
+  const [odEvents, setODEvents] = useState<ODEvent[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}od_events`);
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      }
+    }
+    return mockODEvents;
+  });
+
+  // Sync state to local storage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}activities`, JSON.stringify(activities));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}reviews`, JSON.stringify(reviews));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}od`, JSON.stringify(odApplications));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}od_events`, JSON.stringify(odEvents));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}notifs`, JSON.stringify(notifications));
+    }
+  }, [activities, reviews, odApplications, odEvents, notifications]);
+
   // Query Helpers
   const getActivityById = (id: string) => activities.find((a) => a.id === id);
   const getReviewById = (id: string) => reviews.find((r) => r.id === id);
   const getODById = (id: string) => odApplications.find((o) => o.id === id);
+  const getEventById = (id: string) => odEvents.find((e) => e.id === id);
   const getPendingApprovals = () => activities.filter((a) => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW');
   const getPendingODSubmissions = () => odApplications.filter((o) => o.status === 'PENDING');
   const getScheduledReviews = () => reviews.filter((r) => r.status === 'SCHEDULED');
   const getReviewsForProject = (projectId: string) =>
     reviews.filter((r) => r.activityId === projectId).sort((a, b) => a.reviewNumber - b.reviewNumber);
 
-  const getStudentStats = (studentRegNo: string): import('@/types').StudentStats => {
+  const checkODConflict = (studentRegNo: string, date?: string) => {
+    if (!date) return null;
+    const existingApproved = odApplications.find(
+      (od) =>
+        (od.studentRegNo === studentRegNo || od.teamMembers?.some((tm) => tm.regNo === studentRegNo)) &&
+        od.status === 'APPROVED' &&
+        od.date === date
+    );
+    if (existingApproved) {
+      return {
+        hasConflict: true,
+        conflictingEventName: existingApproved.eventName,
+        conflictingDate: existingApproved.date,
+        conflictingTime: `${existingApproved.fromTime || '09:00 AM'} – ${existingApproved.toTime || '05:00 PM'}`,
+      };
+    }
+    return null;
+  };
+
+  const getStudentStats = (studentRegNo: string): StudentStats => {
     const studentActs = activities.filter(
       (a) => a.studentRegNo === studentRegNo || a.teamMembers?.some((m) => m.regNo === studentRegNo)
     );
     const approvedActs = studentActs.filter((a) => a.status === 'APPROVED' || a.status === 'ACTIVE' || a.status === 'COMPLETED');
     const studentODs = odApplications.filter((o) => o.studentRegNo === studentRegNo);
     const approvedODs = studentODs.filter((o) => o.status === 'APPROVED');
+
+    const totalDays = approvedODs.reduce((acc, curr) => acc + (curr.totalDays || 1), 0);
 
     // Review attendance calculation
     const relevantReviews = reviews.filter((r) =>
@@ -780,6 +831,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       approvedActivities: approvedActs.length,
       totalODs: studentODs.length,
       approvedODs: approvedODs.length,
+      totalODDays: totalDays,
       attendanceRate,
       standing: 'Exemplary Clearance',
       recentActivityTitles: studentActs.map((a) => a.title).slice(0, 3),
@@ -796,6 +848,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         reviews,
         odApplications,
         odSubmissions: odApplications,
+        odEvents,
         notifications,
         addActivity,
         addProject,
@@ -824,6 +877,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         getActivityById,
         getReviewById,
         getODById,
+        getEventById,
+        checkODConflict,
         getStudentStats,
         getPendingApprovals,
         getPendingODSubmissions,

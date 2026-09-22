@@ -1,394 +1,267 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
-import { Dialog } from '@/components/ui/Dialog';
-import { Textarea } from '@/components/ui/Textarea';
-import { Input } from '@/components/ui/Input';
-import { useSession } from '@/context/SessionContext';
 import { useData } from '@/context/DataContext';
-import { useToast } from '@/components/ui/Toast';
-import {
-  BadgeCheck,
-  FileCheck,
-  FileText,
-  ClipboardCheck,
-  FolderKanban,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  MapPin,
-  AlertTriangle,
-  Send,
-  Trophy,
-  BriefcaseBusiness,
-} from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin, Users, FileCheck } from 'lucide-react';
 
-export default function HodDashboardPage() {
-  const { user } = useSession();
-  const {
-    activities,
-    reviews,
-    odApplications,
-    approveActivity,
-    broadcastReminder,
-  } = useData();
-  const { showToast } = useToast();
+export default function HODDashboard() {
+  const { odApplications, odEvents } = useData();
 
-  const hodName = user?.name || 'Dr. Priya Kumar';
+  // Filter pending requests
+  const pendingRequests = odApplications.filter((r) => r.status === 'PENDING');
+  const pendingCount = pendingRequests.length;
 
-  // Pending counts
-  const pendingProjects = activities.filter(
-    (a) => a.type === 'PROJECT' && (a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW')
-  );
-  const pendingHackathons = activities.filter(
-    (a) => a.type === 'HACKATHON' && (a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW')
-  );
-  const pendingInternships = activities.filter(
-    (a) => a.type === 'INTERNSHIP' && (a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW')
-  );
-  const pendingODs = odApplications.filter((o) => o.status === 'PENDING');
-  const totalPending = pendingProjects.length + pendingHackathons.length + pendingInternships.length + pendingODs.length;
+  // Group pending requests by event / title
+  const eventGroupedPending = odEvents.map((evt) => {
+    const eventPendingODs = pendingRequests.filter((r) => r.eventId === evt.id || r.eventName === evt.title);
+    return {
+      event: evt,
+      pendingCount: eventPendingODs.length,
+    };
+  }).filter((group) => group.pendingCount > 0);
 
-  const scheduledReviews = reviews.filter((r) => r.status === 'SCHEDULED');
-  const reviewsMissingProgress = scheduledReviews.filter((r) => !r.progress);
-
-  // Quick Action Modal states
-  const [isReminderOpen, setIsReminderOpen] = useState(false);
-  const [reminderTitle, setReminderTitle] = useState('Missing Weekly Progress');
-  const [reminderMessage, setReminderMessage] = useState(
-    'Please submit your weekly progress before your scheduled review session.'
-  );
-
-  const handleBroadcast = () => {
-    broadcastReminder(reminderTitle, reminderMessage, 'STUDENT');
-    setIsReminderOpen(false);
-    showToast('Reminder Sent', 'Students have been notified.', 'success');
-  };
+  // If there are standalone pending ODs not attached to pre-created events
+  const unassignedPending = pendingRequests.filter((r) => !r.eventId);
+  
+  // Upcoming approved / ongoing events
+  const upcomingEvents = odEvents.filter((e) => e.status === 'UPCOMING' || e.status === 'ONGOING').slice(0, 3);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto font-sans">
-      {/* 1. Header Greeting & Action Bar */}
-      <PageHeader
-        title={`Welcome, ${hodName}`}
-        description="CSE Department Overview & Pending Approvals"
-        breadcrumbs={[{ label: 'Dashboard', current: true }]}
-        badge={
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#064e3b] text-white border border-emerald-700 inline-flex items-center gap-1.5 shadow-2xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-            <span>HOD • CSE</span>
-          </span>
-        }
-        primaryAction={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsReminderOpen(true)}
-              leftIcon={<Send className="w-3.5 h-3.5 text-amber-600" />}
-            >
-              Send Reminder
-            </Button>
-            <Link href="/hod/approvals">
-              <Button variant="primary" size="sm" leftIcon={<BadgeCheck className="w-4 h-4" />}>
-                Review Pending ({totalPending})
-              </Button>
-            </Link>
+    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 p-6 lg:p-10 space-y-10 max-w-6xl mx-auto">
+      {/* Header Banner - SIET CSE Brand Identity */}
+      <div className="bg-emerald-900 dark:bg-emerald-950 text-white rounded-2xl p-6 lg:p-8 shadow-sm border border-emerald-800/80 relative overflow-hidden">
+        <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-64 h-64 bg-emerald-800/30 rounded-full blur-2xl pointer-events-none" />
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-800/60 pb-5 mb-5">
+          <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-amber-400 uppercase">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            OD Management System
           </div>
-        }
-      />
+          <div className="text-xs font-semibold px-3 py-1 bg-emerald-800/90 text-amber-300 rounded-full border border-emerald-700/50 w-fit">
+            CSE · HOD Office
+          </div>
+        </div>
 
-      {/* 2. Pending Actions Summary Cards */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Pending Approvals
-        </h3>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Link
-            href="/hod/approvals?tab=PROJECTS"
-            className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-xs font-semibold">Projects</span>
-              <FolderKanban className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="text-2xl font-bold text-slate-900 group-hover:text-emerald-800">
-              {pendingProjects.length}
-            </div>
-            <span className="text-[11px] text-slate-400 group-hover:text-emerald-700 mt-0.5 block font-medium">
-              View pending →
-            </span>
-          </Link>
-
-          <Link
-            href="/hod/approvals?tab=HACKATHONS"
-            className="p-4 rounded-xl bg-white border border-slate-200 hover:border-amber-500 hover:bg-amber-50/30 transition-all shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-xs font-semibold">Hackathons</span>
-              <Trophy className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="text-2xl font-bold text-slate-900 group-hover:text-amber-800">
-              {pendingHackathons.length}
-            </div>
-            <span className="text-[11px] text-slate-400 group-hover:text-amber-700 mt-0.5 block font-medium">
-              View pending →
-            </span>
-          </Link>
-
-          <Link
-            href="/hod/approvals?tab=INTERNSHIPS"
-            className="p-4 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-xs font-semibold">Internships</span>
-              <BriefcaseBusiness className="w-4 h-4 text-indigo-600" />
-            </div>
-            <div className="text-2xl font-bold text-slate-900 group-hover:text-indigo-800">
-              {pendingInternships.length}
-            </div>
-            <span className="text-[11px] text-slate-400 group-hover:text-indigo-700 mt-0.5 block font-medium">
-              View pending →
-            </span>
-          </Link>
-
-          <Link
-            href="/hod/approvals?tab=OD"
-            className="p-4 rounded-xl bg-white border border-slate-200 hover:border-purple-500 hover:bg-purple-50/30 transition-all shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-xs font-semibold">OD Requests</span>
-              <FileCheck className="w-4 h-4 text-purple-600" />
-            </div>
-            <div className="text-2xl font-bold text-slate-900 group-hover:text-purple-800">
-              {pendingODs.length}
-            </div>
-            <span className="text-[11px] text-slate-400 group-hover:text-purple-700 mt-0.5 block font-medium">
-              View pending →
-            </span>
-          </Link>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1">
+            Good morning, Dr. Priya Kumar
+          </h1>
+          <p className="text-sm text-emerald-100/90 font-medium">
+            Here's what needs your attention today in the CSE Department.
+          </p>
         </div>
       </div>
 
-      {/* 3 & 4. Main Section: Today's Reviews & Pending Approvals List */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <div className="lg:col-span-2 space-y-4">
-          {/* Today's Scheduled Reviews */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Today's Reviews</h3>
-                <p className="text-xs text-slate-500">Scheduled progress review sessions</p>
-              </div>
-
-              <Link href="/hod/reviews">
-                <Button variant="ghost" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-                  View All ({scheduledReviews.length})
-                </Button>
-              </Link>
+      {/* SECTION 1 — NEEDS APPROVAL */}
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-2xs space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+                Needs Approval
+              </h2>
+              {pendingCount > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  {pendingCount}
+                </span>
+              )}
             </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
+              OD requests are waiting for your review
+            </p>
+          </div>
 
-            {scheduledReviews.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">
-                <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
-                No reviews scheduled for today.
+          <Link
+            href="/hod/requests"
+            className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors group"
+          >
+            Review all
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+
+        {pendingCount === 0 ? (
+          <div className="py-8 text-center text-slate-500 dark:text-slate-400 text-sm bg-slate-50/50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+            ✓ All OD requests have been reviewed and resolved.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Event Grouped Pending Requests */}
+            {eventGroupedPending.map(({ event, pendingCount: groupPending }) => (
+              <div
+                key={event.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all gap-4"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                      {event.purpose}
+                    </span>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      {event.title}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3">
+                    <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                      <Users className="w-3.5 h-3.5 text-slate-400" />
+                      {groupPending} student{groupPending > 1 ? 's' : ''} waiting
+                    </span>
+                    <span>·</span>
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
+                      {event.formattedDate}
+                    </span>
+                    <span>·</span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      {event.city || event.venue}
+                    </span>
+                  </p>
+                </div>
+
+                <Link
+                  href={`/hod/requests?event=${event.id}`}
+                  className="px-4 py-2 text-xs font-semibold bg-emerald-800 hover:bg-emerald-900 text-amber-300 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  Review
+                  <ArrowRight className="w-3.5 h-3.5 text-amber-300" />
+                </Link>
               </div>
-            ) : (
-              <div className="space-y-2.5">
-                {scheduledReviews.slice(0, 3).map((rev) => (
-                  <div
-                    key={rev.id}
-                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3 hover:border-purple-300 transition-colors"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-md">
-                          {rev.time}
-                        </span>
-                        <span className="text-xs font-bold text-slate-900">
-                          {rev.activityTitle}
-                        </span>
-                      </div>
+            ))}
 
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-slate-400" />
-                          {rev.venue}
-                        </span>
-                        <span>•</span>
-                        <span>Team ({rev.studentTeam.length})</span>
-                      </div>
+            {/* Unassigned Individual Pending Requests */}
+            {unassignedPending.length > 0 && eventGroupedPending.length === 0 && (
+              <div className="space-y-3">
+                {unassignedPending.slice(0, 3).map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 gap-4"
+                  >
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        {req.eventName}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {req.studentName} ({req.studentRegNo}) · Year {req.year} · {req.date}
+                      </p>
                     </div>
 
-                    <Link href="/hod/reviews">
-                      <Button size="sm" variant="primary" className="bg-purple-700 hover:bg-purple-800 text-xs">
-                        Review
-                      </Button>
+                    <Link
+                      href={`/hod/requests/${req.id}`}
+                      className="px-4 py-2 text-xs font-semibold bg-emerald-800 hover:bg-emerald-900 text-amber-300 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      Review
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-300" />
                     </Link>
                   </div>
                 ))}
               </div>
             )}
-          </div>
 
-          {/* Submissions Requiring Clearance */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Pending Clearances</h3>
-                <p className="text-xs text-slate-500">Submissions awaiting HOD approval</p>
-              </div>
-
-              <Link href="/hod/approvals">
-                <Button variant="ghost" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-                  Approval Inbox
-                </Button>
-              </Link>
-            </div>
-
-            <div className="divide-y divide-slate-100">
-              {pendingProjects.concat(pendingHackathons).slice(0, 3).map((act) => (
-                <div
-                  key={act.id}
-                  className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
+            {pendingCount > 3 && (
+              <div className="pt-2 text-center">
+                <Link
+                  href="/hod/requests"
+                  className="text-xs font-semibold text-slate-500 hover:text-emerald-800 dark:hover:text-emerald-400 transition-colors"
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                        {act.type}
-                      </span>
-                      <strong className="text-xs font-bold text-slate-900">{act.title}</strong>
-                    </div>
-                    <span className="text-xs text-slate-500 block">
-                      {act.studentName} ({act.studentRegNo})
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => {
-                        approveActivity(act.id);
-                        showToast(`Approved ${act.title}`, 'Status updated to ACTIVE.', 'success');
-                      }}
-                      className="bg-emerald-700 hover:bg-emerald-800 text-xs"
-                    >
-                      Approve
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  {pendingCount} pending requests — View all →
+                </Link>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* 5. Right Sidebar: Reminders & Fast Actions */}
-        <div className="space-y-4">
-          
-          {/* Missing Progress Alert Widget */}
-          <div className="p-4.5 rounded-2xl border border-amber-200 bg-amber-50/60 shadow-2xs space-y-3">
-            <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <span>Missing Progress</span>
-            </div>
-
-            <p className="text-xs text-amber-800 leading-relaxed">
-              <strong>{reviewsMissingProgress.length} team(s)</strong> have not submitted their weekly progress log yet.
+      {/* SECTION 2 — UPCOMING */}
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-2xs space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+              Upcoming
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
+              Next scheduled OD events
             </p>
-
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => {
-                broadcastReminder(
-                  'Urgent: Submit Weekly Progress',
-                  'Please submit your weekly progress log before your review.',
-                  'STUDENT'
-                );
-                showToast('Reminder Sent', 'All teams notified.', 'success');
-              }}
-              className="w-full justify-center bg-amber-700 hover:bg-amber-800 text-white text-xs"
-            >
-              Remind Missing Teams
-            </Button>
           </div>
 
-          {/* Quick Department Schedule Hub */}
-          <div className="p-4.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              Quick Actions
-            </h4>
+          <Link
+            href="/hod/calendar"
+            className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors group"
+          >
+            Calendar
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
 
-            <div className="space-y-2">
-              <Link
-                href="/hod/reviews"
-                className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-purple-300 hover:bg-purple-50/40 transition-all text-xs font-medium text-slate-800 group"
+        <div className="space-y-4">
+          {upcomingEvents.map((evt) => {
+            const dateParts = evt.formattedDate.split(' '); // e.g. ["25", "Sep", "2026"]
+            return (
+              <div
+                key={evt.id}
+                className="flex items-center gap-5 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
               >
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck className="w-4 h-4 text-purple-600" />
-                  <span>Schedule Reviews</span>
+                {/* Date Visual Anchor */}
+                <div className="w-16 h-16 rounded-xl bg-emerald-900 text-white flex flex-col items-center justify-center shrink-0 border border-emerald-800 shadow-xs">
+                  <span className="text-lg font-extrabold leading-none text-amber-300">
+                    {dateParts[0]}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/90 mt-0.5">
+                    {dateParts[1]}
+                  </span>
                 </div>
-                <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
-              </Link>
 
-              <Link
-                href="/hod/approvals?tab=OD"
-                className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all text-xs font-medium text-slate-800 group"
-              >
-                <div className="flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-indigo-600" />
-                  <span>Clear OD Requests</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
+                    {evt.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {evt.studentCount} students · {evt.city || evt.venue}
+                  </p>
                 </div>
-                <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
-              </Link>
 
-              <Link
-                href="/hod/reports"
-                className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 transition-all text-xs font-medium text-slate-800 group"
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600" />
-                  <span>NAAC / NBA Audit Reports</span>
-                </div>
-                <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
-              </Link>
-            </div>
+                <Link
+                  href={`/hod/events/${evt.id}`}
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-emerald-800 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100/80 transition-colors shrink-0"
+                >
+                  View →
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* SECTION 3 — RECENT ACTIVITY */}
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-2xs space-y-4">
+        <h2 className="text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+          Recent Activity
+        </h2>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 text-xs font-medium text-slate-700 dark:text-slate-300 py-1.5">
+            <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 flex items-center justify-center shrink-0 font-bold">
+              ✓
+            </span>
+            <span>4 ODs approved today</span>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-medium text-slate-700 dark:text-slate-300 py-1.5">
+            <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 flex items-center justify-center shrink-0 font-bold">
+              ✓
+            </span>
+            <span>2 students uploaded post-event participation certificates</span>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-medium text-slate-700 dark:text-slate-300 py-1.5">
+            <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 flex items-center justify-center shrink-0 font-bold">
+              ✓
+            </span>
+            <span>HackSprint 2026 event records updated</span>
           </div>
         </div>
-      </div>
-
-      {/* Broadcast Reminder Modal */}
-      <Dialog
-        isOpen={isReminderOpen}
-        onClose={() => setIsReminderOpen(false)}
-        title="Send Reminder to Students"
-        variant="information"
-        confirmLabel="Send Reminder"
-        onConfirm={handleBroadcast}
-        cancelLabel="Cancel"
-      >
-        <div className="space-y-4 text-xs">
-          <Input
-            label="Reminder Title"
-            value={reminderTitle}
-            onChange={(e) => setReminderTitle(e.target.value)}
-            isRequired
-          />
-
-          <Textarea
-            label="Message Content"
-            value={reminderMessage}
-            onChange={(e) => setReminderMessage(e.target.value)}
-            rows={3}
-            isRequired
-          />
-        </div>
-      </Dialog>
+      </section>
     </div>
   );
 }

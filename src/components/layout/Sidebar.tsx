@@ -6,18 +6,17 @@ import { usePathname } from 'next/navigation';
 import { UserRole } from '@/types';
 import { useData } from '@/context/DataContext';
 import {
-  LayoutDashboard,
-  Layers,
-  FolderKanban,
-  BriefcaseBusiness,
-  Trophy,
-  ClipboardCheck,
-  BadgeCheck,
-  FileCheck,
-  FileText,
+  Home,
+  Inbox,
+  Calendar as CalendarIcon,
+  Sparkles,
+  Users,
+  FileSpreadsheet,
+  PlusCircle,
+  GraduationCap,
   ChevronLeft,
   ChevronRight,
-  GraduationCap,
+  CheckCircle2,
 } from 'lucide-react';
 
 export interface SidebarProps {
@@ -46,7 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pathname = usePathname();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
 
-  // Initialize and persist collapse state from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('siet_sidebar_collapsed');
@@ -74,40 +72,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  // Student navigation: Dashboard, My Activities, Projects, Internships, Hackathons, Reviews
-  // Note: DO NOT include Students, Reports, Notifications
-  const studentNav: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
-    { id: 'activities', label: 'My Activities', href: '/student/activities', icon: Layers },
-    { id: 'projects', label: 'Projects', href: '/student/projects', icon: FolderKanban },
-    { id: 'internships', label: 'Internships', href: '/student/internships', icon: BriefcaseBusiness },
-    { id: 'hackathons', label: 'Hackathons', href: '/student/hackathons', icon: Trophy },
-    { id: 'reviews', label: 'Reviews', href: '/student/reviews', icon: ClipboardCheck },
-    { id: 'od', label: 'On-Duty (OD)', href: '/student/od-requests', icon: FileCheck },
-  ];
-
-  // Live data counts
-  let pendingApprovalsCount = 0;
+  // Live pending OD count for badge
   let pendingODCount = 0;
   try {
-    const { getPendingApprovals, getPendingODSubmissions } = useData();
-    pendingApprovalsCount = getPendingApprovals().length;
+    const { getPendingODSubmissions } = useData();
     pendingODCount = getPendingODSubmissions().length;
   } catch (e) {
     // Fallback if rendered outside DataProvider
   }
 
-  // HOD navigation: Dashboard, Approvals, Projects, Internships, Hackathons, Reviews, OD Submissions
-  // Note: DO NOT include Students, Reports, Notifications
+  // Student navigation
+  const studentNav: NavItem[] = [
+    { id: 'home', label: 'Home', href: '/student/od-requests', icon: Home },
+    { id: 'apply', label: 'Apply for OD', href: '/student/apply-od', icon: PlusCircle },
+    { id: 'calendar', label: 'Calendar', href: '/student/calendar', icon: CalendarIcon },
+    { id: 'events', label: 'Events', href: '/student/events', icon: Sparkles },
+  ];
+
+  // HOD navigation (Strict Prompt Spec: Home, Requests, Calendar, Events, Students, Records)
   const hodNav: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', href: '/hod/dashboard', icon: LayoutDashboard },
-    { id: 'approvals', label: 'Approvals', href: '/hod/approvals', icon: BadgeCheck, badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined },
-    { id: 'projects', label: 'Projects', href: '/hod/projects', icon: FolderKanban },
-    { id: 'internships', label: 'Internships', href: '/hod/internships', icon: BriefcaseBusiness },
-    { id: 'hackathons', label: 'Hackathons', href: '/hod/hackathons', icon: Trophy },
-    { id: 'reviews', label: 'Reviews', href: '/hod/reviews', icon: ClipboardCheck },
-    { id: 'od-submissions', label: 'OD Clearances', href: '/hod/od-submissions', icon: FileCheck, badge: pendingODCount > 0 ? pendingODCount : undefined },
-    { id: 'reports', label: 'NAAC / NBA Reports', href: '/hod/reports', icon: FileText },
+    { id: 'home', label: 'Home', href: '/hod/dashboard', icon: Home },
+    { id: 'requests', label: 'Requests', href: '/hod/requests', icon: Inbox, badge: pendingODCount > 0 ? pendingODCount : undefined },
+    { id: 'calendar', label: 'Calendar', href: '/hod/calendar', icon: CalendarIcon },
+    { id: 'events', label: 'Events', href: '/hod/events', icon: Sparkles },
+    { id: 'students', label: 'Students', href: '/hod/students', icon: Users },
+    { id: 'records', label: 'Records', href: '/hod/records', icon: FileSpreadsheet },
   ];
 
   const currentNav = role === 'STUDENT' ? studentNav : hodNav;
@@ -119,22 +108,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
       } ${className}`}
       aria-label="Primary Navigation"
     >
-      {/* Branding */}
+      {/* SIET Forest Green Branding */}
       <div className={`h-16 flex items-center border-b border-slate-100 dark:border-slate-800/80 px-4 ${
         isCollapsed ? 'justify-center' : 'justify-between'
       }`}>
-        <Link href={role === 'STUDENT' ? '/student/dashboard' : '/hod/dashboard'} className="flex items-center gap-3 truncate group">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-xs group-hover:scale-105 transition-transform shrink-0">
-            <GraduationCap className="w-5 h-5" />
+        <Link href={role === 'STUDENT' ? '/student/od-requests' : '/hod/dashboard'} className="flex items-center gap-3 truncate group">
+          <div className="w-9 h-9 rounded-xl bg-emerald-800 dark:bg-emerald-700 text-amber-300 flex items-center justify-center font-bold text-base shadow-xs group-hover:scale-105 transition-transform shrink-0 border border-emerald-700/50">
+            <GraduationCap className="w-5 h-5 text-amber-300" />
           </div>
 
           {!isCollapsed && (
             <div className="truncate">
-              <h1 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-tight truncate">
-                CSE Activity Hub
+              <h1 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 leading-tight truncate">
+                OD Management
               </h1>
-              <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium truncate">
-                Department of CSE
+              <p className="text-[11px] text-emerald-800 dark:text-emerald-400 font-semibold truncate">
+                CSE · {role === 'STUDENT' ? 'Student Portal' : 'HOD Office'}
               </p>
             </div>
           )}
