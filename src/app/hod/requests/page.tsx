@@ -1,30 +1,70 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
-import { Search, ArrowRight, Check, X } from 'lucide-react';
+import { Search, ArrowRight, Check, X, Calendar, Users, Filter } from 'lucide-react';
 
-export default function HODRequestsPage() {
-  const { odApplications, bulkApproveOD } = useData();
+function RequestsContent() {
+  const { odApplications, odEvents, bulkApproveOD } = useData();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const eventQueryParam = searchParams.get('event');
 
   // Simple 3-Tab switcher: 'PENDING' | 'APPROVED' | 'ALL'
   const [activeTab, setActiveTab] = useState<'PENDING' | 'APPROVED' | 'ALL'>('PENDING');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Events Filter & Students Filter
+  const [selectedEvent, setSelectedEvent] = useState<string>('ALL');
+  const [selectedStudentYear, setSelectedStudentYear] = useState<string>('ALL');
+
+  // If query param ?event=... is provided, match to event
+  useEffect(() => {
+    if (eventQueryParam) {
+      const matchingEvt = odEvents.find((e) => e.id === eventQueryParam);
+      if (matchingEvt) {
+        setSelectedEvent(matchingEvt.title);
+      } else {
+        setSelectedEvent(eventQueryParam);
+      }
+    }
+  }, [eventQueryParam, odEvents]);
+
   // Quiet Select Mode for Bulk Actions (hidden by default)
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Calculate distinct events from applications + odEvents
+  const uniqueEvents = Array.from(
+    new Set([
+      ...odEvents.map((e) => e.title),
+      ...odApplications.map((a) => a.eventName).filter(Boolean),
+    ])
+  );
 
   const pendingCount = odApplications.filter((r) => r.status === 'PENDING').length;
   const approvedCount = odApplications.filter((r) => r.status === 'APPROVED').length;
 
   const filtered = odApplications.filter((app) => {
+    // 1. Status Tab
     if (activeTab === 'PENDING' && app.status !== 'PENDING') return false;
     if (activeTab === 'APPROVED' && app.status !== 'APPROVED') return false;
 
+    // 2. Events Filter
+    if (selectedEvent !== 'ALL') {
+      const matchTitle = app.eventName.toLowerCase() === selectedEvent.toLowerCase();
+      const matchId = app.eventId === selectedEvent;
+      if (!matchTitle && !matchId) return false;
+    }
+
+    // 3. Students (Year) Filter
+    if (selectedStudentYear !== 'ALL') {
+      if (app.year !== selectedStudentYear) return false;
+    }
+
+    // 4. Search Filter
     if (searchTerm.trim() !== '') {
       const q = searchTerm.toLowerCase();
       return (
@@ -34,6 +74,7 @@ export default function HODRequestsPage() {
         (app.venue && app.venue.toLowerCase().includes(q))
       );
     }
+
     return true;
   });
 
@@ -57,6 +98,15 @@ export default function HODRequestsPage() {
     bulkApproveOD(selectedIds);
     setSelectedIds([]);
     setIsSelectMode(false);
+  };
+
+  const hasActiveSecondaryFilters =
+    selectedEvent !== 'ALL' || selectedStudentYear !== 'ALL' || searchTerm.trim() !== '';
+
+  const handleResetFilters = () => {
+    setSelectedEvent('ALL');
+    setSelectedStudentYear('ALL');
+    setSearchTerm('');
   };
 
   return (
@@ -121,7 +171,7 @@ export default function HODRequestsPage() {
         )}
       </div>
 
-      {/* 2. SIMPLE 3-TAB SWITCHER & SEARCH */}
+      {/* 2. 3-TAB SWITCHER & SEARCH */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* 3-Tab Switcher */}
         <div className="flex items-center gap-1 bg-[#f7f9f5] p-1 rounded-lg border border-[#dfe6dc]">
@@ -195,19 +245,95 @@ export default function HODRequestsPage() {
         </div>
       </div>
 
-      {/* 3. EDITORIAL 2-LINE REQUEST ROWS */}
+      {/* 3. DEDICATED EVENTS & STUDENTS FILTER SECTION */}
+      <div className="flex flex-wrap items-center gap-2.5 p-2.5 rounded-lg bg-[#f7f9f5] border border-[#dfe6dc]">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#586658] shrink-0 mr-1">
+          <Filter className="w-3.5 h-3.5 text-[#0a5c36]" />
+          <span>Filters:</span>
+        </div>
+
+        {/* Events Filter */}
+        <div className="flex items-center gap-1.5">
+          <label htmlFor="event-filter" className="text-[11px] font-semibold text-[#586658] hidden sm:inline">
+            Event:
+          </label>
+          <select
+            id="event-filter"
+            value={selectedEvent}
+            onChange={(e) => setSelectedEvent(e.target.value)}
+            className={`py-1 px-2.5 rounded-md border text-xs font-semibold transition-colors focus:outline-none max-w-[200px] truncate ${
+              selectedEvent !== 'ALL'
+                ? 'bg-[#eaf7e8] border-[#0a5c36] text-[#0a5c36]'
+                : 'bg-white border-[#dfe6dc] text-[#172017]'
+            }`}
+          >
+            <option value="ALL">All Events ({uniqueEvents.length})</option>
+            {uniqueEvents.map((evtName) => (
+              <option key={evtName} value={evtName}>
+                {evtName}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Students Filter (by Academic Year / Class) */}
+        <div className="flex items-center gap-1.5">
+          <label htmlFor="student-filter" className="text-[11px] font-semibold text-[#586658] hidden sm:inline">
+            Students:
+          </label>
+          <select
+            id="student-filter"
+            value={selectedStudentYear}
+            onChange={(e) => setSelectedStudentYear(e.target.value)}
+            className={`py-1 px-2.5 rounded-md border text-xs font-semibold transition-colors focus:outline-none ${
+              selectedStudentYear !== 'ALL'
+                ? 'bg-[#eaf7e8] border-[#0a5c36] text-[#0a5c36]'
+                : 'bg-white border-[#dfe6dc] text-[#172017]'
+            }`}
+          >
+            <option value="ALL">All Students (All Years)</option>
+            <option value="II">II Year Students (2023-27)</option>
+            <option value="III">III Year Students (2022-26)</option>
+            <option value="IV">IV Year Students (2021-25)</option>
+            <option value="I">I Year Students (2024-28)</option>
+          </select>
+        </div>
+
+        {/* Reset Filters button */}
+        {hasActiveSecondaryFilters && (
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="text-[11px] font-semibold text-[#0a5c36] hover:underline inline-flex items-center gap-1 ml-auto transition-colors"
+          >
+            <X className="w-3 h-3" />
+            <span>Clear filters</span>
+          </button>
+        )}
+      </div>
+
+      {/* 4. EDITORIAL 2-LINE REQUEST ROWS */}
       {filtered.length === 0 ? (
         <div className="py-14 text-center bg-white rounded-lg border border-[#dfe6dc] space-y-1">
           <p className="text-xs font-bold text-[#172017]">
-            {activeTab === 'PENDING'
+            {activeTab === 'PENDING' && !hasActiveSecondaryFilters
               ? '✓ No pending requests.'
-              : 'No requests found.'}
+              : 'No matching requests found.'}
           </p>
           <p className="text-[11px] text-[#586658]">
-            {activeTab === 'PENDING'
-              ? 'All student OD applications have been reviewed.'
-              : 'Try clearing your search term.'}
+            {hasActiveSecondaryFilters
+              ? 'Try changing or clearing your event and student filters.'
+              : 'All student OD applications have been reviewed.'}
           </p>
+          {hasActiveSecondaryFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="mt-2 text-xs font-bold text-[#0a5c36] hover:underline"
+            >
+              Reset all filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-[#dfe6dc] divide-y divide-[#edf2ea] shadow-2xs overflow-hidden">
@@ -248,9 +374,9 @@ export default function HODRequestsPage() {
                       )}
                     </div>
 
-                    {/* Line 2: Roll No · Date · Category · Venue */}
+                    {/* Line 2: Roll No · Year · Date · Category · Venue */}
                     <p className="text-[11px] text-[#586658] font-mono tabular-nums truncate">
-                      {req.studentRegNo} · {req.date || req.startDate} · <span className="font-sans text-[#0a5c36] font-semibold">{req.purpose}</span> · {req.venue || 'CSE'}
+                      {req.studentRegNo} · Year {req.year} · {req.date || req.startDate} · <span className="font-sans text-[#0a5c36] font-semibold">{req.purpose}</span> · {req.venue || 'CSE'}
                     </p>
                   </div>
                 </div>
@@ -268,5 +394,13 @@ export default function HODRequestsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function HODRequestsPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-xs text-[#889688]">Loading requests...</div>}>
+      <RequestsContent />
+    </Suspense>
   );
 }
