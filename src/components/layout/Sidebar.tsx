@@ -72,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
         >
           <SietLogo size="md" variant="dark" />
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-black tracking-wider text-[#facc15] uppercase leading-tight">
+            <span className="text-xs font-black tracking-wider text-[#fed403] uppercase leading-tight">
               SIET
             </span>
             <span className="text-[11px] font-bold tracking-tight text-white uppercase leading-tight">
@@ -104,20 +104,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
             >
               {/* Yellow Active Accent Marker */}
               {isActive && (
-                <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-[#facc15] rounded-r" />
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-[#fed403] rounded-r" />
               )}
 
               <div className="flex items-center gap-2.5 truncate pl-1">
                 <Icon
                   className={`w-4 h-4 shrink-0 transition-colors ${
-                    isActive ? 'text-[#facc15]' : 'text-emerald-200/70 group-hover:text-white'
+                    isActive ? 'text-[#fed403]' : 'text-emerald-200/70 group-hover:text-white'
                   }`}
                 />
                 <span className="truncate">{item.label}</span>
               </div>
 
               {item.badge !== undefined && (
-                <span className="text-[10px] font-bold text-[#064024] px-1.5 py-0.5 rounded bg-[#facc15] shadow-xs">
+                <span className="text-[10px] font-bold text-[#064024] px-1.5 py-0.5 rounded bg-[#fed403] shadow-xs">
                   {item.badge}
                 </span>
               )}

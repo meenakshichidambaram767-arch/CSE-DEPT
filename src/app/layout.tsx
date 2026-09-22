@@ -8,9 +8,14 @@ import { DataProvider } from '@/context/DataContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SIET CSE — Student Activity Management System',
+  title: 'SIET CSE — Student OD & Activity Management System',
   description:
-    'CSE Department Activity Hub for managing Projects, Internships, Hackathons, and HOD Approvals at Sri Shakthi Institute of Engineering and Technology.',
+    'CSE Department Activity Hub for managing On-Duty Clearances, Projects, Internships, Hackathons, and HOD Approvals at Sri Shakthi Institute of Engineering and Technology.',
+  icons: {
+    icon: '/images/siet-logo.png',
+    shortcut: '/images/siet-logo.png',
+    apple: '/images/siet-logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -20,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="light" style={{ colorScheme: 'light' }}>
-      <body className={`${inter.className} min-h-screen bg-slate-50/70 text-slate-900 flex flex-col selection:bg-emerald-200`}>
+      <body className={`${inter.className} min-h-screen bg-[#f7f9f5] text-[#172017] flex flex-col selection:bg-[#fed403] selection:text-[#064024]`}>
         <ToastProvider>
           <SessionProvider>
             <DataProvider>

@@ -82,7 +82,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
           <div className="flex items-center gap-2.5">
             <SietLogo size="sm" variant="dark" />
             <div>
-              <div className="text-xs font-black tracking-wider text-[#facc15] uppercase">
+              <div className="text-xs font-black tracking-wider text-[#fed403] uppercase">
                 SIET
               </div>
               <div className="text-[10px] text-emerald-200 uppercase font-semibold">
@@ -119,9 +119,9 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                 }`}
               >
                 {isActive && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-[#facc15] rounded-r" />
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-[#fed403] rounded-r" />
                 )}
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[#facc15]' : 'text-emerald-300'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#fed403]' : 'text-emerald-300'}`} />
                 <span>{item.label}</span>
               </Link>
             );
