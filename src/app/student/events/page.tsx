@@ -5,21 +5,21 @@ import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import {
   Trophy,
-  BriefcaseBusiness,
+  Briefcase,
   FolderKanban,
   GraduationCap,
   Award,
-  Sparkles,
   Calendar as CalendarIcon,
   MapPin,
   Search,
-  PlusCircle,
+  Plus,
   ArrowRight,
   Users,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 import { ODPurpose } from '@/types';
+import StatusIndicator from '@/components/ui/StatusIndicator';
 
 type EventCategoryKey = 'ALL' | 'HACKATHON' | 'INTERNSHIP' | 'PROJECT' | 'WORKSHOP' | 'COMPETITION_CONFERENCE';
 
@@ -29,44 +29,32 @@ interface CategoryConfig {
   shortLabel: string;
   icon: React.ElementType;
   description: string;
-  badgeBg: string;
-  badgeText: string;
-  headerBorder: string;
   purposes: ODPurpose[];
 }
 
 const CATEGORIES: CategoryConfig[] = [
   {
     key: 'HACKATHON',
-    label: 'Hackathons & Tech Sprints',
+    label: 'Hackathons & Coding Sprints',
     shortLabel: 'Hackathons',
     icon: Trophy,
-    description: 'National & regional coding challenges, SIH, and internal hackfests.',
-    badgeBg: 'bg-amber-100 dark:bg-amber-950/70',
-    badgeText: 'text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
-    headerBorder: 'border-amber-500/30',
+    description: 'National & regional coding hackathons, Smart India Hackathon, and code sprints.',
     purposes: ['HACKATHON'],
   },
   {
     key: 'INTERNSHIP',
-    label: 'Industrial Internships & NOC Training',
+    label: 'Internships & Corporate Training',
     shortLabel: 'Internships',
-    icon: BriefcaseBusiness,
-    description: 'Corporate internships, industrial training, and NOC clearance drives.',
-    badgeBg: 'bg-blue-100 dark:bg-blue-950/70',
-    badgeText: 'text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800',
-    headerBorder: 'border-blue-500/30',
+    icon: Briefcase,
+    description: 'Industrial internships, winter/summer training, and NOC clearance programs.',
     purposes: ['INTERNSHIP'],
   },
   {
     key: 'PROJECT',
-    label: 'Capstone & R&D Project Reviews',
+    label: 'R&D Projects & Lab Reviews',
     shortLabel: 'Projects',
     icon: FolderKanban,
-    description: 'Industry project visits, capstone expos, and lab evaluations.',
-    badgeBg: 'bg-indigo-100 dark:bg-indigo-950/70',
-    badgeText: 'text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800',
-    headerBorder: 'border-indigo-500/30',
+    description: 'Industry project evaluations, capstone showcases, and lab assessments.',
     purposes: ['PROJECT'],
   },
   {
@@ -74,10 +62,7 @@ const CATEGORIES: CategoryConfig[] = [
     label: 'Technical Workshops & Bootcamps',
     shortLabel: 'Workshops',
     icon: GraduationCap,
-    description: 'Hands-on tech bootcamps, Cloud, AI/ML, and DevOps workshops.',
-    badgeBg: 'bg-emerald-100 dark:bg-emerald-950/70',
-    badgeText: 'text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
-    headerBorder: 'border-emerald-500/30',
+    description: 'Hands-on tech workshops, Cloud architectures, AI/ML, and DevOps sessions.',
     purposes: ['WORKSHOP'],
   },
   {
@@ -85,10 +70,7 @@ const CATEGORIES: CategoryConfig[] = [
     label: 'Conferences & Competitions',
     shortLabel: 'Conferences',
     icon: Award,
-    description: 'IEEE paper presentations, ICPC coding arenas, and paper publications.',
-    badgeBg: 'bg-purple-100 dark:bg-purple-950/70',
-    badgeText: 'text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800',
-    headerBorder: 'border-purple-500/30',
+    description: 'IEEE symposiums, ACM ICPC programming contests, and research papers.',
     purposes: ['COMPETITION', 'CONFERENCE'],
   },
 ];
@@ -121,60 +103,47 @@ export default function StudentEventsPage() {
     );
   });
 
-  // Calculate counts per category
   const getCategoryCount = (cat: CategoryConfig) => {
     return odEvents.filter((e) => cat.purposes.includes(e.purpose)).length;
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
+      <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-emerald-800 dark:bg-emerald-700 text-amber-300 font-bold shadow-xs">
-              <Sparkles className="w-5 h-5" />
-            </span>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">
-                CSE Events & OD Opportunities
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Explore department approved Hackathons, Internships, Projects, Workshops & Competitions
-              </p>
-            </div>
-          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Events & Opportunities
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            Department-approved hackathons, corporate internships, projects, and academic workshops
+          </p>
         </div>
 
         <Link
           href="/student/apply-od"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] shrink-0"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-900 hover:bg-emerald-950 text-white font-medium text-xs rounded-lg shadow-2xs transition-colors shrink-0"
         >
-          <PlusCircle className="w-4 h-4" />
-          Apply for Event OD
+          <Plus className="w-3.5 h-3.5" />
+          Apply for OD
         </Link>
       </div>
 
       {/* Controls & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        {/* Category Navigation Tabs */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Category Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
+            type="button"
             onClick={() => setActiveTab('ALL')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 border ${
               activeTab === 'ALL'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                : 'bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent shadow-2xs'
+                : 'bg-white text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
             }`}
           >
             <span>All Categories</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                activeTab === 'ALL'
-                  ? 'bg-slate-700 text-slate-200 dark:bg-slate-200 dark:text-slate-800 font-bold'
-                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-              }`}
-            >
+            <span className="text-[10px] tabular-nums text-zinc-400">
               {odEvents.length}
             </span>
           </button>
@@ -186,22 +155,17 @@ export default function StudentEventsPage() {
             return (
               <button
                 key={cat.key}
+                type="button"
                 onClick={() => setActiveTab(cat.key)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 border ${
                   isActive
-                    ? 'bg-emerald-800 text-amber-300 dark:bg-emerald-700 dark:text-amber-300 border-emerald-700 shadow-xs'
-                    : 'bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent shadow-2xs'
+                    : 'bg-white text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span>{cat.shortLabel}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                    isActive
-                      ? 'bg-emerald-950 text-amber-300 font-bold'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                  }`}
-                >
+                <span className="text-[10px] tabular-nums text-zinc-400">
                   {count}
                 </span>
               </button>
@@ -211,19 +175,19 @@ export default function StudentEventsPage() {
 
         {/* Search Input */}
         <div className="relative w-full sm:w-64 shrink-0">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
-            placeholder="Search event, city..."
+            placeholder="Search event, venue, city..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-700 placeholder:text-slate-400"
+            className="w-full pl-10 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 placeholder:text-zinc-400 shadow-2xs"
           />
         </div>
       </div>
 
-      {/* Category Horizontal Carousels */}
-      <div className="space-y-10">
+      {/* Category Carousels / Sections */}
+      <div className="space-y-8">
         {CATEGORIES.filter((cat) => activeTab === 'ALL' || activeTab === cat.key).map((cat) => {
           const catEvents = searchFilteredEvents.filter((e) => cat.purposes.includes(e.purpose));
           const Icon = cat.icon;
@@ -232,16 +196,14 @@ export default function StudentEventsPage() {
             return (
               <div
                 key={cat.key}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-12 text-center space-y-3"
+                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-10 text-center space-y-2"
               >
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                  <Icon className="w-6 h-6" />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <Icon className="w-6 h-6 text-zinc-400 mx-auto" />
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   No {cat.shortLabel} Found
-                </h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  There are currently no active events under {cat.label} matching your search.
+                </h2>
+                <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                  There are currently no events under {cat.label} matching your query.
                 </p>
               </div>
             );
@@ -250,41 +212,36 @@ export default function StudentEventsPage() {
           if (catEvents.length === 0) return null;
 
           return (
-            <section key={cat.key} className="space-y-4">
-              {/* Category Banner with Carousel Controls */}
-              <div className={`flex items-center justify-between border-l-4 ${cat.headerBorder} pl-4 py-1`}>
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-xl border text-xs ${cat.badgeBg} ${cat.badgeText}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      {cat.label}
-                      <span className="text-xs font-semibold text-slate-400">
-                        ({catEvents.length} {catEvents.length === 1 ? 'Event' : 'Events'})
-                      </span>
-                    </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {cat.description}
-                    </p>
-                  </div>
+            <section key={cat.key} className="space-y-3">
+              {/* Category Header */}
+              <div className="flex items-center justify-between pb-1 border-b border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <Icon className="w-4 h-4 text-emerald-800 dark:text-emerald-400" />
+                  <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    {cat.label}
+                  </h2>
+                  <span className="text-xs text-zinc-400 tabular-nums">
+                    ({catEvents.length})
+                  </span>
                 </div>
 
                 {/* Carousel Navigation Buttons */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
+                    type="button"
                     onClick={() => scrollCarousel(cat.key, 'left')}
-                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
-                    title="Scroll Left"
+                    className="p-1 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors shadow-2xs"
+                    aria-label="Scroll Left"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => scrollCarousel(cat.key, 'right')}
-                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
-                    title="Scroll Right"
+                    className="p-1 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors shadow-2xs"
+                    aria-label="Scroll Right"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -292,49 +249,47 @@ export default function StudentEventsPage() {
               {/* Horizontal Scrollable Carousel Container */}
               <div
                 ref={(el) => { carouselRefs.current[cat.key] = el; }}
-                className="flex items-stretch gap-5 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800"
+                className="flex items-stretch gap-4 overflow-x-auto pb-2 pt-1 snap-x snap-mandatory scrollbar-none"
               >
                 {catEvents.map((evt) => (
                   <div
                     key={evt.id}
-                    className="w-[310px] md:w-[350px] shrink-0 snap-start bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group hover:border-emerald-700/50"
+                    className="w-[300px] md:w-[320px] shrink-0 snap-start bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-4 flex flex-col justify-between space-y-4 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group"
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-md uppercase border ${cat.badgeBg} ${cat.badgeText}`}>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                           {evt.purpose}
                         </span>
-                        <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded">
-                          {evt.status}
-                        </span>
+                        <StatusIndicator status="APPROVED" text="Open for OD" />
                       </div>
 
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">
+                      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">
                         {evt.title}
                       </h3>
 
-                      <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="font-medium text-slate-800 dark:text-slate-200">{evt.formattedDate}</span>
+                      <div className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-1.5 tabular-nums">
+                          <CalendarIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span>{evt.formattedDate}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                           <span className="truncate">{evt.venue} {evt.city ? `(${evt.city})` : ''}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                        <Users className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{evt.studentCount} Enrolled</span>
+                    <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1 text-[11px] text-zinc-500 tabular-nums">
+                        <Users className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>{evt.studentCount} applied</span>
                       </div>
 
                       <Link
                         href={`/student/apply-od?eventId=${evt.id}&purpose=${evt.purpose}`}
-                        className="px-3.5 py-1.5 bg-slate-900 hover:bg-emerald-800 text-amber-300 dark:bg-slate-800 dark:hover:bg-emerald-800 text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-1 shadow-2xs"
+                        className="text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:text-emerald-950 dark:hover:text-emerald-300 inline-flex items-center gap-1"
                       >
                         Apply OD
                         <ArrowRight className="w-3 h-3" />
@@ -350,5 +305,3 @@ export default function StudentEventsPage() {
     </div>
   );
 }
-
-

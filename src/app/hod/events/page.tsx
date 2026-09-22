@@ -1,23 +1,12 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import {
-  Trophy,
-  BriefcaseBusiness,
-  FolderKanban,
-  GraduationCap,
-  Award,
-  Sparkles,
-  Calendar as CalendarIcon,
-  MapPin,
-  Users,
-  ArrowRight,
   Plus,
   Search,
-  ChevronLeft,
-  ChevronRight,
+  ArrowRight,
   X
 } from 'lucide-react';
 import { ODPurpose, ODEvent } from '@/types';
@@ -27,71 +16,15 @@ type EventCategoryKey = 'ALL' | 'HACKATHON' | 'INTERNSHIP' | 'PROJECT' | 'WORKSH
 interface CategoryConfig {
   key: EventCategoryKey;
   label: string;
-  shortLabel: string;
-  icon: React.ElementType;
-  description: string;
-  badgeBg: string;
-  badgeText: string;
-  headerBorder: string;
   purposes: ODPurpose[];
 }
 
 const CATEGORIES: CategoryConfig[] = [
-  {
-    key: 'HACKATHON',
-    label: 'Hackathons & Tech Sprints',
-    shortLabel: 'Hackathons',
-    icon: Trophy,
-    description: 'National & regional hackathons, SIH entries, and internal department sprints.',
-    badgeBg: 'bg-amber-100 dark:bg-amber-950/70',
-    badgeText: 'text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
-    headerBorder: 'border-amber-500/30',
-    purposes: ['HACKATHON'],
-  },
-  {
-    key: 'INTERNSHIP',
-    label: 'Industrial Internships & Corporate Drives',
-    shortLabel: 'Internships',
-    icon: BriefcaseBusiness,
-    description: 'Corporate internships, NOC clearances, and external industrial training.',
-    badgeBg: 'bg-blue-100 dark:bg-blue-950/70',
-    badgeText: 'text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800',
-    headerBorder: 'border-blue-500/30',
-    purposes: ['INTERNSHIP'],
-  },
-  {
-    key: 'PROJECT',
-    label: 'Capstone Projects & R&D Expo',
-    shortLabel: 'Projects',
-    icon: FolderKanban,
-    description: 'Industry lab visits, capstone project reviews, and project exhibitions.',
-    badgeBg: 'bg-indigo-100 dark:bg-indigo-950/70',
-    badgeText: 'text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800',
-    headerBorder: 'border-indigo-500/30',
-    purposes: ['PROJECT'],
-  },
-  {
-    key: 'WORKSHOP',
-    label: 'Technical Bootcamps & Workshops',
-    shortLabel: 'Workshops',
-    icon: GraduationCap,
-    description: 'Specialized tech workshops, Cloud, AI/ML, and hands-on bootcamps.',
-    badgeBg: 'bg-emerald-100 dark:bg-emerald-950/70',
-    badgeText: 'text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
-    headerBorder: 'border-emerald-500/30',
-    purposes: ['WORKSHOP'],
-  },
-  {
-    key: 'COMPETITION_CONFERENCE',
-    label: 'Conferences & ACM/IEEE Competitions',
-    shortLabel: 'Conferences',
-    icon: Award,
-    description: 'IEEE conferences, paper presentations, and ICPC coding competitions.',
-    badgeBg: 'bg-purple-100 dark:bg-purple-950/70',
-    badgeText: 'text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800',
-    headerBorder: 'border-purple-500/30',
-    purposes: ['COMPETITION', 'CONFERENCE'],
-  },
+  { key: 'HACKATHON', label: 'Hackathons', purposes: ['HACKATHON'] },
+  { key: 'INTERNSHIP', label: 'Internships', purposes: ['INTERNSHIP'] },
+  { key: 'PROJECT', label: 'Projects', purposes: ['PROJECT'] },
+  { key: 'WORKSHOP', label: 'Workshops', purposes: ['WORKSHOP'] },
+  { key: 'COMPETITION_CONFERENCE', label: 'Conferences & Competitions', purposes: ['COMPETITION', 'CONFERENCE'] },
 ];
 
 export default function HODEventsPage() {
@@ -107,18 +40,6 @@ export default function HODEventsPage() {
   const [newVenue, setNewVenue] = useState('');
   const [newCity, setNewCity] = useState('');
 
-  // Carousel refs for smooth scroll
-  const carouselRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-
-  const scrollCarousel = (catKey: string, direction: 'left' | 'right') => {
-    const el = carouselRefs.current[catKey];
-    if (el) {
-      const scrollAmount = direction === 'left' ? -360 : 360;
-      el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
-  };
-
-  // Filter events by search query
   const searchFilteredEvents = odEvents.filter((evt) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -129,10 +50,6 @@ export default function HODEventsPage() {
       evt.purpose.toLowerCase().includes(q)
     );
   });
-
-  const getCategoryCount = (cat: CategoryConfig) => {
-    return odEvents.filter((e) => cat.purposes.includes(e.purpose)).length;
-  };
 
   const handleCreateEvent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,178 +81,88 @@ export default function HODEventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-10 py-2">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-emerald-800 text-amber-300 font-bold shadow-xs">
-              <Sparkles className="w-5 h-5" />
-            </span>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">
-                HOD Event Clearance & Category Manager
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Organize, track, and monitor student OD enrollment by event categories
-              </p>
-            </div>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Events
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            Department events and group OD enrollment records.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="text-xs font-semibold px-3.5 py-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded-xl border border-emerald-200 dark:border-emerald-800">
-            {odEvents.length} Active Department Events
-          </div>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            Create Department Event
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-medium rounded-lg shadow-xs transition-colors inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>New event</span>
+        </button>
       </div>
 
-      {/* Controls & Search Bar */}
+      {/* Filter Tabs & Search */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        {/* Category Navigation Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
           <button
+            type="button"
             onClick={() => setActiveTab('ALL')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
               activeTab === 'ALL'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                : 'bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold'
+                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
             }`}
           >
-            <span>All Categories</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                activeTab === 'ALL'
-                  ? 'bg-slate-700 text-slate-200 dark:bg-slate-200 dark:text-slate-800 font-bold'
-                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-              }`}
-            >
-              {odEvents.length}
-            </span>
+            All ({odEvents.length})
           </button>
-
           {CATEGORIES.map((cat) => {
-            const Icon = cat.icon;
-            const count = getCategoryCount(cat);
-            const isActive = activeTab === cat.key;
+            const count = odEvents.filter((e) => cat.purposes.includes(e.purpose)).length;
             return (
               <button
                 key={cat.key}
+                type="button"
                 onClick={() => setActiveTab(cat.key)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border ${
-                  isActive
-                    ? 'bg-emerald-800 text-amber-300 dark:bg-emerald-700 dark:text-amber-300 border-emerald-700 shadow-xs'
-                    : 'bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                  activeTab === cat.key
+                    ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{cat.shortLabel}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                    isActive
-                      ? 'bg-emerald-950 text-amber-300 font-bold'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                  }`}
-                >
-                  {count}
-                </span>
+                {cat.label} ({count})
               </button>
             );
           })}
         </div>
 
-        {/* Search Input */}
         <div className="relative w-full sm:w-64 shrink-0">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
-            placeholder="Search event, location..."
+            placeholder="Search events, venues..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-700 placeholder:text-slate-400"
+            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
           />
         </div>
       </div>
 
-      {/* Categorized Horizontal Carousels */}
-      <div className="space-y-10">
+      {/* Categorized Events Lists */}
+      <div className="space-y-12">
         {CATEGORIES.filter((cat) => activeTab === 'ALL' || activeTab === cat.key).map((cat) => {
           const catEvents = searchFilteredEvents.filter((e) => cat.purposes.includes(e.purpose));
-          const Icon = cat.icon;
-
-          if (activeTab !== 'ALL' && catEvents.length === 0) {
-            return (
-              <div
-                key={cat.key}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-12 text-center space-y-3"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                  <Icon className="w-6 h-6" />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  No {cat.shortLabel} Listed
-                </h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Click "Create Department Event" above to create an event in {cat.label}.
-                </p>
-              </div>
-            );
-          }
-
           if (catEvents.length === 0) return null;
 
           return (
-            <section key={cat.key} className="space-y-4">
-              {/* Category Header Banner with Carousel Controls */}
-              <div className={`flex items-center justify-between border-l-4 ${cat.headerBorder} pl-4 py-1`}>
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-xl border text-xs ${cat.badgeBg} ${cat.badgeText}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      {cat.label}
-                      <span className="text-xs font-semibold text-slate-400">
-                        ({catEvents.length} {catEvents.length === 1 ? 'Event' : 'Events'})
-                      </span>
-                    </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {cat.description}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Carousel Scroll Buttons */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => scrollCarousel(cat.key, 'left')}
-                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
-                    title="Scroll Left"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => scrollCarousel(cat.key, 'right')}
-                    className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-800 hover:text-amber-300 transition-colors shadow-2xs"
-                    title="Scroll Right"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
+            <section key={cat.key} className="space-y-3">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  {cat.label} ({catEvents.length})
+                </h2>
               </div>
 
-              {/* Horizontal Scrollable Carousel */}
-              <div
-                ref={(el) => { carouselRefs.current[cat.key] = el; }}
-                className="flex items-stretch gap-5 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800"
-              >
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                 {catEvents.map((evt) => {
                   const eventODs = odApplications.filter(
                     (od) => od.eventId === evt.id || od.eventName === evt.title
@@ -347,62 +174,30 @@ export default function HODEventsPage() {
                   return (
                     <div
                       key={evt.id}
-                      className="w-[310px] md:w-[350px] shrink-0 snap-start bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-4 flex flex-col justify-between hover:shadow-md transition-all group hover:border-emerald-700/50"
+                      className="py-4 flex items-center justify-between gap-6 group hover:bg-zinc-50/60 dark:hover:bg-zinc-900/40 px-3 -mx-3 rounded-lg transition-colors"
                     >
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-md uppercase border ${cat.badgeBg} ${cat.badgeText}`}>
-                            {evt.purpose}
-                          </span>
-                          <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded">
-                            {evt.status}
-                          </span>
-                        </div>
-
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">
-                          {evt.title}
-                        </h3>
-
-                        <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                          <div className="flex items-center gap-2">
-                            <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{evt.formattedDate}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">{evt.venue} {evt.city ? `(${evt.city})` : ''}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Participant & Approval Breakdown */}
-                      <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 space-y-3">
-                        <div className="flex items-center justify-between text-xs font-semibold">
-                          <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5 text-slate-400" />
-                            {totalStudents} Enrolled
-                          </span>
-
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded font-bold">
-                              {approvedCount} Clear
-                            </span>
-                            {pendingCount > 0 && (
-                              <span className="text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded font-bold">
-                                {pendingCount} Pending
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
+                      <div className="space-y-1 min-w-0">
                         <Link
                           href={`/hod/events/${evt.id}`}
-                          className="w-full py-2 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-800 hover:text-amber-300 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                          className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-emerald-800 dark:hover:text-emerald-400 transition-colors block truncate"
                         >
-                          Manage Approvals & Group
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          {evt.title}
                         </Link>
+                        <p className="text-xs text-zinc-400">
+                          {evt.formattedDate} · {evt.city || evt.venue}
+                        </p>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          {totalStudents} students · {approvedCount} approved{pendingCount > 0 ? ` · ${pendingCount} pending` : ''}
+                        </p>
                       </div>
+
+                      <Link
+                        href={`/hod/events/${evt.id}`}
+                        className="text-xs font-semibold text-zinc-400 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 inline-flex items-center gap-1 transition-colors shrink-0"
+                      >
+                        <span>View</span>
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </Link>
                     </div>
                   );
                 })}
@@ -414,49 +209,49 @@ export default function HODEventsPage() {
 
       {/* Create Event Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-700" />
-                Create Department Event
-              </h2>
+        <div className="fixed inset-0 z-50 bg-zinc-950/40 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 max-w-md w-full space-y-5 shadow-xl animate-in fade-in zoom-in-95 duration-100 text-xs">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                New Department Event
+              </h3>
               <button
+                type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="text-zinc-400 hover:text-zinc-700"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleCreateEvent} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
                   Event Title
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Smart India Hackathon 2026 Regional"
+                  placeholder="e.g. Smart India Hackathon 2026"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Category Purpose
+                <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
+                  Purpose Category
                 </label>
                 <select
                   value={newPurpose}
                   onChange={(e) => setNewPurpose(e.target.value as ODPurpose)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                 >
                   <option value="HACKATHON">Hackathon</option>
                   <option value="INTERNSHIP">Internship</option>
-                  <option value="PROJECT">Project Review / Visit</option>
-                  <option value="WORKSHOP">Workshop / Bootcamp</option>
+                  <option value="PROJECT">Project Review</option>
+                  <option value="WORKSHOP">Workshop</option>
                   <option value="COMPETITION">Competition</option>
                   <option value="CONFERENCE">Conference</option>
                 </select>
@@ -464,20 +259,20 @@ export default function HODEventsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Event Date
+                  <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
+                    Date
                   </label>
                   <input
                     type="date"
                     required
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                    className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
                     City
                   </label>
                   <input
@@ -485,22 +280,22 @@ export default function HODEventsPage() {
                     placeholder="e.g. Coimbatore"
                     value={newCity}
                     onChange={(e) => setNewCity(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                    className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Venue / Location
+                <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
+                  Venue / Host Institution
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. PSG Tech Auditorium"
+                  placeholder="e.g. IIT Madras Research Park"
                   value={newVenue}
                   onChange={(e) => setNewVenue(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                 />
               </div>
 
@@ -508,15 +303,15 @@ export default function HODEventsPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl"
+                  className="px-3.5 py-1.5 text-xs text-zinc-500 hover:text-zinc-800"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-800 text-amber-300 text-xs font-bold rounded-xl shadow-xs hover:bg-emerald-900 transition-colors"
+                  className="px-4 py-1.5 bg-emerald-800 text-white text-xs font-medium rounded-md hover:bg-emerald-900 shadow-xs"
                 >
-                  Add Event
+                  Create Event
                 </button>
               </div>
             </form>
@@ -526,5 +321,6 @@ export default function HODEventsPage() {
     </div>
   );
 }
+
 
 

@@ -3,16 +3,8 @@
 import React, { use } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
-import {
-  ArrowLeft,
-  Calendar as CalendarIcon,
-  MapPin,
-  Users,
-  CheckCircle2,
-  Clock,
-  FileText,
-  User,
-} from 'lucide-react';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -22,153 +14,98 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-slate-50/60 p-10 flex flex-col items-center justify-center">
-        <p className="text-sm font-semibold text-slate-500 mb-4">Event not found.</p>
-        <Link href="/hod/events" className="text-xs font-bold text-emerald-800 underline">
-          ← Return to Events
+      <div className="py-20 text-center space-y-3">
+        <p className="text-sm text-zinc-500">Event not found.</p>
+        <Link href="/hod/events" className="text-xs font-semibold text-emerald-800 underline">
+          ← Back to events
         </Link>
       </div>
     );
   }
 
-  // Get matching OD applications
   const matchingODs = odApplications.filter(
     (od) => od.eventId === event.id || od.eventName === event.title
   );
 
   const approvedCount = matchingODs.filter((od) => od.status === 'APPROVED').length;
   const pendingCount = matchingODs.filter((od) => od.status === 'PENDING').length;
+  const totalCount = matchingODs.length || event.studentCount;
 
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 p-6 lg:p-10 space-y-8 max-w-4xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-10 py-2">
+      {/* Back Link */}
       <div>
         <Link
           href="/hod/events"
-          className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-800 dark:hover:text-emerald-400 flex items-center gap-1.5 transition-colors"
+          className="text-xs font-medium text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 inline-flex items-center gap-1.5 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Events
+          <span>Back to events</span>
         </Link>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 shadow-2xs">
-        {/* Header */}
-        <div className="border-b border-slate-100 dark:border-slate-800 pb-6 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 text-xs font-bold rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 uppercase">
-              {event.purpose}
-            </span>
-            <span className="text-xs text-slate-400">ID: {event.id}</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+      {/* Event Header */}
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
             {event.title}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-4">
-            <span className="flex items-center gap-1">
-              <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-              {event.formattedDate}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-slate-400" />
-              {event.venue} {event.city && `(${event.city})`}
-            </span>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+            {event.formattedDate} · {event.city || event.venue}
           </p>
         </div>
 
-        {/* OD Status Breakdown */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-            OD STATUS BREAKDOWN
-          </h3>
-          <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-3 py-1.5 rounded-lg">
-              <CheckCircle2 className="w-4 h-4" />
-              {approvedCount} Approved
-            </div>
+        <div className="pt-2 text-xs space-y-0.5">
+          <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+            {totalCount} students
+          </p>
+          <p className="text-zinc-400">
+            {approvedCount} approved · {pendingCount} pending
+          </p>
+        </div>
+      </div>
 
-            {pendingCount > 0 && (
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 px-3 py-1.5 rounded-lg">
-                <Clock className="w-4 h-4" />
-                {pendingCount} Pending Review
-              </div>
-            )}
-          </div>
+      {/* Students Section */}
+      <div className="space-y-4 pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+          Students
         </div>
 
-        {/* Participating Students */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-            ENROLLED STUDENTS ({matchingODs.length})
-          </h3>
-
-          <div className="space-y-2">
+        {matchingODs.length === 0 ? (
+          <div className="py-6 text-xs text-zinc-400">
+            No enrolled students recorded yet.
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
             {matchingODs.map((req) => (
               <div
                 key={req.id}
-                className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between"
+                className="py-3 flex items-center justify-between gap-4 group hover:bg-zinc-50/60 dark:hover:bg-zinc-900/40 px-2 -mx-2 rounded-md transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <span className={`w-2 h-2 rounded-full ${req.status === 'APPROVED' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                  <div>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">
-                      {req.studentName}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Reg No: {req.studentRegNo} · Year {req.year} {req.section && `· Sec ${req.section}`}
-                    </p>
-                  </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                    {req.studentName}
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    Register No · {req.studentRegNo}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${
-                    req.status === 'APPROVED'
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                  }`}>
-                    {req.status}
-                  </span>
-
+                <div className="flex items-center gap-3 shrink-0">
+                  <StatusIndicator status={req.status} />
                   <Link
                     href={`/hod/requests/${req.id}`}
-                    className="text-xs font-bold text-emerald-800 dark:text-emerald-400 hover:underline"
+                    className="text-zinc-400 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors"
                   >
-                    View →
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Event Documents */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-            EVENT DOCUMENTS
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-4 h-4 text-emerald-800" />
-                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                  Registration Proof
-                </span>
-              </div>
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">✓ Completed</span>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-4 h-4 text-slate-400" />
-                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                  Post-Event Participation Certificate
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-slate-400">Pending Post-Event</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
+

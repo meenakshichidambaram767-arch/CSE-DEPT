@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserRole } from '@/types';
@@ -13,18 +13,10 @@ import {
   Users,
   FileSpreadsheet,
   PlusCircle,
-  GraduationCap,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle2,
 } from 'lucide-react';
 
 export interface SidebarProps {
   role: UserRole;
-  activePath?: string;
-  onNavigate?: (path: string) => void;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
   className?: string;
 }
 
@@ -33,46 +25,12 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
-  badge?: number | string;
+  badge?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  role,
-  collapsed: controlledCollapsed,
-  onToggleCollapse,
-  className = '',
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
   const pathname = usePathname();
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('siet_sidebar_collapsed');
-      if (saved !== null) {
-        setInternalCollapsed(saved === 'true');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
-  const isCollapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
-
-  const handleToggle = () => {
-    if (onToggleCollapse) {
-      onToggleCollapse();
-    } else {
-      const next = !internalCollapsed;
-      setInternalCollapsed(next);
-      try {
-        localStorage.setItem('siet_sidebar_collapsed', String(next));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  };
-
-  // Live pending OD count for badge
   let pendingODCount = 0;
   try {
     const { getPendingODSubmissions } = useData();
@@ -81,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // Fallback if rendered outside DataProvider
   }
 
-  // Student navigation
+  // Student Navigation
   const studentNav: NavItem[] = [
     { id: 'home', label: 'Home', href: '/student/od-requests', icon: Home },
     { id: 'apply', label: 'Apply for OD', href: '/student/apply-od', icon: PlusCircle },
@@ -89,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'events', label: 'Events', href: '/student/events', icon: Sparkles },
   ];
 
-  // HOD navigation (Strict Prompt Spec: Home, Requests, Calendar, Events, Students, Records)
+  // HOD Navigation: Home, Requests, Calendar, Events, Students, Records
   const hodNav: NavItem[] = [
     { id: 'home', label: 'Home', href: '/hod/dashboard', icon: Home },
     { id: 'requests', label: 'Requests', href: '/hod/requests', icon: Inbox, badge: pendingODCount > 0 ? pendingODCount : undefined },
@@ -103,122 +61,75 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`hidden lg:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out relative select-none ${
-        isCollapsed ? 'w-18' : 'w-64'
-      } ${className}`}
+      className={`hidden lg:flex flex-col w-60 h-screen sticky top-0 bg-[#fbfbfa] dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 select-none z-30 ${className}`}
       aria-label="Primary Navigation"
     >
-      {/* SIET Forest Green Branding */}
-      <div className={`h-16 flex items-center border-b border-slate-100 dark:border-slate-800/80 px-4 ${
-        isCollapsed ? 'justify-center' : 'justify-between'
-      }`}>
-        <Link href={role === 'STUDENT' ? '/student/od-requests' : '/hod/dashboard'} className="flex items-center gap-3 truncate group">
-          <div className="w-9 h-9 rounded-xl bg-emerald-800 dark:bg-emerald-700 text-amber-300 flex items-center justify-center font-bold text-base shadow-xs group-hover:scale-105 transition-transform shrink-0 border border-emerald-700/50">
-            <GraduationCap className="w-5 h-5 text-amber-300" />
+      {/* Brand Header */}
+      <div className="pt-8 pb-6 px-6">
+        <Link
+          href={role === 'STUDENT' ? '/student/od-requests' : '/hod/dashboard'}
+          className="block group"
+        >
+          <div className="text-[13px] font-bold tracking-tight text-zinc-900 dark:text-zinc-100 leading-tight">
+            OD
           </div>
-
-          {!isCollapsed && (
-            <div className="truncate">
-              <h1 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 leading-tight truncate">
-                OD Management
-              </h1>
-              <p className="text-[11px] text-emerald-800 dark:text-emerald-400 font-semibold truncate">
-                CSE · {role === 'STUDENT' ? 'Student Portal' : 'HOD Office'}
-              </p>
-            </div>
-          )}
+          <div className="text-[13px] font-bold tracking-tight text-zinc-900 dark:text-zinc-100 leading-tight">
+            MANAGEMENT
+          </div>
+          <div className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 mt-1">
+            CSE · {role === 'STUDENT' ? 'Student' : 'HOD Office'}
+          </div>
         </Link>
       </div>
 
-      {/* Navigation List */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto" aria-label="Sidebar Menu">
+      {/* Navigation Links */}
+      <nav className="flex-1 px-3 space-y-1" aria-label="Sidebar Menu">
         {currentNav.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== '/hod/dashboard' && item.href !== '/student/od-requests' && pathname.startsWith(item.href));
 
           return (
-            <div key={item.id} className="relative group">
-              <Link
-                href={item.href}
-                className={`w-full flex items-center rounded-xl text-xs font-medium transition-all duration-150 relative ${
-                  isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3.5 py-2.5'
-                } ${
-                  isActive
-                    ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-semibold shadow-2xs border border-emerald-200/60 dark:border-emerald-800/40'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {/* Active indicator bar */}
-                {isActive && (
-                  <span
-                    className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-emerald-600 dark:bg-emerald-500 rounded-r-full ${
-                      isCollapsed ? 'left-0.5' : 'left-0'
-                    }`}
-                  />
-                )}
-
+            <Link
+              key={item.id}
+              href={item.href}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${
+                isActive
+                  ? 'bg-zinc-200/60 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 font-semibold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium'
+              }`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <div className="flex items-center gap-2.5 truncate">
                 <Icon
                   className={`w-4 h-4 shrink-0 transition-colors ${
                     isActive
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-slate-400 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'
+                      ? 'text-emerald-800 dark:text-emerald-400'
+                      : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700'
                   }`}
                 />
+                <span className="truncate">{item.label}</span>
+              </div>
 
-                {!isCollapsed && (
-                  <>
-                    <span className="truncate flex-1 text-left">{item.label}</span>
-                    {item.badge && (
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          typeof item.badge === 'string'
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
-                            : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </>
-                )}
-              </Link>
-
-              {/* Tooltip on hover when collapsed */}
-              {isCollapsed && (
-                <div
-                  role="tooltip"
-                  className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-                >
-                  {item.label}
-                  {item.badge && ` (${item.badge})`}
-                </div>
+              {item.badge !== undefined && (
+                <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 px-1.5 py-0.2 rounded-full bg-zinc-200/80 dark:bg-zinc-800">
+                  {item.badge}
+                </span>
               )}
-            </div>
+            </Link>
           );
         })}
       </nav>
 
-      {/* Collapse Toggle Footer */}
-      <div className="p-3 border-t border-slate-100 dark:border-slate-800/80">
-        <button
-          type="button"
-          onClick={handleToggle}
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={`w-full flex items-center gap-2.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 p-2 rounded-xl transition-all ${
-            isCollapsed ? 'justify-center' : ''
-          }`}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <>
-              <ChevronLeft className="w-4 h-4" />
-              <span>Collapse Sidebar</span>
-            </>
-          )}
-        </button>
+      {/* Footer Profile & Scope */}
+      <div className="p-4 mx-3 mb-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-200 truncate">
+          {role === 'STUDENT' ? 'Meena C' : 'Dr. Priya Kumar'}
+        </div>
+        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+          {role === 'STUDENT' ? 'II Year CSE · Student' : 'HOD · CSE Department'}
+        </div>
       </div>
     </aside>
   );
 };
+

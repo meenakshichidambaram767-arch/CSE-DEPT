@@ -20,23 +20,19 @@ export const AppShell: React.FC<AppShellProps> = ({
   breadcrumbs,
   className = '',
 }) => {
-  const { user, isLoading } = useSession();
+  const { isLoading } = useSession();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // While checking session state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-emerald-600 border-t-transparent animate-spin" />
-          <p className="text-xs text-slate-500 font-medium">Loading CSE Activity Hub...</p>
-        </div>
+      <div className="min-h-screen bg-[#fbfbfa] dark:bg-zinc-950 flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-emerald-800 border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen bg-slate-50/70 dark:bg-slate-950 flex flex-row ${className}`}>
+    <div className={`min-h-screen bg-[#fbfbfa] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-row ${className}`}>
       {/* Desktop Responsive Sidebar */}
       <Sidebar role={role} />
 
@@ -55,10 +51,11 @@ export const AppShell: React.FC<AppShellProps> = ({
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 sm:px-10 sm:py-12">
           {children}
         </main>
       </div>
     </div>
   );
 };
+

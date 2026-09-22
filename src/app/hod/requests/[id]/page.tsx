@@ -4,17 +4,11 @@ import React, { useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import {
   ArrowLeft,
-  CheckCircle2,
-  XCircle,
+  Check,
   AlertTriangle,
-  FileText,
-  Calendar as CalendarIcon,
-  MapPin,
-  Clock,
-  User,
-  ShieldAlert,
 } from 'lucide-react';
 
 export default function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,26 +17,31 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
   const { getODById, approveOD, rejectOD, checkODConflict } = useData();
 
   const request = getODById(resolvedParams.id);
+  const [showConfirmApprove, setShowConfirmApprove] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [approvalToast, setApprovalToast] = useState(false);
 
   if (!request) {
     return (
-      <div className="min-h-screen bg-slate-50/60 p-10 flex flex-col items-center justify-center">
-        <p className="text-sm font-semibold text-slate-500 mb-4">Request not found.</p>
-        <Link href="/hod/requests" className="text-xs font-bold text-emerald-800 underline">
-          ← Return to Requests
+      <div className="py-20 text-center space-y-3">
+        <p className="text-sm text-zinc-500">Request not found.</p>
+        <Link href="/hod/requests" className="text-xs font-semibold text-emerald-800 underline">
+          ← Back to requests
         </Link>
       </div>
     );
   }
 
-  // Conflict check
   const conflict = checkODConflict(request.studentRegNo, request.date);
 
   const handleApprove = () => {
-    approveOD(request.id, 'Approved by HOD Office. Department attendance granted.');
-    router.push('/hod/requests');
+    approveOD(request.id);
+    setShowConfirmApprove(false);
+    setApprovalToast(true);
+    setTimeout(() => {
+      router.push('/hod/requests');
+    }, 1200);
   };
 
   const handleConfirmReject = (e: React.FormEvent) => {
@@ -54,225 +53,227 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 p-6 lg:p-10 space-y-8 max-w-4xl mx-auto">
-      {/* Top Back Link */}
+    <div className="max-w-2xl mx-auto space-y-10 py-2">
+      {/* Back Link */}
       <div>
         <Link
           href="/hod/requests"
-          className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-800 dark:hover:text-emerald-400 flex items-center gap-1.5 transition-colors"
+          className="text-xs font-medium text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 inline-flex items-center gap-1.5 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Requests
+          <span>Back to requests</span>
         </Link>
       </div>
 
-      {/* Main Request Detail Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 shadow-2xs">
-        {/* Title Header */}
-        <div className="border-b border-slate-100 dark:border-slate-800 pb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 text-xs font-bold rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 uppercase">
-                {request.purpose || 'EVENT'}
-              </span>
-              <span className="text-xs text-slate-400">ID: {request.id}</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {request.eventName}
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-4">
-              <span className="flex items-center gap-1">
-                <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-                {request.date || request.startDate}
-              </span>
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                {request.venue || 'CSE Dept'} {request.location && `(${request.location})`}
-              </span>
+      {/* Success Toast */}
+      {approvalToast && (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold rounded-lg flex items-center gap-2 animate-in fade-in">
+          <Check className="w-4 h-4" />
+          <span>✓ OD approved</span>
+        </div>
+      )}
+
+      {/* Title & Metadata */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            {request.eventName}
+          </h1>
+          <StatusIndicator status={request.status} />
+        </div>
+        <p className="text-xs text-zinc-400">
+          {request.date || request.startDate} · {request.venue || 'CSE Department'}
+        </p>
+      </div>
+
+      {/* Conflict Warning if any */}
+      {(conflict || request.conflict?.hasConflict) && (
+        <div className="p-4 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5 text-xs text-amber-800 dark:text-amber-300">
+            <p className="font-semibold">Possible Schedule Conflict</p>
+            <p className="text-amber-700 dark:text-amber-400">
+              Approved OD already exists on {conflict?.conflictingDate || request.date} for{' '}
+              {conflict?.conflictingEventName || request.conflict?.conflictingEventName}.
             </p>
           </div>
-
-          <div className="shrink-0">
-            {request.status === 'APPROVED' && (
-              <span className="px-3.5 py-1.5 text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded-lg flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" />
-                Approved
-              </span>
-            )}
-            {request.status === 'REJECTED' && (
-              <span className="px-3.5 py-1.5 text-xs font-bold bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 rounded-lg flex items-center gap-1.5">
-                <XCircle className="w-4 h-4" />
-                Rejected
-              </span>
-            )}
-            {request.status === 'PENDING' && (
-              <span className="px-3.5 py-1.5 text-xs font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded-lg">
-                Pending Review
-              </span>
-            )}
-          </div>
         </div>
+      )}
 
-        {/* Schedule Conflict Warning Banner if triggered */}
-        {(conflict || request.conflict?.hasConflict) && (
-          <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
-                ⚠ Possible Schedule Conflict
-              </h4>
-              <p className="text-xs text-amber-800 dark:text-amber-400">
-                This student already has an approved OD on {conflict?.conflictingDate || request.date} for{' '}
-                <span className="font-semibold">{conflict?.conflictingEventName || request.conflict?.conflictingEventName}</span> ({conflict?.conflictingTime || '09:00 AM - 04:00 PM'}).
-              </p>
-            </div>
+      {/* Grouped Information Sections */}
+      <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800/80 border-t border-b border-zinc-200/80 dark:border-zinc-800/80">
+        {/* Purpose */}
+        {request.reason && (
+          <div className="py-6 space-y-2">
+            <h2 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+              Purpose
+            </h2>
+            <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
+              {request.reason}
+            </p>
           </div>
         )}
 
-        {/* Purpose Details */}
-        <div className="space-y-2">
-          <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-            PURPOSE
-          </h3>
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-            {request.reason}
-          </p>
-        </div>
+        {/* Students */}
+        <div className="py-6 space-y-3">
+          <h2 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            Students
+          </h2>
 
-        {/* Participating Students */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-            STUDENTS
-          </h3>
-
-          <div className="space-y-2">
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <User className="w-4 h-4 text-slate-400" />
-                <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">
-                    {request.studentName}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Register No: {request.studentRegNo} · Year {request.year} {request.section && `· Sec ${request.section}`}
-                  </p>
-                </div>
-              </div>
+          <div className="space-y-3 text-xs">
+            <div className="flex justify-between items-baseline">
+              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                {request.studentName}
+              </span>
+              <span className="text-zinc-400 tabular-nums">
+                Register No · {request.studentRegNo}
+              </span>
             </div>
 
-            {request.teamMembers && request.teamMembers.length > 1 && (
-              <div className="space-y-2 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
-                <p className="text-xs font-semibold text-slate-500">Team Members ({request.teamMembers.length - 1}):</p>
-                {request.teamMembers.filter((m) => m.regNo !== request.studentRegNo).map((member, idx) => (
-                  <div key={idx} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                    <span>{member.name}</span>
-                    <span className="text-slate-400">Reg No: {member.regNo}</span>
+            {request.teamMembers &&
+              request.teamMembers
+                .filter((m) => m.regNo !== request.studentRegNo)
+                .map((m, idx) => (
+                  <div key={idx} className="flex justify-between items-baseline text-zinc-600 dark:text-zinc-400">
+                    <span>{m.name}</span>
+                    <span className="text-zinc-400 tabular-nums">Register No · {m.regNo}</span>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Documents */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-            DOCUMENTS
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-4 h-4 text-emerald-800" />
-                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                  {request.proofDocName || 'Registration Proof'}
-                </span>
-              </div>
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">✓</span>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-4 h-4 text-emerald-800" />
-                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                  Invitation / Event Letter
-                </span>
-              </div>
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">✓</span>
-            </div>
           </div>
         </div>
 
         {/* OD Period */}
-        <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-6">
-          <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-            OD PERIOD
-          </h3>
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-400" />
-            {request.date || request.startDate} · {request.fromTime || '08:00 AM'} – {request.toTime || '06:00 PM'}
-          </p>
+        <div className="py-6 space-y-2">
+          <h2 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            OD Period
+          </h2>
+          <div className="text-xs text-zinc-700 dark:text-zinc-300 space-y-0.5">
+            <p className="font-medium">{request.date || request.startDate}</p>
+            <p className="text-zinc-400">{request.fromTime || '8:00 AM'} – {request.toTime || '6:00 PM'}</p>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        {request.status === 'PENDING' && (
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex items-center justify-end gap-4">
-            <button
-              type="button"
-              onClick={() => setShowRejectModal(true)}
-              className="px-6 py-2.5 text-xs font-bold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors"
-            >
-              Reject
-            </button>
-            <button
-              type="button"
-              onClick={handleApprove}
-              className="px-6 py-2.5 text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-amber-300 rounded-xl shadow-xs transition-colors"
-            >
-              Approve
-            </button>
+        {/* Documents */}
+        <div className="py-6 space-y-3">
+          <h2 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            Documents
+          </h2>
+
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between items-center py-1">
+              <span className="text-zinc-700 dark:text-zinc-300">
+                {request.proofDocName || 'Registration proof'}
+              </span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">✓</span>
+            </div>
+
+            <div className="flex justify-between items-center py-1">
+              <span className="text-zinc-700 dark:text-zinc-300">Invitation / Event confirmation</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">✓</span>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Reject Reason Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <form
-            onSubmit={handleConfirmReject}
-            className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 max-w-md w-full space-y-5 border border-slate-200 dark:border-slate-800 shadow-xl"
+      {/* Action Buttons */}
+      {request.status === 'PENDING' && (
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowRejectModal(true)}
+            className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-red-700 dark:hover:text-red-400 transition-colors"
           >
+            Reject
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowConfirmApprove(true)}
+            className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-medium rounded-lg shadow-xs transition-colors"
+          >
+            Approve
+          </button>
+        </div>
+      )}
+
+      {/* Confirmation Dialog — Approve */}
+      {showConfirmApprove && (
+        <div className="fixed inset-0 bg-zinc-950/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 max-w-sm w-full space-y-4 border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 duration-100">
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Reason for rejection
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Approve OD?
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Please state the rationale for rejecting this OD request.
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                {request.eventName} · {request.date}
+              </p>
+              <p className="text-xs text-zinc-400 pt-1">
+                This will grant academic attendance clearance for this request.
               </p>
             </div>
 
-            <textarea
-              required
-              rows={3}
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Enter reason for rejection (e.g., conflicts with mid-term examination)..."
-              className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-500"
-            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmApprove(false)}
+                className="px-3.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApprove}
+                className="px-4 py-1.5 bg-emerald-800 text-white text-xs font-medium rounded-md hover:bg-emerald-900 shadow-xs"
+              >
+                Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+      {/* Rejection Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-zinc-950/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
+          <form
+            onSubmit={handleConfirmReject}
+            className="bg-white dark:bg-zinc-900 rounded-xl p-6 max-w-sm w-full space-y-4 border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 duration-100"
+          >
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Reject OD request
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Please provide a brief reason for the student.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
+                Reason
+              </label>
+              <textarea
+                required
+                rows={3}
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter reason..."
+                className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowRejectModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                className="px-3.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 rounded-lg transition-colors shadow-xs"
+                className="px-4 py-1.5 bg-red-700 text-white text-xs font-medium rounded-md hover:bg-red-800 shadow-xs"
               >
-                Reject request
+                Reject
               </button>
             </div>
           </form>
@@ -281,3 +282,4 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
     </div>
   );
 }
+
