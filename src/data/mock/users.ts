@@ -1,7 +1,7 @@
 import { User } from '@/types';
 
 export const mockUsers: User[] = [
-  // Year II
+  // Year II (5 Sections: A, B, C, D, E)
   {
     id: 'usr-student-001',
     name: 'Meena C',
@@ -12,6 +12,18 @@ export const mockUsers: User[] = [
     section: 'A',
     role: 'STUDENT',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (II Year · Sec A)',
+  },
+  {
+    id: 'usr-student-008',
+    name: 'Karthik P',
+    email: 'karthik.23cse@siet.ac.in',
+    registerNumber: '714023104068',
+    department: 'CSE',
+    year: 'II',
+    section: 'A',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
     designation: 'B.E CSE Student (II Year · Sec A)',
   },
   {
@@ -27,19 +39,43 @@ export const mockUsers: User[] = [
     designation: 'B.E CSE Student (II Year · Sec B)',
   },
   {
-    id: 'usr-student-008',
-    name: 'Karthik P',
-    email: 'karthik.23cse@siet.ac.in',
-    registerNumber: '714023104068',
+    id: 'usr-student-013',
+    name: 'Swathi T',
+    email: 'swathi.23cse@siet.ac.in',
+    registerNumber: '714023104190',
     department: 'CSE',
     year: 'II',
-    section: 'A',
+    section: 'C',
     role: 'STUDENT',
-    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-    designation: 'B.E CSE Student (II Year · Sec A)',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (II Year · Sec C)',
+  },
+  {
+    id: 'usr-student-014',
+    name: 'Arjun B',
+    email: 'arjun.23cse@siet.ac.in',
+    registerNumber: '714023104022',
+    department: 'CSE',
+    year: 'II',
+    section: 'D',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (II Year · Sec D)',
+  },
+  {
+    id: 'usr-student-015',
+    name: 'Pooja R',
+    email: 'pooja.23cse@siet.ac.in',
+    registerNumber: '714023104128',
+    department: 'CSE',
+    year: 'II',
+    section: 'E',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (II Year · Sec E)',
   },
 
-  // Year I
+  // Year I (5 Sections: A, B, C, D, E)
   {
     id: 'usr-student-009',
     name: 'Ananya S',
@@ -64,8 +100,44 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     designation: 'B.E CSE Student (I Year · Sec B)',
   },
+  {
+    id: 'usr-student-016',
+    name: 'Rohan K',
+    email: 'rohan.24cse@siet.ac.in',
+    registerNumber: '714024104089',
+    department: 'CSE',
+    year: 'I',
+    section: 'C',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (I Year · Sec C)',
+  },
+  {
+    id: 'usr-student-017',
+    name: 'Meera V',
+    email: 'meera.24cse@siet.ac.in',
+    registerNumber: '714024104104',
+    department: 'CSE',
+    year: 'I',
+    section: 'D',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (I Year · Sec D)',
+  },
+  {
+    id: 'usr-student-018',
+    name: 'Gokul N',
+    email: 'gokul.24cse@siet.ac.in',
+    registerNumber: '714024104033',
+    department: 'CSE',
+    year: 'I',
+    section: 'E',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (I Year · Sec E)',
+  },
 
-  // Year III
+  // Year III (3 Sections: A, B, C)
   {
     id: 'usr-student-006',
     name: 'Preeti R',
@@ -76,18 +148,6 @@ export const mockUsers: User[] = [
     section: 'A',
     role: 'STUDENT',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-    designation: 'B.E CSE Student (III Year · Sec A)',
-  },
-  {
-    id: 'usr-student-007',
-    name: 'Divya N',
-    email: 'divya.22cse@siet.ac.in',
-    registerNumber: '714022104044',
-    department: 'CSE',
-    year: 'III',
-    section: 'A',
-    role: 'STUDENT',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
     designation: 'B.E CSE Student (III Year · Sec A)',
   },
   {
@@ -102,32 +162,20 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
     designation: 'B.E CSE Student (III Year · Sec B)',
   },
-
-  // Year IV
   {
-    id: 'usr-student-002',
-    name: 'Nakshatra S V',
-    email: 'nakshatra.22cse@siet.ac.in',
-    registerNumber: '714022104153',
+    id: 'usr-student-007',
+    name: 'Divya N',
+    email: 'divya.22cse@siet.ac.in',
+    registerNumber: '714022104044',
     department: 'CSE',
-    year: 'IV',
-    section: 'B',
+    year: 'III',
+    section: 'C',
     role: 'STUDENT',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    designation: 'B.E CSE Student (IV Year · Sec B)',
+    designation: 'B.E CSE Student (III Year · Sec C)',
   },
-  {
-    id: 'usr-student-003',
-    name: 'Vishwanath M',
-    email: 'vishwanath.22cse@siet.ac.in',
-    registerNumber: '714022104210',
-    department: 'CSE',
-    year: 'IV',
-    section: 'B',
-    role: 'STUDENT',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    designation: 'B.E CSE Student (IV Year · Sec B)',
-  },
+
+  // Year IV (2 Sections: A, B)
   {
     id: 'usr-student-004',
     name: 'Aswin K',
@@ -152,6 +200,30 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     designation: 'B.E CSE Student (IV Year · Sec A)',
   },
+  {
+    id: 'usr-student-002',
+    name: 'Nakshatra S V',
+    email: 'nakshatra.22cse@siet.ac.in',
+    registerNumber: '714022104153',
+    department: 'CSE',
+    year: 'IV',
+    section: 'B',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (IV Year · Sec B)',
+  },
+  {
+    id: 'usr-student-003',
+    name: 'Vishwanath M',
+    email: 'vishwanath.22cse@siet.ac.in',
+    registerNumber: '714022104210',
+    department: 'CSE',
+    year: 'IV',
+    section: 'B',
+    role: 'STUDENT',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    designation: 'B.E CSE Student (IV Year · Sec B)',
+  },
 
   // Faculty / HOD
   {
@@ -168,4 +240,3 @@ export const mockUsers: User[] = [
 
 export const studentUser: User = mockUsers[0]; // Meena C
 export const hodUser: User = mockUsers.find((u) => u.role === 'HOD') || mockUsers[mockUsers.length - 1];
-

@@ -10,7 +10,6 @@ import {
   X,
   ArrowRight,
   GraduationCap,
-  Sparkles,
   Calendar,
   FileText,
   Building2,
@@ -19,6 +18,7 @@ import {
   ShieldCheck,
   AlertCircle,
   FolderGit2,
+  Layers,
 } from 'lucide-react';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import { ODApplication, User } from '@/types';
@@ -30,21 +30,29 @@ interface YearConfig {
   key: YearKey;
   label: string;
   subLabel: string;
+  sectionCountLabel: string;
 }
 
 const YEARS: YearConfig[] = [
-  { key: 'I', label: '1st Year', subLabel: 'B.E CSE · Year I' },
-  { key: 'II', label: '2nd Year', subLabel: 'B.E CSE · Year II' },
-  { key: 'III', label: '3rd Year', subLabel: 'B.E CSE · Year III' },
-  { key: 'IV', label: '4th Year', subLabel: 'B.E CSE · Year IV' },
+  { key: 'I', label: '1st Year', subLabel: 'B.E CSE · Year I', sectionCountLabel: '5 Sections (A–E)' },
+  { key: 'II', label: '2nd Year', subLabel: 'B.E CSE · Year II', sectionCountLabel: '5 Sections (A–E)' },
+  { key: 'III', label: '3rd Year', subLabel: 'B.E CSE · Year III', sectionCountLabel: '3 Sections (A–C)' },
+  { key: 'IV', label: '4th Year', subLabel: 'B.E CSE · Year IV', sectionCountLabel: '2 Sections (A–B)' },
 ];
+
+const YEAR_EXPECTED_SECTIONS: Record<YearKey, string[]> = {
+  I: ['A', 'B', 'C', 'D', 'E'],
+  II: ['A', 'B', 'C', 'D', 'E'],
+  III: ['A', 'B', 'C'],
+  IV: ['A', 'B'],
+};
 
 export default function HODRecordsPage() {
   const { odApplications, getStudentStats } = useData();
 
   // Progressive Drill-down State
   const [selectedYear, setSelectedYear] = useState<YearKey>('II');
-  const [selectedSection, setSelectedSection] = useState<string>('ALL'); // 'ALL' | 'A' | 'B'
+  const [selectedSection, setSelectedSection] = useState<string>('ALL'); // 'ALL' | 'A' | 'B' | 'C' | 'D' | 'E'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<User | null>(null);
 
@@ -71,10 +79,36 @@ export default function HODRecordsPage() {
     };
   }, [selectedStudent]);
 
-  // Filter students by Year & Section & Search
+  // Filter students
   const students = useMemo(() => {
     return mockUsers.filter((u) => u.role === 'STUDENT');
   }, []);
+
+  // Dynamically derive available sections for the selected year
+  const currentSections = useMemo(() => {
+    const yrStudents = students.filter((s) => s.year === selectedYear);
+    const foundSections = new Set<string>(
+      yrStudents.map((s) => s.section).filter((sec): sec is string => Boolean(sec))
+    );
+
+    // Merge with standard curriculum expected sections for this year
+    const expected = YEAR_EXPECTED_SECTIONS[selectedYear] || ['A', 'B'];
+    expected.forEach((sec) => foundSections.add(sec));
+
+    return Array.from(foundSections).sort();
+  }, [students, selectedYear]);
+
+  // Dynamic student counts for each section
+  const sectionCounts = useMemo(() => {
+    const yrStudents = students.filter((s) => s.year === selectedYear);
+    const counts: Record<string, number> = {
+      ALL: yrStudents.length,
+    };
+    currentSections.forEach((sec) => {
+      counts[sec] = yrStudents.filter((s) => (s.section || 'A') === sec).length;
+    });
+    return counts;
+  }, [students, selectedYear, currentSections]);
 
   // Compute summary stats per year for Level 1 cards
   const yearStats = useMemo(() => {
@@ -109,7 +143,7 @@ export default function HODRecordsPage() {
       if (s.year !== selectedYear) return false;
 
       // Section match
-      if (selectedSection !== 'ALL' && s.section && s.section !== selectedSection) {
+      if (selectedSection !== 'ALL' && (s.section || 'A') !== selectedSection) {
         return false;
       }
 
@@ -202,18 +236,6 @@ export default function HODRecordsPage() {
     document.body.removeChild(link);
   };
 
-  // Compute counts for section tabs
-  const sectionCounts = useMemo(() => {
-    const yrStudents = students.filter((s) => s.year === selectedYear);
-    const countA = yrStudents.filter((s) => s.section === 'A').length;
-    const countB = yrStudents.filter((s) => s.section === 'B').length;
-    return {
-      all: yrStudents.length,
-      a: countA,
-      b: countB,
-    };
-  }, [students, selectedYear]);
-
   // Selected student's full data for Slide-over drawer
   const studentDrawerData = useMemo(() => {
     if (!selectedStudent) return null;
@@ -242,7 +264,7 @@ export default function HODRecordsPage() {
             Records &amp; Student Directory
           </h1>
           <p className="text-xs text-[#586658] mt-0.5">
-            Progressive directory of all 4 years, sections, active category assignments, and OD records.
+            Progressive directory of all 4 years, department sections, active category assignments, and OD records.
           </p>
         </div>
 
@@ -276,7 +298,11 @@ export default function HODRecordsPage() {
                 type="button"
                 onClick={() => {
                   setSelectedYear(yr.key);
-                  setSelectedSection('ALL'); // Reset section on year switch
+                  // Auto-reset section if previously chosen section doesn't exist in newly selected year
+                  const expected = YEAR_EXPECTED_SECTIONS[yr.key] || ['A', 'B'];
+                  if (selectedSection !== 'ALL' && !expected.includes(selectedSection)) {
+                    setSelectedSection('ALL');
+                  }
                 }}
                 className={`relative p-3.5 sm:p-4 rounded-xl text-left border transition-all ${
                   isSelected
@@ -295,7 +321,12 @@ export default function HODRecordsPage() {
                 </div>
                 <div className="text-[11px] text-[#586658] mt-0.5">{yr.subLabel}</div>
 
-                <div className="mt-3 pt-2.5 border-t border-[#dfe6dc]/60 flex items-center justify-between text-[10px] text-[#586658]">
+                <div className="mt-2 text-[10px] font-semibold text-[#0a5c36] flex items-center gap-1">
+                  <Layers className="w-3 h-3" />
+                  {yr.sectionCountLabel}
+                </div>
+
+                <div className="mt-2.5 pt-2 border-t border-[#dfe6dc]/60 flex items-center justify-between text-[10px] text-[#586658]">
                   <span>
                     <strong className="text-[#172017] font-semibold">{stats.totalStudents}</strong>{' '}
                     Students
@@ -310,9 +341,9 @@ export default function HODRecordsPage() {
         </div>
       </div>
 
-      {/* LEVEL 2: Section Tabs (All Sections, CSE-A, CSE-B) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-1.5 bg-[#edf2ea] p-1 rounded-lg border border-[#dfe6dc] w-fit">
+      {/* LEVEL 2: Dynamic Section Tabs (Derived per Selected Year) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#edf2ea] p-1 rounded-lg border border-[#dfe6dc]">
           <button
             type="button"
             onClick={() => setSelectedSection('ALL')}
@@ -322,34 +353,26 @@ export default function HODRecordsPage() {
                 : 'text-[#586658] hover:text-[#172017]'
             }`}
           >
-            All Sections ({sectionCounts.all})
+            All Sections ({sectionCounts.ALL || 0})
           </button>
-          <button
-            type="button"
-            onClick={() => setSelectedSection('A')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-              selectedSection === 'A'
-                ? 'bg-white text-[#0a5c36] shadow-2xs'
-                : 'text-[#586658] hover:text-[#172017]'
-            }`}
-          >
-            Section CSE-A ({sectionCounts.a})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedSection('B')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-              selectedSection === 'B'
-                ? 'bg-white text-[#0a5c36] shadow-2xs'
-                : 'text-[#586658] hover:text-[#172017]'
-            }`}
-          >
-            Section CSE-B ({sectionCounts.b})
-          </button>
+          {currentSections.map((sec) => (
+            <button
+              key={sec}
+              type="button"
+              onClick={() => setSelectedSection(sec)}
+              className={`px-2.5 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                selectedSection === sec
+                  ? 'bg-white text-[#0a5c36] shadow-2xs'
+                  : 'text-[#586658] hover:text-[#172017]'
+              }`}
+            >
+              Section CSE-{sec} ({sectionCounts[sec] || 0})
+            </button>
+          ))}
         </div>
 
         {/* Quick Search Box */}
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full lg:w-72 shrink-0">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#889688]" />
           <input
             type="text"
@@ -375,7 +398,9 @@ export default function HODRecordsPage() {
         <div className="px-4 py-3 bg-[#fafdf9] border-b border-[#dfe6dc] flex items-center justify-between">
           <div className="text-xs font-bold text-[#172017]">
             {YEARS.find((y) => y.key === selectedYear)?.label} Students
-            {selectedSection !== 'ALL' && ` · Section CSE-${selectedSection}`}
+            {selectedSection !== 'ALL'
+              ? ` · Section CSE-${selectedSection}`
+              : ` · All Sections (${currentSections.length} Sections: ${currentSections.join(', ')})`}
             <span className="ml-2 font-normal text-[#586658]">
               ({filteredStudents.length} matching)
             </span>
