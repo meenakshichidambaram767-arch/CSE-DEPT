@@ -5,9 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import { User, UserRole } from '@/types';
 import {
   getCurrentSession,
+  getSupabaseSession,
   loginAsStudent as mockLoginStudent,
   loginAsHod as mockLoginHod,
-  logout as mockLogout,
+  logoutSupabase,
 } from '@/lib/session';
 
 interface SessionContextType {
@@ -28,11 +29,22 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [role, setRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshSession = () => {
-    const session = getCurrentSession();
-    if (session) {
-      setUser(session.user);
-      setRole(session.role);
+  const refreshSession = async () => {
+    setIsLoading(true);
+    // 1. Try real Supabase auth session
+    const sbSession = await getSupabaseSession();
+    if (sbSession) {
+      setUser(sbSession.user);
+      setRole(sbSession.role);
+      setIsLoading(false);
+      return;
+    }
+
+    // 2. Fallback for demo dev mode
+    const mockSession = getCurrentSession();
+    if (mockSession) {
+      setUser(mockSession.user);
+      setRole(mockSession.role);
     } else {
       setUser(null);
       setRole(null);
@@ -44,24 +56,30 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     refreshSession();
   }, []);
 
-  // Seamless Role Adaptation & Navigation
+  // Strict Role Protection & Navigation (Prevents Client Role Escalation)
   useEffect(() => {
     if (isLoading) return;
 
     if (pathname.startsWith('/hod')) {
       if (role !== 'HOD') {
-        const u = mockLoginHod();
-        setUser(u);
-        setRole('HOD');
+        // Redirect unauthorized users away from /hod
+        console.warn('Unauthorized access attempt to HOD portal.');
+        if (role === 'STUDENT') {
+          router.replace('/student/dashboard');
+        } else {
+          router.replace('/login');
+        }
       }
     } else if (pathname.startsWith('/student')) {
       if (role !== 'STUDENT') {
-        const u = mockLoginStudent();
-        setUser(u);
-        setRole('STUDENT');
+        if (role === 'HOD') {
+          router.replace('/hod/dashboard');
+        } else {
+          router.replace('/login');
+        }
       }
     }
-  }, [role, pathname, isLoading]);
+  }, [role, pathname, isLoading, router]);
 
   const handleLoginStudent = () => {
     const u = mockLoginStudent();
@@ -77,8 +95,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     router.push('/hod/dashboard');
   };
 
-  const handleLogout = () => {
-    mockLogout();
+  const handleLogout = async () => {
+    await logoutSupabase();
     setUser(null);
     setRole(null);
     router.push('/login');
