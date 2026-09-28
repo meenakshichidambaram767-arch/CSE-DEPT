@@ -1,6 +1,6 @@
 /**
  * Core Domain TypeScript Types
- * Student Hackathon, Project & Internship Tracking Platform
+ * SIET CSE Department Platform - API Contract v2.0 & PRD v2.0
  */
 
 export type UserRole = 'STUDENT' | 'HOD';
@@ -35,6 +35,8 @@ export type AllStatus = ActivityStatus | ODStatus;
 
 export type ReviewSessionStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
+export type EventStatus = 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CLOSED';
+
 export interface SelectOption {
   value: string;
   label: string;
@@ -52,6 +54,25 @@ export interface User {
   role: UserRole;
   avatar?: string;
   designation?: string;
+}
+
+export interface StudentProfile {
+  id: string;
+  userId: string;
+  registerNumber: string;
+  name: string;
+  department: string;
+  year: 'I' | 'II' | 'III' | 'IV';
+  section: 'A' | 'B' | 'C' | 'D' | 'E';
+  email: string;
+}
+
+export interface HodProfile {
+  id: string;
+  userId: string;
+  name: string;
+  designation: string;
+  department: string;
 }
 
 export interface TeamMember {
@@ -128,7 +149,6 @@ export interface Activity {
   updatedAt?: string;
 }
 
-// Backward-compatibility aliases
 export type Project = Activity;
 export type Internship = Activity;
 export type Hackathon = Activity;
@@ -224,8 +244,8 @@ export interface ODEvent {
   id: string;
   title: string;
   purpose: ODPurpose;
-  date: string; // e.g. "2026-09-25"
-  formattedDate: string; // e.g. "25 Sep 2026"
+  date: string;
+  formattedDate: string;
   endDate?: string;
   venue: string;
   city?: string;
@@ -233,7 +253,7 @@ export interface ODEvent {
   approvedCount: number;
   pendingCount: number;
   rejectedCount: number;
-  status: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CLOSED';
+  status: EventStatus;
   documents: DocumentItem[];
   odRequestIds: string[];
 }
@@ -330,3 +350,27 @@ export interface MetricItem {
   icon?: string;
 }
 
+/**
+ * Standard RFC 7807 Error Envelope & Pagination Types (API Contract v2.0)
+ */
+export interface ApiErrorEnvelope {
+  error: {
+    code: string;
+    message: string;
+    details?: {
+      field?: string;
+      [key: string]: unknown;
+    };
+  };
+}
+
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
