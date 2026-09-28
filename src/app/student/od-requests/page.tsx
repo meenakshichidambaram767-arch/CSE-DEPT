@@ -1,28 +1,74 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
-import { Plus, Calendar as CalendarIcon, MapPin, FileText } from 'lucide-react';
+import { odApi, ApiError } from '@/lib/api/odApi';
+import { ODApplication, PaginationMeta } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
+import { Plus, Calendar as CalendarIcon, MapPin, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function StudentODPortalPage() {
-  const { odApplications } = useData();
   const { user } = useSession();
 
-  // Identity comes from the active session; the prototype data source remains
-  // intentionally isolated in DataContext until authenticated access is wired.
-  const myODs = odApplications.filter(
-    (od) => od.studentId === user?.id || od.studentRegNo === user?.registerNumber
-  );
+  const [odList, setOdList] = useState<ODApplication[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isBackendBlocked, setIsBackendBlocked] = useState(false);
 
-  const approvedCount = myODs.filter((od) => od.status === 'APPROVED').length;
-  const pendingCount = myODs.filter((od) => od.status === 'PENDING').length;
+  useEffect(() => {
+    let isMounted = true;
+
+    odApi
+      .getODRequests({ page: 1, page_size: 20 })
+      .then((res) => {
+        if (isMounted) {
+          setOdList(res.data);
+          setMeta(res.meta);
+          setIsLoading(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setIsBackendBlocked(true);
+            const fallback = odApi.getFallbackODs().filter(
+              (od) => od.studentId === user?.id || od.studentRegNo === user?.registerNumber
+            );
+            setOdList(fallback);
+          } else {
+            setError(err instanceof Error ? err.message : 'An unexpected error occurred while fetching your OD requests.');
+          }
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, user?.registerNumber]);
+
+  const approvedCount = odList.filter((od) => od.status === 'APPROVED').length;
+  const pendingCount = odList.filter((od) => od.status === 'PENDING').length;
+  const revisionCount = odList.filter((od) => od.status === 'REVISION_REQUESTED').length;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
-      {/* Student Welcome Card with SIET Identity */}
+      {/* Backend Dependency Banner */}
+      {isBackendBlocked && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+          <div className="font-bold flex items-center gap-1.5 text-amber-900">
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+            Backend Dependency Notice: `/api/v1/od-requests` Endpoint Offline
+          </div>
+          <p className="text-amber-800">
+            The server-side endpoint `GET /api/v1/od-requests` is currently being implemented by the backend team. The client integration is complete and ready. Displaying prototype dataset matching your authenticated profile.
+          </p>
+        </div>
+      )}
+
+      {/* Student Welcome Card with Authenticated SIET Identity */}
       <div className="relative overflow-hidden rounded-xl bg-[#eaf7e8] border border-[#dfe6dc] p-6 sm:p-8 space-y-3">
         <div className="absolute top-0 left-0 right-0 h-1 bg-[#facc15]" />
 
@@ -52,10 +98,33 @@ export default function StudentODPortalPage() {
           </Link>
 
           <span className="text-xs text-[#0a5c36] bg-white px-3 py-1.5 rounded-lg border border-[#dfe6dc] font-semibold">
-            {approvedCount} Approved ODs · {pendingCount} Pending
+            {approvedCount} Approved · {pendingCount} Pending{revisionCount > 0 ? ` · ${revisionCount} Revision Requested` : ''}
           </span>
         </div>
       </div>
+
+      {/* Error Card */}
+      {error && !isBackendBlocked && (
+        <div className="p-6 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => {
+              setIsLoading(true);
+              setError(null);
+              odApi.getODRequests({ page: 1, page_size: 20 })
+                .then((res) => { setOdList(res.data); setMeta(res.meta); })
+                .catch((e) => setError(e.message))
+                .finally(() => setIsLoading(false));
+            }}
+            className="px-3 py-1 bg-white border border-rose-200 rounded font-bold hover:bg-rose-100 transition-colors flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
 
       {/* Applications List */}
       <div className="space-y-4">
@@ -64,13 +133,20 @@ export default function StudentODPortalPage() {
             Your Upcoming &amp; Past OD Requests
           </h2>
           <span className="text-xs text-[#586658] tabular-nums font-semibold">
-            {myODs.length} total
+            {meta?.total ?? odList.length} total
           </span>
         </div>
 
-        {myODs.length === 0 ? (
+        {isLoading ? (
+          <div className="p-12 text-center bg-white rounded-xl border border-[#dfe6dc]">
+            <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#0a5c36]">
+              <div className="w-4 h-4 rounded-full border-2 border-[#0a5c36] border-t-transparent animate-spin" />
+              Loading OD Requests...
+            </div>
+          </div>
+        ) : odList.length === 0 ? (
           <div className="p-10 text-center bg-white rounded-xl border border-[#dfe6dc] space-y-3">
-            <p className="text-sm font-bold text-[#172017]">No OD applications yet</p>
+            <p className="text-sm font-bold text-[#172017]">No OD applications found</p>
             <p className="text-xs text-[#586658]">Apply for your upcoming hackathon, internship, or conference.</p>
             <Link
               href="/student/apply-od"
@@ -80,10 +156,11 @@ export default function StudentODPortalPage() {
             </Link>
           </div>
         ) : (
-          myODs.map((req) => (
-            <div
+          odList.map((req) => (
+            <Link
               key={req.id}
-              className="bg-white rounded-xl border border-[#dfe6dc] p-5 space-y-4 shadow-2xs hover:border-[#0a5c36] transition-colors"
+              href={`/student/od-requests/${req.id}`}
+              className="block bg-white rounded-xl border border-[#dfe6dc] p-5 space-y-4 shadow-2xs hover:border-[#0a5c36] transition-colors group"
             >
               {/* Header inside item */}
               <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-[#edf2ea] pb-3">
@@ -95,7 +172,7 @@ export default function StudentODPortalPage() {
                     </span>
                     <span className="text-xs text-[#889688] font-mono tabular-nums">· ID {req.id}</span>
                   </div>
-                  <h3 className="text-base font-bold text-[#172017]">
+                  <h3 className="text-base font-bold text-[#172017] group-hover:text-[#0a5c36] transition-colors">
                     {req.eventName}
                   </h3>
                 </div>
@@ -122,49 +199,16 @@ export default function StudentODPortalPage() {
                 )}
               </div>
 
-              {/* Lifecycle Progress Bar */}
-              <div className="p-3 bg-[#f7f9f5] rounded-lg border border-[#dfe6dc] space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#586658]">
-                  Clearing Lifecycle
-                </span>
-
-                <div className="grid grid-cols-4 gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-[#0a5c36] font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-[#0a5c36]" />
-                    <span>Submitted</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-[#0a5c36] font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-[#0a5c36]" />
-                    <span>Under Review</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 font-semibold">
-                    {req.status === 'APPROVED' ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-[#0a5c36]" />
-                        <span className="text-[#0a5c36]">HOD Approved</span>
-                      </>
-                    ) : req.status === 'REJECTED' ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
-                        <span className="text-[#dc2626]">Rejected</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-[#eab308] animate-pulse" />
-                        <span className="text-[#92400e]">Pending Signoff</span>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 font-semibold text-[#889688]">
-                    <span className={`w-2 h-2 rounded-full ${req.status === 'APPROVED' ? 'bg-[#0a5c36]' : 'bg-[#dfe6dc]'}`} />
-                    <span>NAAC Archived</span>
-                  </div>
+              {/* Revision requested action notice */}
+              {req.status === 'REVISION_REQUESTED' && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 font-semibold flex items-center justify-between">
+                  <span>Action Required: HOD requested revisions. Click to update &amp; resubmit.</span>
+                  <span className="text-[10px] bg-amber-600 text-white px-2 py-0.5 rounded font-bold uppercase">
+                    Resubmit Now &rarr;
+                  </span>
                 </div>
-              </div>
-            </div>
+              )}
+            </Link>
           ))
         )}
       </div>

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
-import { ODPurpose } from '@/types';
+import { odApi, ApiError } from '@/lib/api/odApi';
+import { ODPurpose, ODApplication } from '@/types';
 import {
   ArrowLeft,
   Upload,
@@ -30,31 +31,31 @@ export default function ApplyODPage() {
   const { user } = useSession();
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [purpose, setPurpose] = useState<ODPurpose>('HACKATHON');
   const [eventName, setEventName] = useState('');
   const [organization, setOrganization] = useState('');
   const [venue, setVenue] = useState('');
-  const [location, setLocation] = useState('');
   const [eventDate, setEventDate] = useState('2026-09-28');
   const [startDate, setStartDate] = useState('2026-09-28');
   const [endDate, setEndDate] = useState('2026-09-29');
-  const [startTime, setStartTime] = useState('09:00 AM');
-  const [endTime, setEndTime] = useState('05:00 PM');
-  const [registrationId, setRegistrationId] = useState('');
+  const [startTime] = useState('09:00 AM');
+  const [endTime] = useState('05:00 PM');
+  const [registrationId] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [companyRole, setCompanyRole] = useState('');
   const [reason, setReason] = useState('');
-  const [docName, setDocName] = useState('Registration_Proof_SIET.pdf');
-  const [uploadedFile, setUploadedFile] = useState<boolean>(true);
+  const [docName] = useState('Registration_Proof_SIET.pdf');
+  const [uploadedFile] = useState<boolean>(true);
 
   // Additional teammates
   const [teammates, setTeammates] = useState<Array<{ name: string; regNo: string }>>([]);
   const [newTeammateName, setNewTeammateName] = useState('');
   const [newTeammateReg, setNewTeammateReg] = useState('');
 
-  // Validation errors
+  // Validation errors & server errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateStep2 = () => {
@@ -101,20 +102,17 @@ export default function ApplyODPage() {
     setTeammates(teammates.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       setErrors({ identity: 'A signed-in student session is required to submit an OD request.' });
       return;
     }
 
-    addODApplication({
-      studentId: user.id,
-      studentName: user.name,
-      studentRegNo: user.registerNumber ?? '',
-      department: user.department,
-      year: user.year ?? '',
-      section: user.section,
+    setIsSubmitting(true);
+    setErrors({});
+
+    const payload: Partial<ODApplication> = {
       purpose: purpose,
       eventName: eventName || (purpose === 'HACKATHON' ? 'SIET Hackathon OD' : purpose === 'INTERNSHIP' ? `${companyName} Internship` : 'Academic OD Event'),
       organization: organization,
@@ -127,12 +125,35 @@ export default function ApplyODPage() {
       registrationId: registrationId,
       companyName: companyName,
       role: companyRole,
-      location: location,
       reason: reason || `Attending approved ${purpose.toLowerCase()} event representing SIET.`,
       proofDocName: docName,
-      status: 'PENDING',
-    });
+    };
 
+    try {
+      await odApi.createODRequest(payload);
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE') {
+          // Backend endpoint not deployed yet; store in prototype DataContext so client dev mode functions
+          addODApplication({
+            ...payload,
+            studentId: user.id,
+            studentName: user.name,
+            studentRegNo: user.registerNumber ?? '',
+            department: user.department,
+            year: user.year ?? '',
+            section: user.section,
+            status: 'PENDING',
+          });
+        } else {
+          setErrors({ submit: err.message });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    }
+
+    setIsSubmitting(false);
     router.push('/student/od-requests');
   };
 
@@ -148,6 +169,13 @@ export default function ApplyODPage() {
           Back to Applications
         </Link>
       </div>
+
+      {errors.submit && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{errors.submit}</span>
+        </div>
+      )}
 
       {/* Main Centered Form Surface */}
       <div className="bg-white rounded-xl border border-[#dfe6dc] p-6 sm:p-8 space-y-6 shadow-sm">
@@ -166,12 +194,10 @@ export default function ApplyODPage() {
             Apply for On-Duty (OD) Leave
           </h1>
 
-          {/* Yellow Progress Stepper (01 ─── 02 ─── 03 ─── 04 ─── 05) */}
+          {/* Stepper */}
           <div className="pt-2">
             <div className="flex items-center justify-between relative">
-              {/* Background track */}
               <div className="absolute top-1/2 left-4 right-4 -translate-y-1/2 h-0.5 bg-[#dfe6dc] z-0" />
-              {/* Active track */}
               <div
                 className="absolute top-1/2 left-4 -translate-y-1/2 h-0.5 bg-[#facc15] transition-all duration-300 z-0"
                 style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 92}%` }}
@@ -198,12 +224,12 @@ export default function ApplyODPage() {
                           ? 'bg-[#0a5c36] text-white ring-4 ring-[#facc15]/30'
                           : isPast
                           ? 'bg-[#facc15] text-[#172017]'
-                          : 'bg-[#f7f9f5] border border-[#dfe6dc] text-[#889688]'
+                          : 'bg-[#f7f9f5] text-[#889688] border border-[#dfe6dc]'
                       }`}
                     >
-                      0{s.id}
+                      {s.id}
                     </div>
-                    <span className="text-[10px] font-bold text-[#586658] mt-1 hidden sm:block">
+                    <span className="text-[10px] font-semibold text-[#586658] mt-1 hidden sm:block">
                       {s.label}
                     </span>
                   </button>
@@ -213,40 +239,28 @@ export default function ApplyODPage() {
           </div>
         </div>
 
-        {/* STEP 1: PURPOSE SELECTION */}
+        {/* STEP 1: PURPOSE */}
         {currentStep === 1 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-sm font-bold text-[#172017]">
-                What are you attending?
-              </h2>
+              <h2 className="text-sm font-bold text-[#172017]">Select OD Purpose Category</h2>
               <p className="text-xs text-[#586658]">
-                Select the academic, competition, or corporate purpose for this OD leave.
+                Choose the primary classification for your academic leave request.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
-              {(
-                [
-                  'HACKATHON',
-                  'PROJECT',
-                  'INTERNSHIP',
-                  'WORKSHOP',
-                  'COMPETITION',
-                  'CONFERENCE',
-                  'OTHER',
-                ] as ODPurpose[]
-              ).map((p) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(['HACKATHON', 'INTERNSHIP', 'PROJECT', 'WORKSHOP', 'COMPETITION', 'CONFERENCE', 'OTHER'] as ODPurpose[]).map((p) => {
                 const isSelected = purpose === p;
                 return (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setPurpose(p)}
-                    className={`p-3.5 rounded-lg border text-left flex items-center justify-between transition-all ${
+                    className={`p-3.5 rounded-lg border text-left transition-all ${
                       isSelected
                         ? 'border-[#0a5c36] bg-[#eaf7e8] ring-1 ring-[#0a5c36]'
-                        : 'border-[#dfe6dc] hover:border-[#0a5c36] bg-white'
+                        : 'border-[#dfe6dc] bg-white hover:border-[#889688]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -576,6 +590,7 @@ export default function ApplyODPage() {
             <button
               type="button"
               onClick={handleBack}
+              disabled={isSubmitting}
               className="px-4 py-2 text-xs font-semibold text-[#586658] hover:text-[#172017] transition-colors"
             >
               ← Back
@@ -596,9 +611,10 @@ export default function ApplyODPage() {
             <button
               type="button"
               onClick={handleSubmit}
+              disabled={isSubmitting}
               className="px-6 py-2 bg-[#0a5c36] hover:bg-[#084c2c] text-white text-xs font-bold rounded-md shadow-xs transition-colors flex items-center gap-1.5"
             >
-              <span>Submit OD Application</span>
+              <span>{isSubmitting ? 'Submitting...' : 'Submit OD Application'}</span>
               <Check className="w-3.5 h-3.5 text-[#facc15]" />
             </button>
           )}
