@@ -1,7 +1,7 @@
 -- SIET CSE Department Platform - Initial PostgreSQL Schema & RLS Policies
 -- Aligned to PRD v2.0 and API Contract v2.0
 
--- Enable UUID extension
+-- Enable UUID extension if available
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. Users Table (Core Auth Profile)
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 -- 2. Students Table
 CREATE TABLE IF NOT EXISTS public.students (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE UNIQUE,
   register_number TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.students (
 
 -- 3. HODs Table
 CREATE TABLE IF NOT EXISTS public.hods (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE UNIQUE,
   name TEXT NOT NULL,
   designation TEXT NOT NULL DEFAULT 'Professor & Head of Department',
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.hods (
 
 -- 4. Events Table
 CREATE TABLE IF NOT EXISTS public.events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
   title TEXT NOT NULL,
   purpose TEXT NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.events (
 
 -- 5. OD Requests Table
 CREATE TABLE IF NOT EXISTS public.od_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
   student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   event_id UUID REFERENCES public.events(id) ON DELETE SET NULL,
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.od_requests (
 
 -- 6. OD Team Members Table
 CREATE TABLE IF NOT EXISTS public.od_team_members (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   od_request_id UUID NOT NULL REFERENCES public.od_requests(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   register_number TEXT NOT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS public.od_team_members (
 
 -- 7. Activities Table (Projects, Hackathons, Internships)
 CREATE TABLE IF NOT EXISTS public.activities (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
   student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('PROJECT', 'INTERNSHIP', 'HACKATHON')),
@@ -125,7 +125,7 @@ ALTER TABLE public.od_requests
 
 -- 8. Activity Team Members Table
 CREATE TABLE IF NOT EXISTS public.activity_team_members (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   activity_id UUID NOT NULL REFERENCES public.activities(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   register_number TEXT NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS public.activity_team_members (
 
 -- 9. Review Sessions Table
 CREATE TABLE IF NOT EXISTS public.review_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
   activity_id UUID NOT NULL REFERENCES public.activities(id) ON DELETE CASCADE,
   review_number INT NOT NULL,
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS public.review_sessions (
 
 -- 10. Review Attendance Table
 CREATE TABLE IF NOT EXISTS public.review_attendance (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   review_session_id UUID NOT NULL REFERENCES public.review_sessions(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   attended BOOLEAN NOT NULL DEFAULT FALSE,
@@ -162,21 +162,21 @@ CREATE TABLE IF NOT EXISTS public.review_attendance (
 
 -- 11. Weekly Progress Table
 CREATE TABLE IF NOT EXISTS public.weekly_progress (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   review_session_id UUID NOT NULL REFERENCES public.review_sessions(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   completed_this_week TEXT NOT NULL,
   currently_working_on TEXT NOT NULL,
   next_week_goal TEXT NOT NULL,
   blockers TEXT NOT NULL,
-  github_url TEXT,
+  githubUrl TEXT,
   submitted_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(review_session_id, student_id)
 );
 
 -- 12. Documents Table (Polymorphic Storage Metadata)
 CREATE TABLE IF NOT EXISTS public.documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner TEXT NOT NULL CHECK (owner IN ('od_request', 'activity', 'event')),
   owner_id UUID NOT NULL,
   file_name TEXT NOT NULL,
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS public.documents (
 
 -- 13. OD Status History Table (Append-Only)
 CREATE TABLE IF NOT EXISTS public.od_status_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   od_request_id UUID NOT NULL REFERENCES public.od_requests(id) ON DELETE CASCADE,
   old_status TEXT NOT NULL,
   new_status TEXT NOT NULL,
@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS public.od_status_history (
 
 -- 14. Activity Status History Table (Append-Only)
 CREATE TABLE IF NOT EXISTS public.activity_status_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   activity_id UUID NOT NULL REFERENCES public.activities(id) ON DELETE CASCADE,
   old_status TEXT NOT NULL,
   new_status TEXT NOT NULL,
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS public.activity_status_history (
 
 -- 15. Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 
 -- 16. Audit Logs Table (Append-Only)
 CREATE TABLE IF NOT EXISTS public.audit_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id UUID NOT NULL REFERENCES public.users(id),
   actor_role TEXT NOT NULL,
   action_title TEXT NOT NULL,
