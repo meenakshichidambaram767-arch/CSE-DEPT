@@ -83,6 +83,34 @@ export async function GET(
       changedAt: h.changed_at,
     }));
 
+    // Query OD Conflict Overlaps
+    const { data: conflictingODs } = await supabase
+      .from('od_requests')
+      .select('id, code, event_name, purpose, start_date, end_date, status')
+      .eq('student_id', od.student_id)
+      .neq('id', od.id)
+      .in('status', ['APPROVED', 'PENDING']);
+
+    const targetStart = new Date(od.start_date).getTime();
+    const targetEnd = new Date(od.end_date).getTime();
+    const conflicts: any[] = [];
+
+    (conflictingODs || []).forEach((other: any) => {
+      const oStart = new Date(other.start_date).getTime();
+      const oEnd = new Date(other.end_date).getTime();
+      if (targetStart <= oEnd && targetEnd >= oStart) {
+        conflicts.push({
+          id: other.id,
+          code: other.code,
+          eventName: other.event_name,
+          purpose: other.purpose,
+          startDate: other.start_date,
+          endDate: other.end_date,
+          status: other.status,
+        });
+      }
+    });
+
     const responsePayload = {
       id: od.id,
       code: od.code,
@@ -114,6 +142,9 @@ export async function GET(
       revisionNotes: od.revision_notes,
       submittedDate: od.submitted_date,
       approvedDate: od.approved_date,
+      hasConflict: conflicts.length > 0,
+      conflictCount: conflicts.length,
+      conflictingRequests: conflicts,
       teamMembers: (teamMembers || []).map((m: any) => ({
         id: m.id,
         name: m.name,

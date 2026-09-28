@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import {
@@ -43,7 +43,49 @@ export default function HODEventsPage() {
   const [newVenue, setNewVenue] = useState('');
   const [newCity, setNewCity] = useState('');
 
-  const searchFilteredEvents = odEvents.filter((evt) => {
+  const [apiEvents, setApiEvents] = useState<any[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(true);
+
+  // Fetch events from API
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch('/api/v1/events');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.data) {
+          setApiEvents(body.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching events API:', err);
+    } finally {
+      setIsLoadingApi(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const displayEventsList = apiEvents.length > 0 ? apiEvents.map(e => ({
+    id: e.id,
+    code: e.code,
+    title: e.title,
+    purpose: e.purpose,
+    date: e.date,
+    formattedDate: new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    venue: e.venue,
+    city: e.city || 'Coimbatore',
+    studentCount: 0,
+    approvedCount: 0,
+    pendingCount: 0,
+    rejectedCount: 0,
+    status: e.status,
+    documents: [],
+    odRequestIds: [],
+  })) : odEvents;
+
+  const searchFilteredEvents = displayEventsList.filter((evt) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -54,9 +96,30 @@ export default function HODEventsPage() {
     );
   });
 
-  const handleCreateEvent = (e: React.FormEvent) => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle || !newVenue || !newDate) return;
+
+    try {
+      const res = await fetch('/api/v1/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle,
+          purpose: newPurpose,
+          date: newDate,
+          venue: newVenue,
+          city: newCity || 'Coimbatore',
+          status: 'UPCOMING',
+        }),
+      });
+
+      if (res.ok) {
+        await fetchEvents();
+      }
+    } catch (err) {
+      console.error('Error creating event via API:', err);
+    }
 
     const createdEvent: ODEvent = {
       id: `EVT-${Date.now().toString().slice(-4)}`,
