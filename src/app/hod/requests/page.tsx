@@ -4,7 +4,7 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
-import { Search, ArrowRight, Check, X, Users, Filter, GraduationCap } from 'lucide-react';
+import { Search, ArrowRight, Check, X, Filter, GraduationCap } from 'lucide-react';
 
 const CATEGORY_TABS = [
   { id: 'ALL', label: 'All Categories' },
@@ -16,10 +16,9 @@ const CATEGORY_TABS = [
 ];
 
 function RequestsContent() {
-  const { odApplications, bulkApproveOD } = useData();
+  const { odApplications: contextODs, bulkApproveOD } = useData();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const eventQueryParam = searchParams.get('event');
 
   // Simple 3-Tab switcher: 'PENDING' | 'APPROVED' | 'ALL'
   const [activeTab, setActiveTab] = useState<'PENDING' | 'APPROVED' | 'ALL'>('PENDING');
@@ -36,10 +35,49 @@ function RequestsContent() {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const pendingCount = odApplications.filter((r) => r.status === 'PENDING').length;
-  const approvedCount = odApplications.filter((r) => r.status === 'APPROVED').length;
+  // API Data State
+  const [apiData, setApiData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiTotal, setApiTotal] = useState(0);
 
-  const filtered = odApplications.filter((app) => {
+  // Fetch OD Requests from /api/v1/od-requests
+  useEffect(() => {
+    async function fetchODs() {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (activeTab !== 'ALL') params.append('status', activeTab);
+        if (selectedYear !== 'ALL') params.append('year', selectedYear);
+        if (selectedSection !== 'ALL') params.append('section', selectedSection);
+        if (selectedCategory !== 'ALL') params.append('purpose', selectedCategory);
+        if (searchTerm.trim() !== '') params.append('search', searchTerm.trim());
+
+        const res = await fetch(`/api/v1/od-requests?${params.toString()}`);
+        if (res.ok) {
+          const body = await res.json();
+          if (body.data) {
+            setApiData(body.data);
+            setApiTotal(body.meta?.total || body.data.length);
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching ODs from API:', err);
+      }
+      setIsLoading(false);
+    }
+
+    fetchODs();
+  }, [activeTab, selectedYear, selectedSection, selectedCategory, searchTerm]);
+
+  // Use API data if available, else context fallback
+  const displayApplications = apiData.length > 0 ? apiData : contextODs;
+
+  const pendingCount = displayApplications.filter((r) => r.status === 'PENDING').length;
+  const approvedCount = displayApplications.filter((r) => r.status === 'APPROVED').length;
+
+  const filtered = displayApplications.filter((app) => {
     // Status Tab
     if (activeTab === 'PENDING' && app.status !== 'PENDING') return false;
     if (activeTab === 'APPROVED' && app.status !== 'APPROVED') return false;
@@ -391,8 +429,12 @@ function RequestsContent() {
         )}
       </div>
 
-      {/* 5. EDITORIAL 2-LINE REQUEST ROWS */}
-      {filtered.length === 0 ? (
+      {/* 5. REQUEST ROWS */}
+      {isLoading ? (
+        <div className="py-14 text-center bg-white rounded-lg border border-[#dfe6dc]">
+          <p className="text-xs font-semibold text-[#586658]">Loading requests from API...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="py-14 text-center bg-white rounded-lg border border-[#dfe6dc] space-y-1">
           <p className="text-xs font-bold text-[#172017]">
             {activeTab === 'PENDING' && !hasActiveFilters
@@ -428,7 +470,7 @@ function RequestsContent() {
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* Checkbox (shown only in select mode) */}
+                  {/* Checkbox */}
                   {isSelectMode && activeTab === 'PENDING' && (
                     <input
                       type="checkbox"
@@ -438,9 +480,8 @@ function RequestsContent() {
                     />
                   )}
 
-                  {/* 2-Line Content */}
+                  {/* Content */}
                   <div className="space-y-0.5 min-w-0">
-                    {/* Line 1: Student Name + Event Title */}
                     <div className="flex items-baseline gap-2 truncate">
                       <span className="text-xs font-bold text-[#172017] group-hover:text-[#0a5c36] transition-colors truncate">
                         {req.studentName}
@@ -453,7 +494,6 @@ function RequestsContent() {
                       )}
                     </div>
 
-                    {/* Line 2: Roll No · Year · Section · Date · Category · Venue */}
                     <p className="text-[11px] text-[#586658] font-mono tabular-nums truncate">
                       {req.studentRegNo} · Year {req.year} {req.section ? `(${req.section})` : '(A)'} · {req.date || req.startDate} · <span className="font-sans text-[#0a5c36] font-semibold">{req.purpose}</span> · {req.venue || 'CSE'}
                     </p>
