@@ -3,6 +3,8 @@
  * SIET CSE Department Platform - API Contract v2.0 & PRD v2.0
  */
 
+export * from './student';
+
 export type UserRole = 'STUDENT' | 'HOD';
 
 export type ActivityType = 'PROJECT' | 'INTERNSHIP' | 'HACKATHON';

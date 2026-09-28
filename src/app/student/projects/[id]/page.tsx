@@ -89,9 +89,9 @@ export default function StudentProjectDetailPage() {
     }
   };
 
-  const handleConfirmProgressSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedReview) return;
+  const handleConfirmProgressSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!selectedReview || !user) return;
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
       showToast('Please answer all core progress questions.', 'warning');
@@ -102,8 +102,8 @@ export default function StudentProjectDetailPage() {
 
     setTimeout(() => {
       submitWeeklyProgress(selectedReview.id, {
-        studentId: user?.id || 'usr-student-001',
-        studentName: user?.name || 'Meena C',
+        studentId: user.id,
+        studentName: user.name,
         completedThisWeek,
         currentlyWorkingOn,
         nextWeekGoal,
@@ -444,7 +444,7 @@ export default function StudentProjectDetailPage() {
         title={`Weekly Progress Submission: Review #${selectedReview?.reviewNumber}`}
         variant="information"
         confirmLabel={isSubmittingProgress ? 'Submitting...' : 'Submit Progress'}
-        onConfirm={() => handleConfirmProgressSubmit({ preventDefault: () => {} } as any)}
+        onConfirm={() => handleConfirmProgressSubmit()}
         cancelLabel="Cancel"
       >
         <div className="space-y-4 text-xs">
@@ -541,7 +541,7 @@ export default function StudentProjectDetailPage() {
 
               <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200/80 space-y-1">
                 <span className="text-[10px] font-bold uppercase text-purple-800">
-                  Next Week's Goal
+                  Next Week&apos;s Goal
                 </span>
                 <p className="text-xs text-slate-800 whitespace-pre-line font-medium">
                   {viewingProgressReview.progress.nextWeekGoal}

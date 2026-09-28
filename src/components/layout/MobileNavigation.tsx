@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserRole } from '@/types';
 import { SietLogo } from '@/components/common/SietLogo';
+import { useSession } from '@/context/SessionContext';
 import {
   Home,
   Inbox,
   Calendar as CalendarIcon,
   Sparkles,
-  Users,
   FileSpreadsheet,
   PlusCircle,
   X,
@@ -28,6 +28,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
   role,
 }) => {
   const pathname = usePathname();
+  const { user } = useSession();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -131,10 +132,12 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
         {/* Footer */}
         <div className="p-4 border-t border-[#0a5c36]/60 bg-[#042f1a]/60">
           <div className="text-xs font-semibold text-white">
-            {role === 'STUDENT' ? 'Meena C' : 'Dr. Priya Kumar'}
+            {user?.name ?? (role === 'STUDENT' ? 'Student' : 'HOD')}
           </div>
           <div className="text-[10px] text-emerald-200">
-            {role === 'STUDENT' ? 'Student · CSE Department' : 'Head of Department · CSE'}
+            {role === 'STUDENT'
+              ? [user?.department, user?.registerNumber].filter(Boolean).join(' · ') || 'Student portal'
+              : user?.designation ?? 'Head of Department · CSE'}
           </div>
         </div>
       </div>

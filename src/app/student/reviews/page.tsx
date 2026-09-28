@@ -65,9 +65,9 @@ export default function StudentReviewsPage() {
     }
   };
 
-  const handleConfirmSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedReview) return;
+  const handleConfirmSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!selectedReview || !user) return;
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
       showToast('Please complete all 3 progress fields.', 'warning');
@@ -78,8 +78,8 @@ export default function StudentReviewsPage() {
 
     setTimeout(() => {
       submitWeeklyProgress(selectedReview.id, {
-        studentId: user?.id || 'usr-student-001',
-        studentName: user?.name || 'Meena C',
+        studentId: user.id,
+        studentName: user.name,
         completedThisWeek,
         currentlyWorkingOn,
         nextWeekGoal,
@@ -135,7 +135,7 @@ export default function StudentReviewsPage() {
           {filteredReviews.map((rev) => {
             const hasProgress = !!rev.progress;
             const myAttendance = rev.attendance.find(
-              (a) => a.studentId === user?.id || a.name.toLowerCase().includes('meena')
+              (a) => a.studentId === user?.id
             );
 
             return (
@@ -255,7 +255,7 @@ export default function StudentReviewsPage() {
         title={`Log Weekly Progress: Review #${selectedReview?.reviewNumber}`}
         variant="information"
         confirmLabel={isSubmitting ? 'Submitting...' : 'Submit Progress'}
-        onConfirm={() => handleConfirmSubmit({ preventDefault: () => {} } as any)}
+        onConfirm={() => handleConfirmSubmit()}
         cancelLabel="Cancel"
       >
         <div className="space-y-3 text-xs">
