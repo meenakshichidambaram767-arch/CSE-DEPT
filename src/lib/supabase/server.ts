@@ -1,13 +1,32 @@
 import 'server-only';
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { getSupabasePublicConfig } from './config';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-/**
- * Server-only foundation for future request-aware auth integration. It uses
- * the public anon key only; service-role credentials are intentionally absent.
- */
-export function createSupabaseServerClient(): SupabaseClient {
-  const { url, anonKey } = getSupabasePublicConfig();
-  return createClient(url, anonKey);
+export async function createClient() {
+  const cookieStore = await cookies();
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set({ name, value, ...options })
+          );
+        } catch {
+          // Handled in middleware session refresh
+        }
+      },
+    },
+  });
+}
+
+export async function createSupabaseServerClient() {
+  return createClient();
 }

@@ -1,20 +1,15 @@
 'use client';
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { getSupabasePublicConfig } from './config';
+import { createBrowserClient } from '@supabase/ssr';
+import { type SupabaseClient } from '@supabase/supabase-js';
 
-let browserClient: SupabaseClient | undefined;
+export function createClient(): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
-/**
- * Returns the single browser client once public configuration is supplied.
- * It is deliberately lazy so the mock prototype can still run before a
- * Supabase project has been provisioned.
- */
+  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+}
+
 export function getSupabaseBrowserClient(): SupabaseClient {
-  if (!browserClient) {
-    const { url, anonKey } = getSupabasePublicConfig();
-    browserClient = createClient(url, anonKey);
-  }
-
-  return browserClient;
+  return createClient();
 }
