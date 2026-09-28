@@ -81,57 +81,116 @@ export default function DedicatedHodApprovalScreen() {
   const isPending = status === 'SUBMITTED' || status === 'UNDER_REVIEW' || status === 'PENDING';
   const stats = getStudentStats(data.studentRegNo);
 
-  const handleConfirmApprove = () => {
+  const handleConfirmApprove = async () => {
     setIsApproving(true);
-    setTimeout(() => {
+    try {
       if (isActivity) {
-        approveActivity(activity!.id, approvalRemarks || 'Approved by HOD.');
-        showToast(`Approved ${activity!.title}`, 'Status updated to ACTIVE.', 'success');
+        const res = await fetch(`/api/v1/activities/${activity!.id}/decision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'ACTIVE', remarks: approvalRemarks }),
+        });
+        if (res.ok) {
+          approveActivity(activity!.id, approvalRemarks || 'Approved by HOD.');
+          showToast(`Approved ${activity!.title}`, 'Status updated to ACTIVE.', 'success');
+        } else {
+          const errBody = await res.json();
+          showToast('Approval Error', errBody.error?.message || 'Failed to approve activity.', 'error');
+        }
       } else {
-        approveOD(odItem!.id, approvalRemarks || 'Approved by HOD.');
-        showToast(`Approved OD for ${odItem!.studentName}`, 'Attendance granted.', 'success');
+        const res = await fetch(`/api/v1/od-requests/${odItem!.id}/decision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'APPROVED', remarks: approvalRemarks }),
+        });
+        if (res.ok) {
+          approveOD(odItem!.id, approvalRemarks || 'Approved by HOD.');
+          showToast(`Approved OD for ${odItem!.studentName}`, 'Attendance granted.', 'success');
+        } else {
+          const errBody = await res.json();
+          showToast('Approval Error', errBody.error?.message || 'Failed to approve OD.', 'error');
+        }
       }
+    } catch (err) {
+      console.error('Error approving item:', err);
+    } finally {
       setIsApproving(false);
       router.push('/hod/approvals');
-    }, 400);
+    }
   };
 
-  const handleConfirmRevision = () => {
+  const handleConfirmRevision = async () => {
     if (!revisionNotes.trim()) {
       showToast('Revision instructions required.', 'warning');
       return;
     }
     setIsRequestingRevision(true);
-    setTimeout(() => {
+    try {
       if (isActivity) {
-        requestRevisionActivity(activity!.id, revisionNotes);
+        const res = await fetch(`/api/v1/activities/${activity!.id}/decision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'REVISION_REQUESTED', revision_notes: revisionNotes }),
+        });
+        if (res.ok) {
+          requestRevisionActivity(activity!.id, revisionNotes);
+          showToast(`Revision Requested for ${data.id}`, 'Student notified.', 'info');
+        }
       } else {
-        requestRevisionOD(odItem!.id, revisionNotes);
+        const res = await fetch(`/api/v1/od-requests/${odItem!.id}/decision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'REVISION_REQUESTED', revision_notes: revisionNotes }),
+        });
+        if (res.ok) {
+          requestRevisionOD(odItem!.id, revisionNotes);
+          showToast(`Revision Requested for ${data.id}`, 'Student notified.', 'info');
+        }
       }
-      showToast(`Revision Requested for ${data.id}`, 'Student notified.', 'info');
+    } catch (err) {
+      console.error('Error requesting revision:', err);
+    } finally {
       setIsRequestingRevision(false);
       setIsRevisionModalOpen(false);
       router.push('/hod/approvals');
-    }, 400);
+    }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectionReason.trim()) {
       showToast('Rejection reason required.', 'warning');
       return;
     }
     setIsRejecting(true);
-    setTimeout(() => {
+    try {
       if (isActivity) {
-        rejectActivity(activity!.id, rejectionReason);
+        const res = await fetch(`/api/v1/activities/${activity!.id}/decision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'REJECTED', rejection_reason: rejectionReason }),
+        });
+        if (res.ok) {
+          rejectActivity(activity!.id, rejectionReason);
+          showToast(`Rejected ${data.id}`, 'Decision recorded.', 'info');
+        }
       } else {
-        rejectOD(odItem!.id, rejectionReason);
+        const res = await fetch(`/api/v1/od-requests/${odItem!.id}/decision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'REJECTED', rejection_reason: rejectionReason }),
+        });
+        if (res.ok) {
+          rejectOD(odItem!.id, rejectionReason);
+          showToast(`Rejected ${data.id}`, 'Decision recorded.', 'info');
+        }
       }
-      showToast(`Rejected ${data.id}`, 'Decision recorded.', 'info');
+    } catch (err) {
+      console.error('Error rejecting item:', err);
+    } finally {
       setIsRejecting(false);
       setIsRejectOpen(false);
       router.push('/hod/approvals');
-    }, 400);
+    }
   };
 
   return (
