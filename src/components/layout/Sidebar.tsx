@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserRole } from '@/types';
 import { useData } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
 import { SietLogo } from '@/components/common/SietLogo';
 import {
   Home,
@@ -31,6 +32,7 @@ interface NavItem {
 
 export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
   const pathname = usePathname();
+  const { user } = useSession();
 
   let pendingODCount = 0;
   try {
@@ -129,10 +131,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
       {/* Footer Profile & Scope */}
       <div className="p-4 mx-2.5 mb-3 rounded-lg bg-[#042f1a]/60 border border-[#0a5c36]/40">
         <div className="text-xs font-semibold text-white truncate">
-          {role === 'STUDENT' ? 'Meena C' : 'Dr. Priya Kumar'}
+          {user?.name ?? (role === 'STUDENT' ? 'Student' : 'HOD')}
         </div>
         <div className="text-[11px] text-emerald-200/80 truncate">
-          {role === 'STUDENT' ? 'II Year · 714023104088' : 'Head of Department · CSE'}
+          {role === 'STUDENT'
+            ? [user?.year && `Year ${user.year}`, user?.registerNumber].filter(Boolean).join(' · ') || 'Student portal'
+            : user?.designation ?? 'Head of Department · CSE'}
         </div>
       </div>
     </aside>

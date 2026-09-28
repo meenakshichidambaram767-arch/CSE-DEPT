@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
 import { ODPurpose } from '@/types';
 import {
   ArrowLeft,
@@ -26,6 +27,7 @@ const STEPS = [
 export default function ApplyODPage() {
   const router = useRouter();
   const { addODApplication } = useData();
+  const { user } = useSession();
 
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -101,14 +103,18 @@ export default function ApplyODPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      setErrors({ identity: 'A signed-in student session is required to submit an OD request.' });
+      return;
+    }
 
     addODApplication({
-      studentId: 'usr-student-001',
-      studentName: 'Meena C',
-      studentRegNo: '714023104088',
-      department: 'CSE',
-      year: 'II',
-      section: 'A',
+      studentId: user.id,
+      studentName: user.name,
+      studentRegNo: user.registerNumber ?? '',
+      department: user.department,
+      year: user.year ?? '',
+      section: user.section,
       purpose: purpose,
       eventName: eventName || (purpose === 'HACKATHON' ? 'SIET Hackathon OD' : purpose === 'INTERNSHIP' ? `${companyName} Internship` : 'Academic OD Event'),
       organization: organization,
@@ -412,10 +418,10 @@ export default function ApplyODPage() {
             <div className="p-3.5 rounded-lg bg-[#eaf7e8] border border-[#dfe6dc] flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-[#172017]">
-                  Meena C (Lead Applicant)
+                  {user?.name ?? 'Student'} (Lead Applicant)
                 </p>
                 <p className="text-[11px] text-[#586658] font-mono tabular-nums">
-                  Roll No: 714023104088 · Year II · CSE-A
+                  {user?.registerNumber ? `Roll No: ${user.registerNumber} · ` : ''}{user?.year ? `Year ${user.year} · ` : ''}{user?.department ?? 'CSE'}{user?.section ? `-${user.section}` : ''}
                 </p>
               </div>
               <span className="text-[10px] font-bold text-[#0a5c36] bg-white px-2 py-0.5 rounded border border-[#dfe6dc]">
@@ -551,7 +557,9 @@ export default function ApplyODPage() {
 
               <div className="flex justify-between items-baseline pt-2">
                 <span className="text-[#586658] font-medium">Lead Applicant</span>
-                <span className="font-bold text-[#172017] font-mono">Meena C (714023104088)</span>
+                <span className="font-bold text-[#172017] font-mono">
+                  {user ? `${user.name}${user.registerNumber ? ` (${user.registerNumber})` : ''}` : 'Student'}
+                </span>
               </div>
 
               <div className="flex justify-between items-baseline pt-2">

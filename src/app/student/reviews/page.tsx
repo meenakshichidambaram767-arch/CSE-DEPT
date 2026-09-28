@@ -135,7 +135,7 @@ export default function StudentReviewsPage() {
           {filteredReviews.map((rev) => {
             const hasProgress = !!rev.progress;
             const myAttendance = rev.attendance.find(
-              (a) => a.studentId === user?.id || a.name.toLowerCase().includes('meena')
+              (a) => a.studentId === user?.id
             );
 
             return (

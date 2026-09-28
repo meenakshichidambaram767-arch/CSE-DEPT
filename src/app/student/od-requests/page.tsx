@@ -3,15 +3,18 @@
 import React from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
 import { Plus, Calendar as CalendarIcon, MapPin, FileText, CheckCircle2 } from 'lucide-react';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 
 export default function StudentODPortalPage() {
   const { odApplications } = useData();
+  const { user } = useSession();
 
-  // Filter for student "Meena C" (usr-student-001 / 714023104088)
+  // Identity comes from the active session; the prototype data source remains
+  // intentionally isolated in DataContext until authenticated access is wired.
   const myODs = odApplications.filter(
-    (od) => od.studentId === 'usr-student-001' || od.studentRegNo === '714023104088'
+    (od) => od.studentId === user?.id || od.studentRegNo === user?.registerNumber
   );
 
   const approvedCount = myODs.filter((od) => od.status === 'APPROVED').length;
@@ -25,15 +28,16 @@ export default function StudentODPortalPage() {
 
         <div className="flex items-center justify-between text-[11px] font-bold tracking-wider text-[#0a5c36] uppercase">
           <span>SIET OD Management</span>
-          <span>CSE Department · II Year</span>
+          <span>{user?.department ?? 'CSE'} Department{user?.year ? ` · Year ${user.year}` : ''}</span>
         </div>
 
         <div className="space-y-1 pt-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#172017]">
-            Hello, Meena C
+            Hello, {user?.name ?? 'Student'}
           </h1>
           <p className="text-xs text-[#586658]">
-            Roll Number: <span className="font-mono font-bold text-[#172017]">714023104088</span> · Academic Section CSE-A
+            {user?.registerNumber && <>Roll Number: <span className="font-mono font-bold text-[#172017]">{user.registerNumber}</span> · </>}
+            Academic Section {user?.department ?? 'CSE'}{user?.section ? `-${user.section}` : ''}
           </p>
         </div>
 
