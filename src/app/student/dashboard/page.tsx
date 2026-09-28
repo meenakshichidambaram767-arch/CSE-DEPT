@@ -27,9 +27,9 @@ export default function StudentDashboardPage() {
   const { user } = useSession();
   const { activities, reviews, odApplications } = useData();
 
-  const studentName = user?.name || 'Meena C';
-  const department = user?.department || 'CSE';
-  const year = user?.year || 'II';
+  const studentName = user?.name || 'Student';
+  const department = user?.department || 'Department';
+  const year = user?.year || '—';
 
   // Metrics
   const activeProjectsCount = activities.filter(

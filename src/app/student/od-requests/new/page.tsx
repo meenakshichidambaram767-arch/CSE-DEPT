@@ -69,17 +69,18 @@ export default function NewODRequestPage() {
       return;
     }
 
+    if (!user) return;
     setIsSubmitting(true);
 
     setTimeout(() => {
       const act = activities.find((a) => a.id === selectedActivityId);
 
       addODApplication({
-        studentId: user?.id || 'usr-student-001',
-        studentName: user?.name || 'Meena C',
-        studentRegNo: user?.registerNumber || '714023104088',
-        department: user?.department || 'CSE',
-        year: user?.year || 'II',
+        studentId: user.id,
+        studentName: user.name,
+        studentRegNo: user.registerNumber,
+        department: user.department,
+        year: user.year,
         activityId: selectedActivityId || undefined,
         activityTitle: act?.title || eventName,
         activityType: act?.type || 'PROJECT',

@@ -91,7 +91,7 @@ export default function StudentProjectDetailPage() {
 
   const handleConfirmProgressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedReview) return;
+    if (!selectedReview || !user) return;
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
       showToast('Please answer all core progress questions.', 'warning');
@@ -102,8 +102,8 @@ export default function StudentProjectDetailPage() {
 
     setTimeout(() => {
       submitWeeklyProgress(selectedReview.id, {
-        studentId: user?.id || 'usr-student-001',
-        studentName: user?.name || 'Meena C',
+        studentId: user.id,
+        studentName: user.name,
         completedThisWeek,
         currentlyWorkingOn,
         nextWeekGoal,

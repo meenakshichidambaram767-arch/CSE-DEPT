@@ -61,9 +61,9 @@ export default function UnifiedActivitySubmissionPage() {
   // Team Members list
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
     {
-      name: user?.name || 'Meena C',
-      regNo: user?.registerNumber || '714023104088',
-      email: user?.email || 'meena.23cse@siet.ac.in',
+      name: user?.name || 'Current student',
+      regNo: user?.registerNumber || '',
+      email: user?.email || '',
       role: 'Team Lead',
     },
   ]);

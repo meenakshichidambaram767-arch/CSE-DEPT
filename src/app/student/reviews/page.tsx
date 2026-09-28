@@ -67,7 +67,7 @@ export default function StudentReviewsPage() {
 
   const handleConfirmSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedReview) return;
+    if (!selectedReview || !user) return;
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
       showToast('Please complete all 3 progress fields.', 'warning');
@@ -78,8 +78,8 @@ export default function StudentReviewsPage() {
 
     setTimeout(() => {
       submitWeeklyProgress(selectedReview.id, {
-        studentId: user?.id || 'usr-student-001',
-        studentName: user?.name || 'Meena C',
+        studentId: user.id,
+        studentName: user.name,
         completedThisWeek,
         currentlyWorkingOn,
         nextWeekGoal,
