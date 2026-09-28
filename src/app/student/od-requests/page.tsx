@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
-import { Plus, Calendar as CalendarIcon, MapPin, FileText, CheckCircle2 } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, MapPin, FileText } from 'lucide-react';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 
 export default function StudentODPortalPage() {

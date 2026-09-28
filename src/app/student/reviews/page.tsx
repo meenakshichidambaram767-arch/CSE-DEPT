@@ -65,8 +65,8 @@ export default function StudentReviewsPage() {
     }
   };
 
-  const handleConfirmSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!selectedReview || !user) return;
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
@@ -255,7 +255,7 @@ export default function StudentReviewsPage() {
         title={`Log Weekly Progress: Review #${selectedReview?.reviewNumber}`}
         variant="information"
         confirmLabel={isSubmitting ? 'Submitting...' : 'Submit Progress'}
-        onConfirm={() => handleConfirmSubmit({ preventDefault: () => {} } as any)}
+        onConfirm={() => handleConfirmSubmit()}
         cancelLabel="Cancel"
       >
         <div className="space-y-3 text-xs">

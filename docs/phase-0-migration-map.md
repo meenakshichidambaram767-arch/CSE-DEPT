@@ -27,6 +27,7 @@ Verification commands:
 ```bash
 npm run typecheck
 npm run lint
+npm run build
 npm run test:student-import
 npm run student-import -- data/student-import.template.csv --dry-run
 npm run student-import -- data/student-import.template.csv --dry-run --existing data/student-import.template.csv

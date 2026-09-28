@@ -11,7 +11,6 @@ import {
   Inbox,
   Calendar as CalendarIcon,
   Sparkles,
-  Users,
   FileSpreadsheet,
   PlusCircle,
   X,

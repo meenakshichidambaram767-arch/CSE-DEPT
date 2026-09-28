@@ -12,7 +12,6 @@ import {
   Inbox,
   Calendar as CalendarIcon,
   Sparkles,
-  Users,
   FileSpreadsheet,
   PlusCircle,
 } from 'lucide-react';
@@ -34,13 +33,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
   const pathname = usePathname();
   const { user } = useSession();
 
-  let pendingODCount = 0;
-  try {
-    const { getPendingODSubmissions } = useData();
-    pendingODCount = getPendingODSubmissions().length;
-  } catch (e) {
-    // Fallback if rendered outside DataProvider
-  }
+  const { getPendingODSubmissions } = useData();
+  const pendingODCount = getPendingODSubmissions().length;
 
   // Student Navigation
   const studentNav: NavItem[] = [
