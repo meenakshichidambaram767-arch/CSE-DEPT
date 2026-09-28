@@ -3,6 +3,8 @@
  * Student Hackathon, Project & Internship Tracking Platform
  */
 
+export * from './student';
+
 export type UserRole = 'STUDENT' | 'HOD';
 
 export type ActivityType = 'PROJECT' | 'INTERNSHIP' | 'HACKATHON';
