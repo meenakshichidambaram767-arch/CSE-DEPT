@@ -1,30 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
-import { DatePicker, TimePicker } from '@/components/ui/DatePicker';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
+import { odApi, ApiError } from '@/lib/api/odApi';
+import { ODApplication, DocumentItem } from '@/types';
 import {
   FileCheck,
-  Sparkles,
   ArrowLeft,
   Send,
   Info,
   Calendar,
   Clock,
   MapPin,
-  CheckCircle2,
+  AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 
-export default function NewODRequestPage() {
+function NewODRequestForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activities, addODApplication } = useData();
@@ -34,20 +36,45 @@ export default function NewODRequestPage() {
   const preselectedActivityId = searchParams.get('activityId') || '';
 
   const [selectedActivityId, setSelectedActivityId] = useState(preselectedActivityId);
-  const [reason, setReason] = useState('');
-  const [eventName, setEventName] = useState('');
-  const [date, setDate] = useState('2026-09-25');
+  const [reason, setReason] = useState(() => {
+    if (preselectedActivityId) {
+      const act = activities.find((a) => a.id === preselectedActivityId);
+      if (act) return `Classroom camera setup, benchmark testing, and HOD progress presentation for ${act.title}.`;
+    }
+    return '';
+  });
+  const [eventName, setEventName] = useState(() => {
+    if (preselectedActivityId) {
+      const act = activities.find((a) => a.id === preselectedActivityId);
+      if (act) return act.title;
+    }
+    return '';
+  });
+  const [date, setDate] = useState(() => {
+    if (preselectedActivityId) {
+      const act = activities.find((a) => a.id === preselectedActivityId);
+      if (act) return act.startDate;
+    }
+    return '2026-09-25';
+  });
   const [fromTime, setFromTime] = useState('01:30 PM');
   const [toTime, setToTime] = useState('05:00 PM');
-  const [venue, setVenue] = useState('CSE Lab 2 / Tech Center');
+  const [venue, setVenue] = useState(() => {
+    if (preselectedActivityId) {
+      const act = activities.find((a) => a.id === preselectedActivityId);
+      if (act) return act.type === 'HACKATHON' ? act.organization || 'External Venue' : 'CSE Lab 2 (AI Center)';
+    }
+    return 'CSE Lab 2 / Tech Center';
+  });
   const [proofDocName, setProofDocName] = useState('OD_Permission_Slip.pdf');
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Auto-populate when an approved activity is selected (Section 8)
-  useEffect(() => {
-    if (selectedActivityId) {
-      const act = activities.find((a) => a.id === selectedActivityId);
+  const handleActivityChange = (actId: string) => {
+    setSelectedActivityId(actId);
+    if (actId) {
+      const act = activities.find((a) => a.id === actId);
       if (act) {
         setEventName(act.title);
         setDate(act.startDate);
@@ -55,13 +82,13 @@ export default function NewODRequestPage() {
         setVenue(act.type === 'HACKATHON' ? act.organization || 'External Venue' : 'CSE Lab 2 (AI Center)');
       }
     }
-  }, [selectedActivityId, activities]);
+  };
 
   const approvedActivities = activities.filter(
     (a) => a.status === 'ACTIVE' || a.status === 'APPROVED' || a.status === 'SUBMITTED'
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!eventName.trim() || !reason.trim() || !date) {
@@ -69,225 +96,268 @@ export default function NewODRequestPage() {
       return;
     }
 
-    if (!user) return;
+    if (!user) {
+      showToast('Authenticated student session required.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
+    setErrorMessage(null);
 
-    setTimeout(() => {
-      const act = activities.find((a) => a.id === selectedActivityId);
+    const act = activities.find((a) => a.id === selectedActivityId);
 
-      addODApplication({
-        studentId: user.id,
-        studentName: user.name,
-        studentRegNo: user.registerNumber,
-        department: user.department,
-        year: user.year,
-        activityId: selectedActivityId || undefined,
-        activityTitle: act?.title || eventName,
-        activityType: act?.type || 'PROJECT',
-        reason,
-        eventName,
-        date,
-        fromTime,
-        toTime,
-        venue,
-        proofDocName,
-        additionalNotes: additionalNotes || undefined,
-      });
+    const payload: Partial<ODApplication> = {
+      activityId: selectedActivityId || undefined,
+      activityTitle: act?.title || eventName,
+      activityType: act?.type || 'PROJECT',
+      reason,
+      eventName,
+      date,
+      fromTime,
+      toTime,
+      venue,
+      proofDocName,
+      additionalNotes: additionalNotes || undefined,
+      status: 'PENDING',
+    };
 
-      setIsSubmitting(false);
-      showToast('On-Duty (OD) Application Submitted!', 'Sent to HOD for clearance.', 'success');
-      router.push('/student/od-requests');
-    }, 500);
+    try {
+      await odApi.createODRequest(payload);
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE') {
+          addODApplication({
+            ...payload,
+            studentId: user.id,
+            studentName: user.name,
+            studentRegNo: user.registerNumber || '',
+            department: user.department,
+            year: user.year || '',
+            status: 'PENDING',
+          });
+        } else {
+          setErrorMessage(err.message);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    }
+
+    setIsSubmitting(false);
+    showToast('On-Duty (OD) Application Submitted!', 'Status set to PENDING for HOD clearance.', 'success');
+    router.push('/student/od-requests');
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between">
         <Button
           variant="outline"
           size="sm"
           onClick={() => router.push('/student/od-requests')}
-          leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+          className="gap-1.5 text-xs text-slate-600 hover:text-emerald-950 hover:bg-emerald-50 border-slate-200"
         >
-          Back
+          <ArrowLeft className="w-3.5 h-3.5 text-emerald-700" />
+          <span>Back to OD Applications</span>
         </Button>
-        <span className="text-xs text-slate-400">Back to On-Duty Records</span>
+
+        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200 shadow-2xs">
+          SIET CSE · OD Permit Gateway
+        </span>
       </div>
 
       <PageHeader
-        title="Apply for On-Duty (OD)"
-        description="Request academic attendance concession for approved capstone lab milestones, hackathons, or competitions."
+        title="Apply for On-Duty (OD) Clearance"
+        description="Submit timetable attendance concession for approved hackathons, industrial visits, or capstone presentation milestones."
         breadcrumbs={[
-          { label: 'Dashboard', href: '/student/dashboard' },
-          { label: 'OD Requests', href: '/student/od-requests' },
+          { label: 'OD Portal', href: '/student/od-requests' },
           { label: 'New Application', current: true },
         ]}
         badge={
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 inline-flex items-center gap-1.5 shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Independent OD Permission</span>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 inline-flex items-center gap-1.5 shadow-2xs">
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            HOD Signoff Required
           </span>
         }
       />
 
-      {/* Auto-population hint callout (Section 8) */}
-      <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 flex items-start gap-3 text-xs text-indigo-900">
-        <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-        <p className="leading-relaxed">
-          <strong>Smart Auto-Population:</strong> Select an approved activity below to automatically fill in known project details, dates, and venue. You only need to enter OD-specific times and reasons!
-        </p>
-      </div>
+      {errorMessage && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        
-        {/* Step 1: Link to Project or Standalone */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-          <div className="pb-2 border-b border-slate-100">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-              1. Related Activity (Optional Auto-Fill)
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-5">
+            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <FileCheck className="w-4 h-4 text-emerald-800" />
+              1. Event &amp; Purpose Particulars
             </h3>
-            <p className="text-xs text-slate-500">
-              Connect this OD request to an existing project/hackathon or enter a standalone event.
-            </p>
+
+            {approvedActivities.length > 0 && (
+              <Select
+                label="Link Approved Activity (Optional)"
+                options={[
+                  { value: '', label: '-- None (Standalone OD Request) --' },
+                  ...approvedActivities.map((a) => ({
+                    value: a.id,
+                    label: `[${a.type}] ${a.title}`,
+                  })),
+                ]}
+                value={selectedActivityId}
+                onChange={(e) => handleActivityChange(e.target.value)}
+              />
+            )}
+
+            <Input
+              label="Event / Purpose Title"
+              placeholder="e.g. SIET Autonomous AI Hackathon 2026 / Project Defense"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              isRequired
+            />
+
+            <Textarea
+              label="Academic Justification & Objective"
+              placeholder="Detail the academic relevance, period breakdown, and expected outcome for this attendance clearance..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              isRequired
+            />
           </div>
 
-          <Select
-            label="Connect to Approved Activity"
-            options={[
-              { value: '', label: '— Standalone OD Application (Manual Entry) —' },
-              ...approvedActivities.map((a) => ({
-                value: a.id,
-                label: `${a.id} — ${a.title} (${a.type})`,
-              })),
-            ]}
-            value={selectedActivityId}
-            onChange={(e) => setSelectedActivityId(e.target.value)}
-          />
+          <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-5">
+            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-800" />
+              2. Timetable Slot &amp; Venue
+            </h3>
 
-          {selectedActivityId && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                Auto-populated project details for <strong>{activities.find((a) => a.id === selectedActivityId)?.title}</strong>.
-              </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <DatePicker
+                label="OD Date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                isRequired
+              />
+
+              <Input
+                label="Venue / Location"
+                placeholder="e.g. CSE Lab 2 / Tech Center"
+                value={venue}
+                onChange={(e) => setVenue(e.target.value)}
+                isRequired
+              />
             </div>
-          )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="From Time"
+                value={fromTime}
+                onChange={(e) => setFromTime(e.target.value)}
+                placeholder="e.g. 01:30 PM"
+              />
+
+              <Input
+                label="To Time"
+                value={toTime}
+                onChange={(e) => setToTime(e.target.value)}
+                placeholder="e.g. 05:00 PM"
+              />
+            </div>
+          </div>
+
+          <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-800" />
+              3. Proof Document Attachment
+            </h3>
+
+            <FileUpload
+              label="Invitation / Event Brochure / Registration Copy"
+              accept=".pdf,.png,.jpg,.jpeg"
+              maxSizeMB={5}
+              onFilesChange={(docs: DocumentItem[]) => {
+                if (docs[0]) setProofDocName(docs[0].name);
+              }}
+            />
+            {proofDocName && (
+              <p className="text-xs text-emerald-800 font-medium">Selected file: {proofDocName}</p>
+            )}
+
+            <Textarea
+              label="Additional Notes for HOD (Optional)"
+              placeholder="Any supplementary remarks or period substitution notes..."
+              value={additionalNotes}
+              onChange={(e) => setAdditionalNotes(e.target.value)}
+              rows={2}
+            />
+          </div>
         </div>
 
-        {/* Step 2: OD Specific Information */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-          <div className="pb-2 border-b border-slate-100">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-              2. On-Duty Event &amp; Timing
-            </h3>
-            <p className="text-xs text-slate-500">
-              Specify the exact date, slot, and reason for academic attendance concession.
-            </p>
-          </div>
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-emerald-950 text-white space-y-4 shadow-md border border-emerald-900">
+            <div className="flex items-center gap-2 border-b border-emerald-800/80 pb-3">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold tracking-tight">Applicant Verification</h3>
+            </div>
 
-          <Input
-            label="Event / Activity Name"
-            placeholder="e.g. AI Exam Monitoring Milestone Lab Session"
-            value={eventName}
-            onChange={(e) => setEventName(e.target.value)}
-            isRequired
-          />
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between items-baseline py-1 border-b border-emerald-900">
+                <span className="text-emerald-300">Lead Student</span>
+                <span className="font-bold text-white">{user?.name || 'Student'}</span>
+              </div>
 
-          <Textarea
-            label="Reason for OD Application"
-            placeholder="Describe the academic objective, lab calibration, or competition session requiring on-duty leave..."
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-            isRequired
-          />
+              <div className="flex justify-between items-baseline py-1 border-b border-emerald-900">
+                <span className="text-emerald-300">Roll Number</span>
+                <span className="font-mono text-amber-400 font-bold">{user?.registerNumber || '—'}</span>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <DatePicker
-              label="Date of Event"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              isRequired
-            />
+              <div className="flex justify-between items-baseline py-1 border-b border-emerald-900">
+                <span className="text-emerald-300">Department</span>
+                <span className="font-semibold text-white">{user?.department || 'CSE'}</span>
+              </div>
 
-            <Input
-              label="From Time"
-              placeholder="e.g. 01:30 PM"
-              value={fromTime}
-              onChange={(e) => setFromTime(e.target.value)}
-              isRequired
-            />
-
-            <Input
-              label="To Time"
-              placeholder="e.g. 05:00 PM"
-              value={toTime}
-              onChange={(e) => setToTime(e.target.value)}
-              isRequired
-            />
-          </div>
-
-          <Input
-            label="Venue / Lab Location"
-            placeholder="e.g. CSE Lab 2 / Seminar Hall 3 / External Campus"
-            value={venue}
-            onChange={(e) => setVenue(e.target.value)}
-            isRequired
-          />
-        </div>
-
-        {/* Step 3: Supporting Document */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-          <div className="pb-2 border-b border-slate-100">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-              3. Supporting Document / Proof
-            </h3>
-            <p className="text-xs text-slate-500">
-              Upload event invitation, lab permission slip, or entry receipt.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/40 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileCheck className="w-5 h-5 text-indigo-700" />
-              <div>
-                <strong className="text-xs text-slate-900 block">{proofDocName}</strong>
-                <span className="text-[11px] text-indigo-700">Ready for HOD verification • PDF</span>
+              <div className="flex justify-between items-baseline py-1">
+                <span className="text-emerald-300">Academic Scope</span>
+                <span className="font-semibold text-emerald-200">Year {user?.year || 'II'} · Sec {user?.section || 'A'}</span>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-200 text-indigo-900">
-              Attached
-            </span>
+
+            <div className="p-3.5 rounded-xl bg-emerald-900/80 border border-emerald-800 text-[11px] text-emerald-200 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                <Info className="w-3.5 h-3.5 shrink-0" />
+                <span>Status Notice</span>
+              </div>
+              <p className="leading-normal">
+                Submitted applications enter state <strong className="text-white">PENDING</strong>. HOD signoff will update state to <strong className="text-emerald-400">APPROVED</strong> or <strong className="text-amber-300">REVISION_REQUESTED</strong>.
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              variant="secondary"
+              className="w-full justify-center bg-amber-400 text-emerald-950 font-bold hover:bg-amber-300 text-xs py-2.5"
+              disabled={isSubmitting}
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>{isSubmitting ? 'Submitting OD Application...' : 'Submit to HOD Portal'}</span>
+            </Button>
           </div>
-
-          <Textarea
-            label="Additional Notes (Optional)"
-            placeholder="Any additional remarks or team member register numbers included in this request..."
-            value={additionalNotes}
-            onChange={(e) => setAdditionalNotes(e.target.value)}
-            rows={2}
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/student/od-requests')}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={isSubmitting}
-            rightIcon={<Send className="w-4 h-4" />}
-          >
-            Submit OD Request
-          </Button>
         </div>
       </form>
     </div>
+  );
+}
+
+export default function NewODRequestPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-12 text-center text-xs text-[#0a5c36]">Loading form...</div>
+    }>
+      <NewODRequestForm />
+    </Suspense>
   );
 }
