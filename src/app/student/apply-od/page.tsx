@@ -127,6 +127,7 @@ export default function ApplyODPage() {
       role: companyRole,
       reason: reason || `Attending approved ${purpose.toLowerCase()} event representing SIET.`,
       proofDocName: docName,
+      documents: attachedDocs,
     };
 
     try {
