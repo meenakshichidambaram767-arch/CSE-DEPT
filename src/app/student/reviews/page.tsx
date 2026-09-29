@@ -28,9 +28,11 @@ export default function StudentReviewsPage() {
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('ALL');
+  const [apiReviews, setApiReviews] = useState<any[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(true);
 
   // Submit progress state
-  const [selectedReview, setSelectedReview] = useState<ReviewSession | null>(null);
+  const [selectedReview, setSelectedReview] = useState<any | null>(null);
   const [completedThisWeek, setCompletedThisWeek] = useState('');
   const [currentlyWorkingOn, setCurrentlyWorkingOn] = useState('');
   const [nextWeekGoal, setNextWeekGoal] = useState('');
@@ -39,16 +41,72 @@ export default function StudentReviewsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // View progress state
-  const [viewingProgress, setViewingProgress] = useState<ReviewSession | null>(null);
+  const [viewingProgress, setViewingProgress] = useState<any | null>(null);
 
-  const filteredReviews = reviews.filter((r) => {
+  // QR Check-in State
+  const [checkInReview, setCheckInReview] = useState<any | null>(null);
+  const [qrTokenInput, setQrTokenInput] = useState('');
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+
+  const fetchStudentReviews = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/reviews/sessions');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.data) {
+          setApiReviews(body.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching student review sessions API:', err);
+    } finally {
+      setIsLoadingApi(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchStudentReviews();
+  }, [fetchStudentReviews]);
+
+  const combinedReviews = React.useMemo(() => {
+    if (apiReviews.length === 0) return reviews;
+    const apiMapped = apiReviews.map((ar) => ({
+      id: ar.id,
+      code: ar.code,
+      reviewNumber: ar.reviewNumber,
+      reviewType: ar.reviewType,
+      activityId: ar.activityId,
+      activityTitle: ar.activityTitle,
+      activityType: ar.activityType,
+      date: ar.date,
+      time: ar.time,
+      venue: ar.venue,
+      status: ar.status,
+      meetingNotes: ar.meetingNotes,
+      nextWeekGoal: ar.nextWeekGoal,
+      studentTeam: [],
+      attendance: ar.attendance || [],
+      progress: ar.progressReports && ar.progressReports.length > 0 ? {
+        completedThisWeek: ar.progressReports[0].completedWork,
+        currentlyWorkingOn: ar.progressReports[0].currentWork,
+        nextWeekGoal: ar.progressReports[0].nextSteps,
+        blockers: ar.progressReports[0].blockers,
+        githubUrl: ar.progressReports[0].githubUrl,
+      } : undefined,
+    }));
+    const apiIds = new Set(apiMapped.map((r) => r.id));
+    const localOnly = reviews.filter((r) => !apiIds.has(r.id));
+    return [...apiMapped, ...localOnly];
+  }, [apiReviews, reviews]);
+
+  const filteredReviews = combinedReviews.filter((r) => {
     if (activeTab === 'SCHEDULED') return r.status === 'SCHEDULED';
     if (activeTab === 'COMPLETED') return r.status === 'COMPLETED';
     if (activeTab === 'WITH_PROGRESS') return !!r.progress;
     return true;
   });
 
-  const handleOpenSubmit = (rev: ReviewSession) => {
+  const handleOpenSubmit = (rev: any) => {
     setSelectedReview(rev);
     if (rev.progress) {
       setCompletedThisWeek(rev.progress.completedThisWeek);
@@ -65,9 +123,9 @@ export default function StudentReviewsPage() {
     }
   };
 
-  const handleConfirmSubmit = (e?: React.FormEvent) => {
+  const handleConfirmSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!selectedReview || !user) return;
+    if (!selectedReview) return;
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
       showToast('Please complete all 3 progress fields.', 'warning');
@@ -75,29 +133,75 @@ export default function StudentReviewsPage() {
     }
 
     setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/v1/reviews/sessions/${selectedReview.id}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          completed_this_week: completedThisWeek,
+          currently_working_on: currentlyWorkingOn,
+          next_week_goal: nextWeekGoal,
+          blockers: blockers.trim() || 'None',
+          github_url: githubUrl.trim() || null,
+        }),
+      });
 
-    setTimeout(() => {
+      if (res.ok) {
+        fetchStudentReviews();
+      }
       submitWeeklyProgress(selectedReview.id, {
-        studentId: user.id,
-        studentName: user.name,
+        studentId: user?.id || 'usr-1',
+        studentName: user?.name || 'Student',
         completedThisWeek,
         currentlyWorkingOn,
         nextWeekGoal,
         blockers: blockers.trim() || 'None',
         githubUrl: githubUrl.trim() || undefined,
       });
-
+      showToast('Weekly Progress Logged!', 'Meeting progress updated.', 'success');
+    } catch (err) {
+      console.error('Error submitting progress API:', err);
+    } finally {
       setIsSubmitting(false);
       setSelectedReview(null);
-      showToast('Weekly Progress Logged!', 'Meeting progress updated.', 'success');
-    }, 400);
+    }
+  };
+
+  const handleConfirmQrCheckIn = async () => {
+    if (!checkInReview || !qrTokenInput.trim()) {
+      showToast('Please enter or scan a valid QR token.', 'warning');
+      return;
+    }
+    setIsCheckingIn(true);
+    try {
+      const res = await fetch(`/api/v1/reviews/sessions/${checkInReview.id}/check-in`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qr_token: qrTokenInput.trim() }),
+      });
+
+      if (res.ok) {
+        showToast('Check-in Verified!', 'Attendance recorded for review session.', 'success');
+        fetchStudentReviews();
+        setCheckInReview(null);
+        setQrTokenInput('');
+      } else {
+        const err = await res.json();
+        showToast('Check-in Failed', err.error?.message || 'Invalid or expired QR token.', 'error');
+      }
+    } catch (err) {
+      console.error('Error during QR check-in:', err);
+      showToast('Check-in Error', 'Failed to submit check-in.', 'error');
+    } finally {
+      setIsCheckingIn(false);
+    }
   };
 
   const tabItems = [
-    { id: 'ALL', label: `All (${reviews.length})` },
-    { id: 'SCHEDULED', label: `Upcoming (${reviews.filter((r) => r.status === 'SCHEDULED').length})` },
-    { id: 'WITH_PROGRESS', label: `Progress Logged (${reviews.filter((r) => !!r.progress).length})` },
-    { id: 'COMPLETED', label: `Completed (${reviews.filter((r) => r.status === 'COMPLETED').length})` },
+    { id: 'ALL', label: `All (${combinedReviews.length})` },
+    { id: 'SCHEDULED', label: `Upcoming (${combinedReviews.filter((r) => r.status === 'SCHEDULED').length})` },
+    { id: 'WITH_PROGRESS', label: `Progress Logged (${combinedReviews.filter((r) => !!r.progress).length})` },
+    { id: 'COMPLETED', label: `Completed (${combinedReviews.filter((r) => r.status === 'COMPLETED').length})` },
   ];
 
   return (
@@ -135,7 +239,7 @@ export default function StudentReviewsPage() {
           {filteredReviews.map((rev) => {
             const hasProgress = !!rev.progress;
             const myAttendance = rev.attendance.find(
-              (a) => a.studentId === user?.id
+              (a: any) => a.studentId === user?.id || a.student_id === user?.id
             );
 
             return (
@@ -233,14 +337,25 @@ export default function StudentReviewsPage() {
                     </span>
                   )}
 
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => handleOpenSubmit(rev)}
-                    className="bg-purple-700 hover:bg-purple-800 text-xs font-bold"
-                  >
-                    {hasProgress ? 'Update Progress' : 'Submit Progress'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCheckInReview(rev)}
+                      className="text-xs font-semibold border-purple-300 text-purple-700 hover:bg-purple-50"
+                    >
+                      QR Check-in
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleOpenSubmit(rev)}
+                      className="bg-purple-700 hover:bg-purple-800 text-xs font-bold"
+                    >
+                      {hasProgress ? 'Update Progress' : 'Submit Progress'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -335,6 +450,30 @@ export default function StudentReviewsPage() {
             </div>
           </div>
         )}
+      </Dialog>
+
+      {/* QR Check-in Modal */}
+      <Dialog
+        isOpen={!!checkInReview}
+        onClose={() => setCheckInReview(null)}
+        title={`QR Attendance Check-in: ${checkInReview?.code || `Review #${checkInReview?.reviewNumber}`}`}
+        variant="information"
+        confirmLabel={isCheckingIn ? 'Verifying...' : 'Submit Check-in'}
+        onConfirm={handleConfirmQrCheckIn}
+        cancelLabel="Cancel"
+      >
+        <div className="space-y-3 text-xs">
+          <p className="text-slate-600">
+            Enter or scan the 32-character dynamic QR token displayed by the HOD for laboratory attendance:
+          </p>
+          <Input
+            label="Dynamic QR Token"
+            placeholder="e.g. 7f8a9b0c1d2e3f4a..."
+            value={qrTokenInput}
+            onChange={(e) => setQrTokenInput(e.target.value)}
+            isRequired
+          />
+        </div>
       </Dialog>
     </div>
   );
