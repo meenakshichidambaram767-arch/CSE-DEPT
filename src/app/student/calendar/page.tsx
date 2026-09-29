@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/eventsApi';
 import { odApi, ApiError } from '@/lib/api/odApi';
@@ -24,16 +24,13 @@ export default function StudentCalendarPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
 
-  const fetchCalendarData = useCallback(async (showRefreshing = false) => {
-    if (showRefreshing) setIsRefreshing(true);
-    else setIsLoading(true);
-
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
     setErrorMsg(null);
     setBackendNotice(null);
 
     let hasBackend404 = false;
 
-    // Fetch Events
     try {
       const eventsRes = await eventsApi.getEvents();
       if (eventsRes.data) {
@@ -48,7 +45,6 @@ export default function StudentCalendarPage() {
       }
     }
 
-    // Fetch Approved Student ODs
     try {
       const odsRes = await odApi.getODRequests({ status: 'APPROVED' });
       if (odsRes.data) {
@@ -65,13 +61,50 @@ export default function StudentCalendarPage() {
       setBackendNotice('Backend endpoint returned 404. Displaying cached schedule and duty leave timeline.');
     }
 
-    setIsLoading(false);
     setIsRefreshing(false);
-  }, []);
+  };
 
   useEffect(() => {
-    fetchCalendarData();
-  }, [fetchCalendarData]);
+    let isMounted = true;
+
+    Promise.all([
+      eventsApi.getEvents().catch((err) => {
+        if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+          return { data: eventsApi.getFallbackEvents(), is404: true };
+        }
+        throw err;
+      }),
+      odApi.getODRequests({ status: 'APPROVED' }).catch((err) => {
+        if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+          return { data: odApi.getFallbackODs().filter((od) => od.status === 'APPROVED'), is404: true };
+        }
+        throw err;
+      }),
+    ])
+      .then(([eventsResult, odsResult]) => {
+        if (isMounted) {
+          if (eventsResult?.data) setEvents(eventsResult.data);
+          if (odsResult?.data) setApprovedODs(odsResult.data);
+          if ((eventsResult as any)?.is404 || (odsResult as any)?.is404) {
+            setBackendNotice('Backend endpoint returned 404. Displaying cached schedule and duty leave timeline.');
+          }
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load calendar schedule.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto py-2">
@@ -92,7 +125,7 @@ export default function StudentCalendarPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => fetchCalendarData(true)}
+            onClick={handleManualRefresh}
             disabled={isRefreshing || isLoading}
             className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-[#dfe6dc] hover:bg-[#f2f9f1] text-[#172017] font-semibold text-xs rounded-md shadow-2xs transition-colors disabled:opacity-50"
             title="Refresh schedule"
@@ -132,7 +165,7 @@ export default function StudentCalendarPage() {
           </div>
           <button
             type="button"
-            onClick={() => fetchCalendarData()}
+            onClick={handleManualRefresh}
             className="px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold rounded"
           >
             Retry

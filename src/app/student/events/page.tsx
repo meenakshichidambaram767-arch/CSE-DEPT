@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/eventsApi';
 import { ApiError } from '@/lib/api/odApi';
@@ -91,10 +91,8 @@ export default function StudentEventsPage() {
 
   const carouselRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const fetchEvents = useCallback(async (showRefreshing = false) => {
-    if (showRefreshing) setIsRefreshing(true);
-    else setIsLoading(true);
-
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
     setErrorMsg(null);
     setBackendNotice(null);
 
@@ -115,14 +113,40 @@ export default function StudentEventsPage() {
         setErrorMsg('Failed to load department events.');
       }
     } finally {
-      setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    let isMounted = true;
+
+    eventsApi
+      .getEvents()
+      .then((res) => {
+        if (isMounted && res.data) {
+          setEvents(res.data);
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setBackendNotice('Backend endpoint GET /api/v1/events returned 404. Displaying cached fallback event dataset.');
+            setEvents(eventsApi.getFallbackEvents());
+          } else {
+            setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load department events.');
+          }
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const scrollCarousel = (catKey: string, direction: 'left' | 'right') => {
     const el = carouselRefs.current[catKey];
@@ -166,7 +190,7 @@ export default function StudentEventsPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => fetchEvents(true)}
+            onClick={handleManualRefresh}
             disabled={isRefreshing || isLoading}
             className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-[#dfe6dc] hover:bg-[#f2f9f1] text-[#172017] font-semibold text-xs rounded-md shadow-2xs transition-colors disabled:opacity-50"
             title="Refresh events from server"
@@ -207,7 +231,7 @@ export default function StudentEventsPage() {
           </div>
           <button
             type="button"
-            onClick={() => fetchEvents()}
+            onClick={handleManualRefresh}
             className="px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold rounded"
           >
             Retry
