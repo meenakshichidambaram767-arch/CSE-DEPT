@@ -38,26 +38,51 @@ export default function HodReviewsPage() {
   } = useData();
   const { showToast } = useToast();
 
+  const [apiReviews, setApiReviews] = useState<any[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
 
-  // Scheduler Modal
+  // Scheduler State
   const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState(
-    projects.find((p) => p.status === 'ACTIVE' || p.status === 'APPROVED')?.id || projects[0]?.id || ''
-  );
-  const [reviewDay, setReviewDay] = useState('Friday');
-  const [reviewTime, setReviewTime] = useState('2:00 PM');
-  const [startDate, setStartDate] = useState('2026-09-25');
-  const [venue, setVenue] = useState('CSE Lab 2');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [reviewDay, setReviewDay] = useState('Monday');
+  const [reviewTime, setReviewTime] = useState('14:30:00');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [numberOfReviews, setNumberOfReviews] = useState('8');
+  const [venue, setVenue] = useState('CSE Lab 2 (AI Center)');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Conduct Review Modal
-  const [meetingReview, setMeetingReview] = useState<ReviewSession | null>(null);
-  const [attendanceState, setAttendanceState] = useState<AttendanceItem[]>([]);
+  // Meeting & Notes State
+  const [meetingReview, setMeetingReview] = useState<any | null>(null);
+  const [attendanceState, setAttendanceState] = useState<any[]>([]);
   const [meetingNotes, setMeetingNotes] = useState('');
   const [nextWeekDirective, setNextWeekDirective] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  // QR Token State
+  const [qrData, setQrData] = useState<{ token: string; expiresAt: string } | null>(null);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+
+  // Fetch review sessions from API
+  const fetchReviewSessions = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/reviews/sessions');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.data) {
+          setApiReviews(body.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching review sessions API:', err);
+    } finally {
+      setIsLoadingApi(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchReviewSessions();
+  }, [fetchReviewSessions]);
 
   // Broadcast Modal
   const [isReminderOpen, setIsReminderOpen] = useState(false);
@@ -67,15 +92,15 @@ export default function HodReviewsPage() {
   );
 
   const approvedProjects = activities.filter(
-    (a) => a.type === 'PROJECT' && (a.status === 'ACTIVE' || a.status === 'APPROVED')
+    (a) => (a.type === 'PROJECT' || a.type === 'HACKATHON' || a.type === 'INTERNSHIP') && (a.status === 'ACTIVE' || a.status === 'APPROVED')
   );
 
-  const handleOpenMeeting = (rev: ReviewSession) => {
+  const handleOpenMeeting = (rev: any) => {
     setMeetingReview(rev);
     setAttendanceState(
-      rev.attendance.length > 0
+      rev.attendance && rev.attendance.length > 0
         ? rev.attendance
-        : rev.studentTeam.map((m, idx) => ({
+        : (rev.studentTeam || []).map((m: any, idx: number) => ({
             studentId: `usr-team-${idx + 1}`,
             name: m.name,
             regNo: m.regNo,
@@ -84,11 +109,12 @@ export default function HodReviewsPage() {
     );
     setMeetingNotes(rev.meetingNotes || 'Progress verified.');
     setNextWeekDirective(rev.nextWeekGoal || 'Continue milestone deliverables.');
+    setQrData(rev.qrToken ? { token: rev.qrToken, expiresAt: rev.qrExpiresAt } : null);
   };
 
   const toggleAttendance = (studentId: string) => {
-    setAttendanceState((prev) =>
-      prev.map((a) =>
+    setAttendanceState((prev: any[]) =>
+      prev.map((a: any) =>
         a.studentId === studentId || a.name === studentId
           ? { ...a, attended: !a.attended }
           : a
@@ -96,39 +122,100 @@ export default function HodReviewsPage() {
     );
   };
 
-  const handleSaveMeetingSession = () => {
+  const handleSaveMeetingSession = async () => {
     if (!meetingReview) return;
     setIsSavingNotes(true);
-    setTimeout(() => {
+    try {
+      // API call to finalize
+      const res = await fetch(`/api/v1/reviews/sessions/${meetingReview.id}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          meeting_notes: meetingNotes,
+          next_week_goal: nextWeekDirective,
+        }),
+      });
+
+      if (res.ok) {
+        fetchReviewSessions();
+      }
       recordReviewAttendance(meetingReview.id, attendanceState);
       saveMeetingNotes(meetingReview.id, meetingNotes, nextWeekDirective);
+      showToast(`Review ${meetingReview.code || `#${meetingReview.reviewNumber}`} Saved`, 'Records updated & notification sent.', 'success');
+    } catch (err) {
+      console.error('Error saving review session:', err);
+      showToast('Error saving review notes', 'error');
+    } finally {
       setIsSavingNotes(false);
       setMeetingReview(null);
-      showToast(`Review #${meetingReview.reviewNumber} Saved`, 'Records updated.', 'success');
-    }, 400);
+    }
   };
 
-  const handleConfirmRecurringSchedule = (e: React.FormEvent) => {
+  const handleGenerateQr = async (sessionId: string) => {
+    setIsGeneratingQr(true);
+    try {
+      const res = await fetch(`/api/v1/reviews/sessions/${sessionId}/generate-qr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        const body = await res.json();
+        setQrData({ token: body.data.qrToken, expiresAt: body.data.qrExpiresAt });
+        showToast('Dynamic QR Token Generated!', 'Valid for 15 minutes.', 'success');
+        fetchReviewSessions();
+      } else {
+        const err = await res.json();
+        showToast('QR Error', err.error?.message || 'Failed to generate QR', 'error');
+      }
+    } catch (err) {
+      console.error('Error generating QR code:', err);
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  const handleConfirmRecurringSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProjectId) {
-      showToast('Select an active project.', 'warning');
+      showToast('Select an active project or activity.', 'warning');
       return;
     }
     setIsGenerating(true);
-    setTimeout(() => {
-      const count = parseInt(numberOfReviews, 10) || 8;
-      scheduleRecurringReviews({
-        projectId: selectedProjectId,
-        dayOfWeek: reviewDay,
-        time: reviewTime,
-        startDate,
-        venue,
-        count,
+    try {
+      const res = await fetch('/api/v1/reviews/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: selectedProjectId,
+          venue,
+          time: reviewTime,
+        }),
       });
+
+      if (res.ok) {
+        const body = await res.json();
+        showToast(`Scheduled ${body.data?.sessionCount || 8} Reviews!`, `Activity ${body.data?.activityCode} scheduled.`, 'success');
+        fetchReviewSessions();
+      } else {
+        const err = await res.json();
+        // Fallback local scheduling if duplicate or demo mode
+        const count = parseInt(numberOfReviews, 10) || 8;
+        scheduleRecurringReviews({
+          projectId: selectedProjectId,
+          dayOfWeek: reviewDay,
+          time: reviewTime,
+          startDate,
+          venue,
+          count,
+        });
+        showToast(err.error?.code === 'DUPLICATE_SCHEDULE' ? 'Notice' : 'Scheduled Locally', err.error?.message || `Every ${reviewDay} at ${reviewTime}.`, 'info');
+      }
+    } catch (err) {
+      console.error('Error scheduling reviews:', err);
+    } finally {
       setIsGenerating(false);
       setIsSchedulerOpen(false);
-      showToast(`Scheduled ${count} Reviews!`, `Every ${reviewDay} at ${reviewTime}.`, 'success');
-    }, 500);
+    }
   };
 
   const handleBroadcastReminder = () => {
