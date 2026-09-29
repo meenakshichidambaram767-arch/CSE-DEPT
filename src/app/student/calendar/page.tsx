@@ -85,7 +85,7 @@ export default function StudentCalendarPage() {
         if (isMounted) {
           if (eventsResult?.data) setEvents(eventsResult.data);
           if (odsResult?.data) setApprovedODs(odsResult.data);
-          if ((eventsResult as any)?.is404 || (odsResult as any)?.is404) {
+          if ((eventsResult as { is404?: boolean })?.is404 || (odsResult as { is404?: boolean })?.is404) {
             setBackendNotice('Backend endpoint returned 404. Displaying cached schedule and duty leave timeline.');
           }
         }
