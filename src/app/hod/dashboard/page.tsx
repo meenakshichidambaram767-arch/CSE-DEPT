@@ -7,13 +7,38 @@ import { ArrowRight, Calendar } from 'lucide-react';
 
 export default function HODDashboard() {
   const { odApplications, odEvents } = useData();
+  const [summaryData, setSummaryData] = React.useState<any>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = React.useState(true);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadSummary() {
+      try {
+        const res = await fetch('/api/v1/reports/summary');
+        if (res.ok) {
+          const body = await res.json();
+          if (isMounted && body.data) {
+            setSummaryData(body.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard summary API:', err);
+      } finally {
+        if (isMounted) setIsLoadingSummary(false);
+      }
+    }
+    loadSummary();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Pending requests
   const pendingRequests = odApplications.filter((r) => r.status === 'PENDING');
-  const pendingCount = pendingRequests.length;
+  const pendingCount = summaryData?.odRequests?.pending ?? pendingRequests.length;
   const topPending = pendingRequests.slice(0, 3);
 
-  // Top 2 upcoming events only (least overwhelming)
+  // Top 2 upcoming events only
   const topUpcoming = odEvents
     .filter((e) => e.status === 'UPCOMING' || e.status === 'ONGOING')
     .slice(0, 2);

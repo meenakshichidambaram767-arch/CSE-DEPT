@@ -89,32 +89,34 @@ export default function HodReportsPage() {
     return true;
   });
 
+  const [accreditationMetrics, setAccreditationMetrics] = useState<any>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadAccreditation() {
+      try {
+        const res = await fetch('/api/v1/reports/accreditation');
+        if (res.ok) {
+          const body = await res.json();
+          if (isMounted && body.data) {
+            setAccreditationMetrics(body.data.metrics);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching accreditation metrics API:', err);
+      }
+    }
+    loadAccreditation();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Export CSV Action
   const handleExportCSV = () => {
-    const headers = ['Record ID', 'Student Name', 'Reg No', 'Year', 'Category', 'Title', 'Guide', 'NAAC Criteria Code', 'Status', 'Date'];
-    const rows = filteredItems.map((i) => [
-      i.id,
-      `"${i.studentName}"`,
-      i.studentRegNo,
-      i.year,
-      i.category,
-      `"${i.title}"`,
-      `"${i.guideName}"`,
-      i.naacCode,
-      i.status,
-      i.date,
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `SIET_CSE_NAAC_Audit_Data_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    showToast('Audit Data Exported (CSV)', `${filteredItems.length} records exported successfully.`, 'success');
+    const exportUrl = `/api/v1/reports/export?type=accreditation&year=${yearFilter}`;
+    window.open(exportUrl, '_blank');
+    showToast('Audit Data Exporting', 'Downloading RFC 4180 CSV from server...', 'success');
   };
 
   const columns: Column<(typeof auditItems)[0]>[] = [
@@ -239,26 +241,26 @@ export default function HodReportsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard
           label="Criterion 1.3.2"
-          value={approvedProjects.length}
+          value={accreditationMetrics?.criteria_1_3_2?.count ?? approvedProjects.length}
           description="Approved Capstone Projects"
           icon={<FolderKanban className="w-5 h-5 text-emerald-600" />}
           variant="highlight"
         />
         <MetricCard
           label="Criterion 5.3.1"
-          value={approvedHackathons.length}
+          value={accreditationMetrics?.criteria_5_3_1?.count ?? approvedHackathons.length}
           description="National Hackathon Entries"
           icon={<Trophy className="w-5 h-5 text-amber-600" />}
         />
         <MetricCard
           label="Criterion 1.3.3"
-          value={approvedInternships.length}
+          value={accreditationMetrics?.criteria_1_3_3?.count ?? approvedInternships.length}
           description="Corporate Internship NOCs"
           icon={<BriefcaseBusiness className="w-5 h-5 text-indigo-600" />}
         />
         <MetricCard
           label="Criterion 5.3.3"
-          value={approvedODs.length}
+          value={accreditationMetrics?.total_approved_od_clearances ?? approvedODs.length}
           description="OD Attendance Clearances"
           icon={<FileCheck className="w-5 h-5 text-purple-600" />}
         />
