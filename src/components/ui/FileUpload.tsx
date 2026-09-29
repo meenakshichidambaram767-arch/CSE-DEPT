@@ -206,7 +206,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                {!file.id.startsWith('doc-') && (
+                {file.id.startsWith('doc-') ? (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                    Local Draft (Backend 404)
+                  </span>
+                ) : (
                   <button
                     type="button"
                     onClick={(e) => handlePreview(file.id, e)}
