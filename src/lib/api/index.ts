@@ -3,3 +3,5 @@ export * from './internshipsApi';
 export * from './hackathonsApi';
 export * from './reviewsApi';
 export * from './odApi';
+export * from './documentsApi';
+export * from './eventsApi';

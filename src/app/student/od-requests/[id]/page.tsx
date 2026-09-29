@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/context/SessionContext';
 import { odApi, ApiError } from '@/lib/api/odApi';
+import { documentsApi } from '@/lib/api/documentsApi';
 import { ODApplication, ODStatus } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import { Button } from '@/components/ui/Button';
@@ -22,6 +23,8 @@ import {
   CheckCircle2,
   XCircle,
   HelpCircle,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 
 export default function StudentODDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +37,21 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBackendBlocked, setIsBackendBlocked] = useState(false);
+  const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
+
+  const handleFetchSignedUrl = async (documentId: string) => {
+    setLoadingPreviewId(documentId);
+    try {
+      const res = await documentsApi.getSignedUrl(documentId);
+      if (res.signedUrl) {
+        window.open(res.signedUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      alert('Temporary 15-min signed URL endpoint unavailable or file access restricted.');
+    } finally {
+      setLoadingPreviewId(null);
+    }
+  };
 
   // Resubmit Form State (for REVISION_REQUESTED state)
   const [isResubmitting, setIsResubmitting] = useState(false);
@@ -282,14 +300,29 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
 
             {/* Proof Attachment */}
             {od.proofDocName && (
-              <div className="flex items-center justify-between p-3 bg-[#eaf7e8] border border-[#dfe6dc] rounded-lg text-xs">
-                <div className="flex items-center gap-2 text-[#0a5c36] font-medium">
-                  <FileText className="w-4 h-4" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-[#eaf7e8] border border-[#dfe6dc] rounded-lg text-xs">
+                <div className="flex items-center gap-2 text-[#0a5c36] font-semibold">
+                  <FileText className="w-4 h-4 text-[#0a5c36] shrink-0" />
                   <span>{od.proofDocName}</span>
                 </div>
-                <span className="text-[10px] font-bold bg-white text-[#0a5c36] px-2 py-0.5 rounded border border-[#dfe6dc]">
-                  Attached Document
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleFetchSignedUrl(od.id)}
+                    disabled={loadingPreviewId === od.id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-emerald-100 text-[#0a5c36] font-bold text-[11px] rounded border border-emerald-300 shadow-2xs transition-colors"
+                  >
+                    {loadingPreviewId === od.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-3 h-3" />
+                    )}
+                    <span>Preview (15-Min Signed URL)</span>
+                  </button>
+                  <span className="text-[10px] font-bold bg-white text-[#0a5c36] px-2 py-1 rounded border border-[#dfe6dc]">
+                    Private Storage
+                  </span>
+                </div>
               </div>
             )}
           </div>

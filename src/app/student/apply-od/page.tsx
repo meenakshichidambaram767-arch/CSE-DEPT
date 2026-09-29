@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
 import { odApi, ApiError } from '@/lib/api/odApi';
-import { ODPurpose, ODApplication } from '@/types';
+import { ODPurpose, ODApplication, DocumentItem } from '@/types';
+import { FileUpload } from '@/components/ui/FileUpload';
 import {
   ArrowLeft,
-  Upload,
   AlertCircle,
   FileText,
   Plus,
@@ -47,8 +47,8 @@ export default function ApplyODPage() {
   const [companyName, setCompanyName] = useState('');
   const [companyRole, setCompanyRole] = useState('');
   const [reason, setReason] = useState('');
-  const [docName] = useState('Registration_Proof_SIET.pdf');
-  const [uploadedFile] = useState<boolean>(true);
+  const [docName, setDocName] = useState('Registration_Proof_SIET.pdf');
+  const [attachedDocs, setAttachedDocs] = useState<DocumentItem[]>([]);
 
   // Additional teammates
   const [teammates, setTeammates] = useState<Array<{ name: string; regNo: string }>>([]);
@@ -508,27 +508,31 @@ export default function ApplyODPage() {
               </p>
             </div>
 
-            <div className="border-2 border-dashed border-[#dfe6dc] rounded-xl p-8 text-center bg-[#f7f9f5] flex flex-col items-center justify-center space-y-3">
-              <div className="w-10 h-10 rounded-full bg-[#eaf7e8] text-[#0a5c36] flex items-center justify-center">
-                <Upload className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[#172017]">
-                  {uploadedFile ? docName : 'Click to select document'}
-                </p>
-                <p className="text-[11px] text-[#586658]">
-                  PDF, JPG, or PNG up to 10MB (Official SIET format)
-                </p>
-              </div>
+            <FileUpload
+              label="Invitation / Event Brochure / Registration Proof"
+              accept=".pdf,.png,.jpg,.jpeg"
+              maxSizeMB={5}
+              owner="od_request"
+              ownerId="draft"
+              onFilesChange={(docs: DocumentItem[]) => {
+                setAttachedDocs(docs);
+                if (docs[0]) {
+                  setDocName(docs[0].name);
+                }
+              }}
+            />
 
-              {uploadedFile && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-md border border-[#dfe6dc] text-xs text-[#0a5c36] font-semibold">
-                  <FileText className="w-3.5 h-3.5 text-[#0a5c36]" />
+            {docName && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-[#0a5c36] flex items-center justify-between">
+                <div className="flex items-center gap-2 font-medium">
+                  <FileText className="w-4 h-4" />
                   <span>{docName}</span>
-                  <span className="text-[10px] text-[#0a5c36] ml-1">✓ Attached</span>
                 </div>
-              )}
-            </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-white text-[#0a5c36] px-2 py-0.5 rounded border border-emerald-300">
+                  Ready for Submission
+                </span>
+              </div>
+            )}
           </div>
         )}
 
