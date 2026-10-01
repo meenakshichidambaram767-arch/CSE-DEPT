@@ -36,6 +36,7 @@ export default function HodReviewsPage() {
   const { showToast } = useToast();
 
   const [apiReviews, setApiReviews] = useState<Record<string, unknown>[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
 
   // Scheduler State
@@ -156,9 +157,9 @@ export default function HodReviewsPage() {
       if (res.ok) {
         fetchReviewSessions();
       }
-      recordReviewAttendance(meetingReview.id, attendanceState);
-      saveMeetingNotes(meetingReview.id, meetingNotes, nextWeekDirective);
-      showToast(`Review ${meetingReview.code || `#${meetingReview.reviewNumber}`} Saved`, 'Records updated & notification sent.', 'success');
+      recordReviewAttendance(meetingReview.id as string, attendanceState as any);
+      saveMeetingNotes(meetingReview.id as string, meetingNotes, nextWeekDirective);
+      showToast(`Review ${(meetingReview.code as string) || `#${meetingReview.reviewNumber as number}`}`, 'Records updated & notification sent.', 'success');
     } catch (err) {
       console.error('Error saving review session:', err);
       showToast('Error saving review notes', 'error');

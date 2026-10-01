@@ -16,12 +16,51 @@ import {
   RotateCcw,
 } from 'lucide-react';
 
+export interface ODDetailRecord {
+  id: string;
+  code: string;
+  studentId: string;
+  studentName: string;
+  studentRegNo: string;
+  department?: string;
+  year?: string;
+  section?: string;
+  eventId?: string | null;
+  activityId?: string | null;
+  purpose: string;
+  eventName: string;
+  organization?: string | null;
+  reason: string;
+  startDate: string;
+  endDate: string;
+  date?: string;
+  fromTime?: string;
+  toTime?: string;
+  slotType?: string;
+  totalDays?: number;
+  venue?: string;
+  registrationId?: string | null;
+  additionalNotes?: string | null;
+  status: string;
+  remarks?: string | null;
+  rejectionReason?: string | null;
+  revisionNotes?: string | null;
+  submittedDate?: string;
+  approvedDate?: string | null;
+  hasConflict?: boolean;
+  conflictCount?: number;
+  conflictingRequests?: Record<string, unknown>[];
+  teamMembers?: { id?: string; name: string; regNo: string; email?: string; role?: string }[];
+  documents?: { id: string; name: string; type: string; size: string; uploadDate: string; path: string }[];
+  statusHistory?: { id: string; oldStatus: string; newStatus: string; note?: string | null; changedBy: string; changedAt: string }[];
+}
+
 export default function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const { getODById, checkODConflict } = useData();
 
-  const [requestData, setRequestData] = useState<Record<string, unknown> | null>(null);
+  const [requestData, setRequestData] = useState<ODDetailRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Decision Modal States

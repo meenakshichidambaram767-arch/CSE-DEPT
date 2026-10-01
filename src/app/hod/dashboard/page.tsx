@@ -7,7 +7,8 @@ import { ArrowRight } from 'lucide-react';
 
 export default function HODDashboard() {
   const { odApplications, odEvents } = useData();
-  const [summaryData, setSummaryData] = React.useState<Record<string, unknown> | null>(null);
+  const [summaryData, setSummaryData] = React.useState<Record<string, Record<string, number>> | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = React.useState(true);
 
   React.useEffect(() => {
     let isMounted = true;
