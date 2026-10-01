@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from '@/lib/api/response';
 // GET /api/v1/reports/accreditation - NAAC/NBA Accreditation Metrics (HOD Only)
 export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const { searchParams } = new URL(request.url);
     const academicYear = searchParams.get('academic_year') || '2026-2027';
 
@@ -75,11 +75,11 @@ export async function GET(request: NextRequest) {
         total_approved_od_clearances: totalApprovedODClearances,
       },
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in GET /api/v1/reports/accreditation:', err);

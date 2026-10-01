@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/api/auth';
 import { apiError } from '@/lib/api/response';
 
 // Utility helper to safely escape CSV cells following RFC 4180
-function escapeCsvCell(val: any): string {
+function escapeCsvCell(val: unknown): string {
   if (val === null || val === undefined) return '""';
   const str = String(val);
   const needsQuoting = /[",\n\r]/.test(str);
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       const headers = ['Register Number', 'Student Name', 'Department', 'Year', 'Section', 'Email', 'Created At'];
       csvLines.push(headers.map(escapeCsvCell).join(','));
 
-      (students || []).forEach((s: any) => {
+      (students || []).forEach((s: Record<string, unknown>) => {
         csvLines.push(
           [
             s.register_number,
@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
             s.department || 'CSE',
             s.year,
             s.section,
-            s.email || s.users?.email || '',
-            s.created_at ? new Date(s.created_at).toISOString().slice(0, 10) : '',
+            s.email || (s.users as Record<string, unknown>)?.email || '',
+            s.created_at ? new Date(s.created_at as string).toISOString().slice(0, 10) : '',
           ]
             .map(escapeCsvCell)
             .join(',')
@@ -76,16 +76,16 @@ export async function GET(request: NextRequest) {
       ];
       csvLines.push(headers.map(escapeCsvCell).join(','));
 
-      (activities || []).forEach((a: any) => {
+      (activities || []).forEach((a: Record<string, unknown>) => {
         csvLines.push(
           [
             a.code,
             a.type,
             a.title,
-            a.students?.name || '',
-            a.students?.register_number || '',
-            a.students?.year || '',
-            a.students?.section || '',
+            (a.students as Record<string, unknown>)?.name || '',
+            (a.students as Record<string, unknown>)?.register_number || '',
+            (a.students as Record<string, unknown>)?.year || '',
+            (a.students as Record<string, unknown>)?.section || '',
             a.status,
             a.start_date || '',
             a.end_date || '',
@@ -117,14 +117,14 @@ export async function GET(request: NextRequest) {
       ];
       csvLines.push(headers.map(escapeCsvCell).join(','));
 
-      (odRequests || []).forEach((o: any) => {
+      (odRequests || []).forEach((o: Record<string, unknown>) => {
         csvLines.push(
           [
             o.code,
-            o.students?.name || '',
-            o.students?.register_number || '',
-            o.students?.year || '',
-            o.students?.section || '',
+            (o.students as Record<string, unknown>)?.name || '',
+            (o.students as Record<string, unknown>)?.register_number || '',
+            (o.students as Record<string, unknown>)?.year || '',
+            (o.students as Record<string, unknown>)?.section || '',
             o.purpose,
             o.event_name,
             o.total_days || 1,
@@ -158,12 +158,12 @@ export async function GET(request: NextRequest) {
       ];
       csvLines.push(headers.map(escapeCsvCell).join(','));
 
-      (reviews || []).forEach((r: any) => {
+      (reviews || []).forEach((r: Record<string, unknown>) => {
         csvLines.push(
           [
             r.code,
-            r.activities?.code || '',
-            r.activities?.title || '',
+            (r.activities as Record<string, unknown>)?.code || '',
+            (r.activities as Record<string, unknown>)?.title || '',
             r.review_type || 'PROJECT_WEEKLY',
             r.review_number,
             r.date || '',
@@ -185,14 +185,14 @@ export async function GET(request: NextRequest) {
       const headers = ['Record ID', 'Student Name', 'Register Number', 'Year', 'Category', 'Title', 'NAAC Criterion', 'Status', 'Date'];
       csvLines.push(headers.map(escapeCsvCell).join(','));
 
-      (activities || []).forEach((a: any) => {
+      (activities || []).forEach((a: Record<string, unknown>) => {
         const naacCode = a.type === 'PROJECT' ? 'NAAC 1.3.2 (Capstone Projects)' : a.type === 'HACKATHON' ? 'NAAC 5.3.1 (National Hackathons)' : 'NAAC 1.3.3 (Corporate Internships)';
         csvLines.push(
           [
             a.code,
-            a.students?.name || '',
-            a.students?.register_number || '',
-            a.students?.year || '',
+            (a.students as Record<string, unknown>)?.name || '',
+            (a.students as Record<string, unknown>)?.register_number || '',
+            (a.students as Record<string, unknown>)?.year || '',
             a.type,
             a.title,
             naacCode,
@@ -204,13 +204,13 @@ export async function GET(request: NextRequest) {
         );
       });
 
-      (ods || []).forEach((o: any) => {
+      (ods || []).forEach((o: Record<string, unknown>) => {
         csvLines.push(
           [
             o.code,
-            o.students?.name || '',
-            o.students?.register_number || '',
-            o.students?.year || '',
+            (o.students as Record<string, unknown>)?.name || '',
+            (o.students as Record<string, unknown>)?.register_number || '',
+            (o.students as Record<string, unknown>)?.year || '',
             'ON-DUTY (OD)',
             o.event_name,
             'NAAC 5.3.3 (OD Attendance Concessions)',
@@ -242,11 +242,11 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in GET /api/v1/reports/export:', err);
