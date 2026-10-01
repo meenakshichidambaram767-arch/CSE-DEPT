@@ -32,7 +32,7 @@ export default function StudentProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useSession();
-  const { getReviewsForProject, submitWeeklyProgress } = useData();
+  const { getReviewsForProject } = useData();
   const { showToast } = useToast();
 
   const id = params.id as string;
@@ -130,7 +130,7 @@ export default function StudentProjectDetailPage() {
     }
   };
 
-  const handleConfirmProgressSubmit = (e?: React.FormEvent) => {
+  const handleConfirmProgressSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!selectedReview || !user) return;
 
@@ -141,25 +141,35 @@ export default function StudentProjectDetailPage() {
 
     setIsSubmittingProgress(true);
 
-    setTimeout(() => {
-      submitWeeklyProgress(selectedReview.id, {
-        studentId: user.id,
-        studentName: user.name,
-        completedThisWeek,
-        currentlyWorkingOn,
-        nextWeekGoal,
-        blockers: blockers.trim() || 'No active blocking issues',
-        githubUrl: githubUrl.trim() || undefined,
-      });
+    const payload = {
+      completed_this_week: completedThisWeek.trim(),
+      currently_working_on: currentlyWorkingOn.trim(),
+      next_week_goal: nextWeekGoal.trim(),
+      blockers: blockers.trim() || 'No active blocking issues',
+      github_url: githubUrl.trim() || undefined,
+    };
 
-      setIsSubmittingProgress(false);
-      setSelectedReview(null);
+    try {
+      await reviewsApi.submitWeeklyProgress(selectedReview.id, payload);
       showToast(
         `Progress Logged for Review #${selectedReview.reviewNumber}!`,
-        'HOD summary updated for meeting discussion.',
+        'Weekly progress report saved to server.',
         'success'
       );
-    }, 400);
+      setSelectedReview(null);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+        showToast(
+          'Backend Unavailable',
+          `Backend endpoint POST /api/v1/reviews/sessions/${selectedReview.id}/progress returned 404. Log was NOT saved.`,
+          'warning'
+        );
+      } else {
+        showToast('Progress Submission Failed', err instanceof Error ? err.message : 'Error submitting progress.', 'error');
+      }
+    } finally {
+      setIsSubmittingProgress(false);
+    }
   };
 
   return (
