@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Textarea } from '@/components/ui/Textarea';
@@ -11,36 +10,68 @@ import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
+import { activitiesApi } from '@/lib/api/activitiesApi';
+import { ApiError } from '@/lib/api/odApi';
+import { Activity, ReviewSession } from '@/types';
 import {
-  FolderKanban,
   FileCheck,
   Users,
   Calendar,
   Clock,
   MapPin,
-  CheckCircle2,
   AlertCircle,
   ExternalLink,
   ArrowLeft,
-  Sparkles,
-  Send,
-  Plus,
-  QrCode,
-  ShieldCheck,
   History,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/common/GithubIcon';
-import { ReviewSession } from '@/types';
 
 export default function StudentProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useSession();
-  const { getActivityById, getReviewsForProject, submitWeeklyProgress } = useData();
+  const { getReviewsForProject, submitWeeklyProgress } = useData();
   const { showToast } = useToast();
 
   const id = params.id as string;
-  const activity = getActivityById(id);
+
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [backendNotice, setBackendNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    activitiesApi
+      .getActivityById(id)
+      .then((res) => {
+        if (isMounted && res.data) {
+          setActivity(res.data);
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setBackendNotice(`Backend endpoint GET /api/v1/activities/${id} returned HTTP 404 (Endpoint not deployed). Displaying static reference record (LOCAL / UNPERSISTED PROTOTYPE DATA).`);
+            const fallback = activitiesApi.getFallbackById(id);
+            if (fallback) setActivity(fallback);
+            else setError(`Activity record '${id}' not found.`);
+          } else {
+            setError(err instanceof Error ? err.message : 'An error occurred while loading activity detail.');
+          }
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
   const reviews = getReviewsForProject(id);
 
   // Weekly Progress Submission Modal state
@@ -55,12 +86,23 @@ export default function StudentProjectDetailPage() {
   // View Submitted Progress Modal state
   const [viewingProgressReview, setViewingProgressReview] = useState<ReviewSession | null>(null);
 
-  if (!activity) {
+  if (isLoading) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto py-12 text-center">
+        <div className="bg-white rounded-3xl border border-slate-200 p-16 space-y-3">
+          <Loader2 className="w-8 h-8 text-emerald-800 animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-600">Loading activity detail from server...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !activity) {
     return (
       <div className="p-12 text-center space-y-4 max-w-md mx-auto">
         <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
-        <h2 className="text-lg font-bold text-slate-900">Project Record Not Found</h2>
-        <p className="text-xs text-slate-500">The requested activity identifier {id} does not exist.</p>
+        <h2 className="text-lg font-bold text-slate-900">Activity Record Not Found</h2>
+        <p className="text-xs text-slate-500">{error || `The requested activity identifier ${id} does not exist.`}</p>
         <Button variant="primary" size="sm" onClick={() => router.push('/student/activities')}>
           Back to Activities
         </Button>
@@ -73,7 +115,6 @@ export default function StudentProjectDetailPage() {
 
   const handleOpenSubmitProgress = (rev: ReviewSession) => {
     setSelectedReview(rev);
-    // If progress already exists, prefill
     if (rev.progress) {
       setCompletedThisWeek(rev.progress.completedThisWeek);
       setCurrentlyWorkingOn(rev.progress.currentlyWorkingOn);
@@ -143,7 +184,20 @@ export default function StudentProjectDetailPage() {
         </div>
       </div>
 
-      {/* Main Project Header Card (Section 20) */}
+      {/* Backend Notice Banner */}
+      {backendNotice && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{backendNotice}</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded border border-amber-300">
+            Nattu Client Mode
+          </span>
+        </div>
+      )}
+
+      {/* Main Project Header Card */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-2">
@@ -185,7 +239,7 @@ export default function StudentProjectDetailPage() {
           </div>
         </div>
 
-        {/* Team Members Roster (Section 20) */}
+        {/* Team Members Roster (Real Student Identity References) */}
         <div className="pt-4 border-t border-slate-100">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
             <Users className="w-3.5 h-3.5 text-slate-500" />
@@ -193,7 +247,7 @@ export default function StudentProjectDetailPage() {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {activity.teamMembers.map((m, idx) => (
+            {(activity.teamMembers || []).map((m, idx) => (
               <div
                 key={idx}
                 className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-1"
@@ -215,7 +269,7 @@ export default function StudentProjectDetailPage() {
         <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-slate-400 font-medium mr-1">Stack:</span>
-            {activity.technologies.map((t, idx) => (
+            {(activity.technologies || []).map((t, idx) => (
               <span
                 key={idx}
                 className="text-xs font-semibold bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg"
@@ -251,7 +305,7 @@ export default function StudentProjectDetailPage() {
       {/* 2-Column Grid: Weekly Reviews & Progress + Automatic Project Timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left 2 Cols: Weekly Reviews & Progress Submissions (Sections 10, 11, 12, 20) */}
+        {/* Left 2 Cols: Weekly Reviews & Progress Submissions */}
         <div className="lg:col-span-2 space-y-4">
           
           {/* Spotlight Next Upcoming Review */}
@@ -302,7 +356,7 @@ export default function StudentProjectDetailPage() {
             </div>
           )}
 
-          {/* Full Weekly Review Sessions List (Section 20) */}
+          {/* Full Weekly Review Sessions List */}
           <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
@@ -395,7 +449,7 @@ export default function StudentProjectDetailPage() {
           </div>
         </div>
 
-        {/* Right 1 Col: Automatic Project Timeline / History (Section 17) */}
+        {/* Right 1 Col: Automatic Project Timeline / History */}
         <div className="space-y-4">
           <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-2xs space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
@@ -409,9 +463,8 @@ export default function StudentProjectDetailPage() {
             </p>
 
             <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-              {activity.timeline.map((step, idx) => (
+              {(activity.timeline || []).map((step, idx) => (
                 <div key={step.id || idx} className="relative space-y-1">
-                  {/* Timeline Dot */}
                   <span
                     className={`absolute -left-6 top-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center shadow-xs ${
                       step.status === 'COMPLETED'
@@ -437,7 +490,7 @@ export default function StudentProjectDetailPage() {
         </div>
       </div>
 
-      {/* Weekly Progress Submission Modal (Section 12) */}
+      {/* Weekly Progress Submission Modal */}
       <Dialog
         isOpen={!!selectedReview}
         onClose={() => setSelectedReview(null)}

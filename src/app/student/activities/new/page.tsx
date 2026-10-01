@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -12,9 +12,11 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { useToast } from '@/components/ui/Toast';
-import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
-import { ActivityType, TeamMember } from '@/types';
+import { activitiesApi } from '@/lib/api/activitiesApi';
+import { studentsApi } from '@/lib/api/studentsApi';
+import { ApiError } from '@/lib/api/odApi';
+import { ActivityType, TeamMember, User, DocumentItem } from '@/types';
 import {
   FolderKanban,
   Trophy,
@@ -26,19 +28,22 @@ import {
   AlertOctagon,
   Send,
   FileCheck,
-  CheckCircle2,
-  Info,
+  AlertTriangle,
+  Users,
 } from 'lucide-react';
 
-export default function UnifiedActivitySubmissionPage() {
+function ActivitySubmissionForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addActivity } = useData();
   const { user } = useSession();
   const { showToast } = useToast();
 
-  const initialType = (searchParams.get('type') as ActivityType) || 'PROJECT';
-  const [activityType, setActivityType] = useState<ActivityType>(initialType);
+  const realStudents: User[] = studentsApi.getRealStudents();
+
+  const [activityType, setActivityType] = useState<ActivityType>(() => {
+    const qType = searchParams.get('type') as ActivityType;
+    return qType && ['PROJECT', 'HACKATHON', 'INTERNSHIP'].includes(qType) ? qType : 'PROJECT';
+  });
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -51,43 +56,46 @@ export default function UnifiedActivitySubmissionPage() {
   const [githubUrl, setGithubUrl] = useState('');
   const [demoUrl, setDemoUrl] = useState('');
   const [proofDocName, setProofDocName] = useState('Synopsis_Signed_Proof.pdf');
+  const [attachedDocs, setAttachedDocs] = useState<DocumentItem[]>([]);
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [guideName, setGuideName] = useState('Dr. Priya Kumar');
   const [category, setCategory] = useState('Computer Vision & AI');
   const [internshipRole, setInternshipRole] = useState('Software Engineering Intern');
-  const [internshipMode, setInternshipMode] = useState('Hybrid');
   const [agreed, setAgreed] = useState(false);
 
-  // Team Members list
+  // Team Members list initialized with authenticated user identity
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
     {
-      name: user?.name || 'Current student',
-      regNo: user?.registerNumber || '',
-      email: user?.email || '',
+      name: user?.name || 'Lead Student',
+      regNo: user?.registerNumber || '714023104088',
+      email: user?.email || 'meena.23cse@siet.ac.in',
       role: 'Team Lead',
     },
   ]);
 
-  // Validation state
+  // Validation & Error state
   const [missingErrors, setMissingErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Sync initial type from query params
-  useEffect(() => {
-    const qType = searchParams.get('type') as ActivityType;
-    if (qType && ['PROJECT', 'HACKATHON', 'INTERNSHIP'].includes(qType)) {
-      setActivityType(qType);
-    }
-  }, [searchParams]);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [backendNotice, setBackendNotice] = useState<string | null>(null);
 
   const addTeamMember = () => {
     if (teamMembers.length >= 4) {
       showToast('Maximum 4 members allowed per team.', 'warning');
       return;
     }
+    // Default to next available real student reference
+    const existingRegs = new Set(teamMembers.map((m) => m.regNo));
+    const candidate = realStudents.find((s) => s.registerNumber && !existingRegs.has(s.registerNumber));
+
     setTeamMembers([
       ...teamMembers,
-      { name: '', regNo: '', email: '', role: 'Developer' },
+      {
+        name: candidate?.name || '',
+        regNo: candidate?.registerNumber || '',
+        email: candidate?.email || '',
+        role: 'Developer',
+      },
     ]);
   };
 
@@ -101,11 +109,24 @@ export default function UnifiedActivitySubmissionPage() {
 
   const updateTeamMember = (index: number, field: keyof TeamMember, val: string) => {
     const updated = [...teamMembers];
+    if (field === 'regNo' && val.trim()) {
+      // Auto-fill student name and email if register number matches real student directory
+      const matched = realStudents.find((s) => s.registerNumber === val.trim());
+      if (matched) {
+        updated[index] = {
+          ...updated[index],
+          regNo: matched.registerNumber || val,
+          name: matched.name,
+          email: matched.email,
+        };
+        setTeamMembers(updated);
+        return;
+      }
+    }
     updated[index] = { ...updated[index], [field]: val };
     setTeamMembers(updated);
   };
 
-  // Pre-submission validation function (Section 4)
   const validateForm = (): string[] => {
     const errors: string[] = [];
 
@@ -117,7 +138,6 @@ export default function UnifiedActivitySubmissionPage() {
       errors.push('Project Description / Scope');
     }
 
-    // Validate team members
     const incompleteMember = teamMembers.some(
       (m) => !m.name.trim() || !m.regNo.trim() || !m.email.trim()
     );
@@ -145,7 +165,7 @@ export default function UnifiedActivitySubmissionPage() {
       errors.push('Technologies / Frameworks Stack');
     }
 
-    if (!proofDocName.trim()) {
+    if (!proofDocName.trim() && attachedDocs.length === 0) {
       errors.push('Supporting Document / Signed Synopsis Proof');
     }
 
@@ -156,8 +176,11 @@ export default function UnifiedActivitySubmissionPage() {
     return errors;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
+    setBackendNotice(null);
+
     const errors = validateForm();
 
     if (errors.length > 0) {
@@ -170,35 +193,50 @@ export default function UnifiedActivitySubmissionPage() {
     setMissingErrors([]);
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const finalTitle =
-        activityType === 'INTERNSHIP' && !title.includes(organization)
-          ? `${organization} — ${internshipRole}`
-          : title;
+    const finalTitle =
+      activityType === 'INTERNSHIP' && !title.includes(organization)
+        ? `${organization} — ${internshipRole}`
+        : title;
 
-      const newAct = addActivity({
-        type: activityType,
-        title: finalTitle,
-        description,
-        organization: organization || (activityType === 'PROJECT' ? 'CSE Research Lab' : eventName),
-        eventName: activityType === 'HACKATHON' ? eventName || title : undefined,
-        startDate,
-        endDate,
-        technologies,
-        githubUrl: githubUrl || undefined,
-        demoUrl: demoUrl || undefined,
-        proofDocName,
-        proofUrl: '/docs/sample-proof.pdf',
-        additionalNotes: additionalNotes || undefined,
-        teamMembers,
-        guideName: activityType === 'PROJECT' ? guideName : undefined,
-        category: activityType === 'PROJECT' ? category : undefined,
-      });
+    const payload = {
+      type: activityType,
+      title: finalTitle,
+      description,
+      technologies,
+      start_date: startDate,
+      end_date: endDate,
+      organization: organization || (activityType === 'PROJECT' ? 'CSE Research Lab' : eventName),
+      company_name: activityType === 'INTERNSHIP' ? organization : undefined,
+      github_url: githubUrl || undefined,
+      demo_url: demoUrl || undefined,
+      guide_name: activityType === 'PROJECT' ? guideName : undefined,
+      team_members: teamMembers.map((m) => ({
+        name: m.name,
+        register_number: m.regNo,
+        email: m.email,
+        role: m.role || 'MEMBER',
+      })),
+    };
 
+    try {
+      const result = await activitiesApi.createActivity(payload);
+      showToast(`${activityType} Proposal Submitted to Server!`, `ID: ${result.data.code || result.data.id}`, 'success');
+      router.push('/student/activities');
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE') {
+          setBackendNotice('Backend server endpoint POST /api/v1/activities is not deployed (HTTP 404). Activity proposal was NOT saved to server database.');
+          setServerError('Backend endpoint POST /api/v1/activities returned 404 (Server route not deployed). Submission was not saved.');
+          showToast('Backend Unavailable', 'Server endpoint POST /api/v1/activities returned 404. Submission was NOT saved.', 'warning');
+        } else {
+          setServerError(err.message);
+        }
+      } else {
+        setServerError('Failed to submit activity proposal. Please check server connection.');
+      }
+    } finally {
       setIsSubmitting(false);
-      showToast(`${activityType} Submitted for HOD Review!`, 'success');
-      router.push(`/student/projects/${newAct.id}`);
-    }, 600);
+    }
   };
 
   const techOptions = [
@@ -233,7 +271,7 @@ export default function UnifiedActivitySubmissionPage() {
 
       <PageHeader
         title="Unified Activity Submission"
-        description="Register capstone projects, national hackathons, or corporate internships for HOD evaluation and scheduling."
+        description="Register capstone projects, national hackathons, or corporate internships for HOD evaluation."
         breadcrumbs={[
           { label: 'Dashboard', href: '/student/dashboard' },
           { label: 'Activities', href: '/student/activities' },
@@ -247,9 +285,30 @@ export default function UnifiedActivitySubmissionPage() {
         }
       />
 
-      {/* Real-Time Pre-Submission Validation Banner (Section 4) */}
+      {/* Backend Notice Banner */}
+      {backendNotice && (
+        <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-900 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{backendNotice}</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded border border-amber-300">
+            Nattu Client Mode
+          </span>
+        </div>
+      )}
+
+      {/* Server Error Banner */}
+      {serverError && (
+        <div className="p-4 bg-rose-50 border border-rose-300 rounded-2xl text-xs text-rose-900 flex items-center gap-2 shadow-2xs">
+          <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{serverError}</span>
+        </div>
+      )}
+
+      {/* Pre-Submission Validation Banner */}
       {missingErrors.length > 0 && (
-        <div className="p-5 rounded-2xl bg-red-50 border-2 border-red-300 text-red-900 shadow-sm animate-in fade-in duration-200 space-y-2.5">
+        <div className="p-5 rounded-2xl bg-red-50 border-2 border-red-300 text-red-900 shadow-sm space-y-2.5">
           <div className="flex items-center gap-2 font-black text-sm text-red-800">
             <AlertOctagon className="w-5 h-5 text-red-600 shrink-0" />
             <span>Missing required information:</span>
@@ -309,7 +368,7 @@ export default function UnifiedActivitySubmissionPage() {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         
-        {/* Section 1: Core Activity Identification (Adapts based on type) */}
+        {/* Section 1: Core Activity Identification */}
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-5">
           <div className="pb-2 border-b border-slate-100">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
@@ -466,15 +525,16 @@ export default function UnifiedActivitySubmissionPage() {
           </div>
         </div>
 
-        {/* Section 2: Team Members (Adapts for Project, Hackathon, Internship) */}
+        {/* Section 2: Team Members (Real Student References) */}
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-5">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                2. Student / Team Members {activityType === 'INTERNSHIP' ? '(Individual)' : '(Max 4)'}
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-emerald-800" />
+                <span>2. Student / Team Members {activityType === 'INTERNSHIP' ? '(Individual)' : '(Max 4)'}</span>
               </h3>
               <p className="text-xs text-slate-500">
-                Designate team lead and collaborating students for departmental tracking.
+                Designate registered SIET CSE students by register number for official tracking.
               </p>
             </div>
             {activityType !== 'INTERNSHIP' && (
@@ -501,19 +561,22 @@ export default function UnifiedActivitySubmissionPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 flex-1 w-full">
+                  <Select
+                    options={[
+                      { value: '', label: '-- Select Registered Student --' },
+                      ...realStudents.map((s) => ({
+                        value: s.registerNumber || '',
+                        label: `${s.name} (${s.registerNumber})`,
+                      })),
+                    ]}
+                    value={m.regNo}
+                    onChange={(e) => updateTeamMember(idx, 'regNo', e.target.value)}
+                  />
                   <input
                     type="text"
                     placeholder="Full Name"
                     value={m.name}
                     onChange={(e) => updateTeamMember(idx, 'name', e.target.value)}
-                    required
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-900"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Register Number"
-                    value={m.regNo}
-                    onChange={(e) => updateTeamMember(idx, 'regNo', e.target.value)}
                     required
                     className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-900"
                   />
@@ -565,18 +628,32 @@ export default function UnifiedActivitySubmissionPage() {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileCheck className="w-5 h-5 text-emerald-700" />
-              <div>
-                <strong className="text-xs text-slate-900 block">{proofDocName}</strong>
-                <span className="text-[11px] text-emerald-700">Ready for HOD verification • 1.4 MB PDF</span>
+          <FileUpload
+            label="Supporting Proposal Document / Signed Proof"
+            accept=".pdf,.png,.jpg,.jpeg"
+            maxSizeMB={5}
+            owner="activity"
+            ownerId="draft"
+            onFilesChange={(docs: DocumentItem[]) => {
+              setAttachedDocs(docs);
+              if (docs[0]) setProofDocName(docs[0].name);
+            }}
+          />
+
+          {proofDocName && (
+            <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileCheck className="w-5 h-5 text-emerald-700" />
+                <div>
+                  <strong className="text-xs text-slate-900 block">{proofDocName}</strong>
+                  <span className="text-[11px] text-emerald-700">Ready for HOD verification • PDF / Image</span>
+                </div>
               </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-200 text-emerald-800">
+                Attached
+              </span>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-200 text-emerald-800">
-              Attached
-            </span>
-          </div>
+          )}
 
           <Textarea
             label="Additional Notes for HOD (Optional)"
@@ -600,7 +677,7 @@ export default function UnifiedActivitySubmissionPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push('/student/dashboard')}
+              onClick={() => router.push('/student/activities')}
             >
               Cancel
             </Button>
@@ -616,5 +693,13 @@ export default function UnifiedActivitySubmissionPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function UnifiedActivitySubmissionPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-xs text-emerald-800">Loading activity form...</div>}>
+      <ActivitySubmissionForm />
+    </Suspense>
   );
 }

@@ -106,6 +106,7 @@ export type TimelineStep = TimelineEvent;
 
 export interface Activity {
   id: string;
+  code?: string;
   studentId: string;
   studentName: string;
   studentRegNo: string;
