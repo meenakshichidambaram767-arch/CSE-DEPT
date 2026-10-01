@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from '@/lib/api/response';
 // GET /api/v1/students - Minimal Student Directory for Teammate Selection (Authenticated Users)
 export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    await requireAuth();
     const { searchParams } = new URL(request.url);
 
     const year = searchParams.get('year');

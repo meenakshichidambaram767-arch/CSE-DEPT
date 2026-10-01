@@ -18,7 +18,6 @@ import {
   BriefcaseBusiness,
   FileCheck,
   CheckCircle2,
-  XCircle,
   Search,
   CheckSquare,
   Square,
@@ -26,8 +25,8 @@ import {
 } from 'lucide-react';
 
 type UnifiedApprovalItem =
-  | { itemType: 'ACTIVITY'; data: any }
-  | { itemType: 'OD'; data: any };
+  | { itemType: 'ACTIVITY'; data: Record<string, unknown> }
+  | { itemType: 'OD'; data: Record<string, unknown> };
 
 export default function HodApprovalsInboxPage() {
   const router = useRouter();
@@ -355,7 +354,7 @@ export default function HodApprovalsInboxPage() {
               <button
                 key={st.key}
                 type="button"
-                onClick={() => setStatusFilter(st.key as any)}
+                onClick={() => setStatusFilter(st.key as 'ALL' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   statusFilter === st.key
                     ? 'bg-[#064e3b] text-white font-bold shadow-xs'

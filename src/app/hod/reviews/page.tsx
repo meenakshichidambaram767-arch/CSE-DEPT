@@ -22,14 +22,11 @@ import {
   Sparkles,
   AlertTriangle,
   Send,
-  CheckCircle2,
 } from 'lucide-react';
-import { ReviewSession, AttendanceItem } from '@/types';
 
 export default function HodReviewsPage() {
   const {
     reviews,
-    projects,
     activities,
     scheduleRecurringReviews,
     recordReviewAttendance,
@@ -38,8 +35,7 @@ export default function HodReviewsPage() {
   } = useData();
   const { showToast } = useToast();
 
-  const [apiReviews, setApiReviews] = useState<any[]>([]);
-  const [isLoadingApi, setIsLoadingApi] = useState(true);
+  const [apiReviews, setApiReviews] = useState<Record<string, unknown>[]>([]);
   const [activeTab, setActiveTab] = useState('ALL');
 
   // Scheduler State

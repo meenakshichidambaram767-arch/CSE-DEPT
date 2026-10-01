@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    await requireAuth();
     const { id } = await params;
     const supabase = await createClient();
 
