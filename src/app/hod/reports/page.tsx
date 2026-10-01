@@ -86,7 +86,14 @@ export default function HodReportsPage() {
     return true;
   });
 
-  const [accreditationMetrics, setAccreditationMetrics] = useState<Record<string, unknown> | null>(null);
+interface AccreditationMetrics {
+  criteria_1_3_2?: { count?: number };
+  criteria_5_3_1?: { count?: number };
+  criteria_1_3_3?: { count?: number };
+  total_approved_od_clearances?: number;
+}
+
+  const [accreditationMetrics, setAccreditationMetrics] = useState<AccreditationMetrics | null>(null);
 
   React.useEffect(() => {
     let isMounted = true;

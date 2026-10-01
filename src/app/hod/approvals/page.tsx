@@ -24,9 +24,11 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+import { Activity, ODApplication } from '@/types';
+
 type UnifiedApprovalItem =
-  | { itemType: 'ACTIVITY'; data: Record<string, unknown> }
-  | { itemType: 'OD'; data: Record<string, unknown> };
+  | { itemType: 'ACTIVITY'; data: Activity }
+  | { itemType: 'OD'; data: ODApplication };
 
 export default function HodApprovalsInboxPage() {
   const router = useRouter();
@@ -354,7 +356,7 @@ export default function HodApprovalsInboxPage() {
               <button
                 key={st.key}
                 type="button"
-                onClick={() => setStatusFilter(st.key as 'ALL' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED')}
+                onClick={() => setStatusFilter(st.key as 'PENDING' | 'REVISION_REQUESTED' | 'APPROVED' | 'REJECTED' | 'ALL')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   statusFilter === st.key
                     ? 'bg-[#064e3b] text-white font-bold shadow-xs'

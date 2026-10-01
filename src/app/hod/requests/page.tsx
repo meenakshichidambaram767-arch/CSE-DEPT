@@ -3,6 +3,7 @@
 import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataContext';
+import { ODApplication } from '@/types';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { Search, ArrowRight, Check, X, GraduationCap } from 'lucide-react';
 
@@ -35,7 +36,7 @@ function RequestsContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // API Data State
-  const [apiData, setApiData] = useState<Record<string, unknown>[]>([]);
+  const [apiData, setApiData] = useState<ODApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch OD Requests from /api/v1/od-requests

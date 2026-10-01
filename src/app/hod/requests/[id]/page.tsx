@@ -18,7 +18,7 @@ import {
 
 export interface ODDetailRecord {
   id: string;
-  code: string;
+  code?: string;
   studentId: string;
   studentName: string;
   studentRegNo: string;
@@ -31,8 +31,8 @@ export interface ODDetailRecord {
   eventName: string;
   organization?: string | null;
   reason: string;
-  startDate: string;
-  endDate: string;
+  startDate?: string;
+  endDate?: string;
   date?: string;
   fromTime?: string;
   toTime?: string;
@@ -49,9 +49,10 @@ export interface ODDetailRecord {
   approvedDate?: string | null;
   hasConflict?: boolean;
   conflictCount?: number;
+  conflict?: { type?: string; details?: string; hasConflict?: boolean; conflictingEventName?: string } | null;
   conflictingRequests?: Record<string, unknown>[];
   teamMembers?: { id?: string; name: string; regNo: string; email?: string; role?: string }[];
-  documents?: { id: string; name: string; type: string; size: string; uploadDate: string; path: string }[];
+  documents?: { id: string; name: string; type: string; size: string; uploadDate: string; path?: string }[];
   statusHistory?: { id: string; oldStatus: string; newStatus: string; note?: string | null; changedBy: string; changedAt: string }[];
 }
 

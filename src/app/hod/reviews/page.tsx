@@ -24,6 +24,8 @@ import {
   Send,
 } from 'lucide-react';
 
+import { ReviewSession, AttendanceItem } from '@/types';
+
 export default function HodReviewsPage() {
   const {
     reviews,
@@ -35,7 +37,7 @@ export default function HodReviewsPage() {
   } = useData();
   const { showToast } = useToast();
 
-  const [apiReviews, setApiReviews] = useState<Record<string, unknown>[]>([]);
+  const [apiReviews, setApiReviews] = useState<ReviewSession[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
 
@@ -50,8 +52,8 @@ export default function HodReviewsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Meeting & Notes State
-  const [meetingReview, setMeetingReview] = useState<Record<string, unknown> | null>(null);
-  const [attendanceState, setAttendanceState] = useState<Record<string, unknown>[]>([]);
+  const [meetingReview, setMeetingReview] = useState<ReviewSession | null>(null);
+  const [attendanceState, setAttendanceState] = useState<AttendanceItem[]>([]);
   const [meetingNotes, setMeetingNotes] = useState('');
   const [nextWeekDirective, setNextWeekDirective] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -113,26 +115,26 @@ export default function HodReviewsPage() {
     (a) => (a.type === 'PROJECT' || a.type === 'HACKATHON' || a.type === 'INTERNSHIP') && (a.status === 'ACTIVE' || a.status === 'APPROVED')
   );
 
-  const handleOpenMeeting = (rev: Record<string, unknown>) => {
+  const handleOpenMeeting = (rev: ReviewSession) => {
     setMeetingReview(rev);
     setAttendanceState(
       rev.attendance && Array.isArray(rev.attendance) && rev.attendance.length > 0
-        ? (rev.attendance as Record<string, unknown>[])
-        : ((rev.studentTeam || []) as Record<string, unknown>[]).map((m: Record<string, unknown>, idx: number) => ({
-            studentId: `usr-team-${idx + 1}`,
+        ? rev.attendance
+        : (rev.studentTeam || []).map((m, idx: number) => ({
+            studentId: m.id || `usr-team-${idx + 1}`,
             name: m.name,
             regNo: m.regNo,
             attended: true,
           }))
     );
-    setMeetingNotes((rev.meetingNotes as string) || 'Progress verified.');
-    setNextWeekDirective((rev.nextWeekGoal as string) || 'Continue milestone deliverables.');
-    setQrData(rev.qrToken ? { token: rev.qrToken as string, expiresAt: rev.qrExpiresAt as string } : null);
+    setMeetingNotes(rev.meetingNotes || 'Progress verified.');
+    setNextWeekDirective(rev.nextWeekGoal || 'Continue milestone deliverables.');
+    setQrData(rev.qrCodeToken ? { token: rev.qrCodeToken, expiresAt: '' } : null);
   };
 
   const toggleAttendance = (studentId: string) => {
-    setAttendanceState((prev: Record<string, unknown>[]) =>
-      prev.map((a: Record<string, unknown>) =>
+    setAttendanceState((prev: AttendanceItem[]) =>
+      prev.map((a: AttendanceItem) =>
         a.studentId === studentId || a.name === studentId
           ? { ...a, attended: !a.attended }
           : a
@@ -157,7 +159,7 @@ export default function HodReviewsPage() {
       if (res.ok) {
         fetchReviewSessions();
       }
-      recordReviewAttendance(meetingReview.id as string, attendanceState as any);
+      recordReviewAttendance(meetingReview.id as string, attendanceState);
       saveMeetingNotes(meetingReview.id as string, meetingNotes, nextWeekDirective);
       showToast(`Review ${(meetingReview.code as string) || `#${meetingReview.reviewNumber as number}`}`, 'Records updated & notification sent.', 'success');
     } catch (err) {
