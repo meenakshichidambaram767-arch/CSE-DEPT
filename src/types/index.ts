@@ -187,6 +187,7 @@ export interface ReviewScore {
 
 export interface ReviewSession {
   id: string;
+  code?: string;
   activityId: string;
   activityTitle: string;
   activityType: ActivityType;
