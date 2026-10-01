@@ -76,26 +76,26 @@ export async function GET(
       title = 'Final Internship Review';
     }
 
-    const formattedProgress = (progressList || []).map((p: any) => ({
-      id: p.id,
-      studentId: p.student_id,
-      studentName: p.students?.name || '',
-      studentRegNo: p.students?.register_number || '',
-      completedWork: p.completed_this_week,
-      currentWork: p.currently_working_on,
-      nextSteps: p.next_week_goal,
-      blockers: p.blockers,
-      githubUrl: p.githubUrl,
-      submittedAt: p.submitted_at,
+    const formattedProgress = (progressList || []).map((p: Record<string, unknown>) => ({
+      id: p.id as string,
+      studentId: p.student_id as string,
+      studentName: (p.students as Record<string, unknown>)?.name as string || '',
+      studentRegNo: (p.students as Record<string, unknown>)?.register_number as string || '',
+      completedWork: p.completed_this_week as string,
+      currentWork: p.currently_working_on as string,
+      nextSteps: p.next_week_goal as string,
+      blockers: p.blockers as string,
+      githubUrl: p.githubUrl as string | null,
+      submittedAt: p.submitted_at as string,
     }));
 
-    const formattedAttendance = (attendanceList || []).map((a: any) => ({
-      id: a.id,
-      studentId: a.student_id,
-      studentName: a.students?.name || '',
-      studentRegNo: a.students?.register_number || '',
-      attended: a.attended,
-      checkInTime: a.check_in_time,
+    const formattedAttendance = (attendanceList || []).map((a: Record<string, unknown>) => ({
+      id: a.id as string,
+      studentId: a.student_id as string,
+      studentName: (a.students as Record<string, unknown>)?.name as string || '',
+      studentRegNo: (a.students as Record<string, unknown>)?.register_number as string || '',
+      attended: a.attended as boolean,
+      checkInTime: a.check_in_time as string,
     }));
 
     return apiSuccess({
@@ -118,8 +118,9 @@ export async function GET(
       progressReports: formattedProgress,
       attendance: formattedAttendance,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unexpected error occurred.';
     console.error('Error in GET /api/v1/reviews/sessions/[id]:', err);
-    return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);
+    return apiError('INTERNAL_SERVER_ERROR', message, 500);
   }
 }
