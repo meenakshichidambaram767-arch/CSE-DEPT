@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from '@/lib/api/response';
 // GET /api/v1/records/students - Paginated & Filtered Student Directory (HOD Only)
 export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const { searchParams } = new URL(request.url);
 
     const year = searchParams.get('year');
@@ -44,17 +44,17 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedStudents = (rawStudents || []).map((s: any) => ({
-      id: s.id,
-      userId: s.user_id,
-      registerNumber: s.register_number,
-      regNo: s.register_number,
-      name: s.name,
-      department: s.department || 'CSE',
-      year: s.year,
-      section: s.section,
-      email: s.email || s.users?.email || '',
-      createdAt: s.created_at,
+    const formattedStudents = (rawStudents || []).map((s: Record<string, unknown>) => ({
+      id: s.id as string,
+      userId: s.user_id as string,
+      registerNumber: s.register_number as string,
+      regNo: s.register_number as string,
+      name: s.name as string,
+      department: (s.department as string) || 'CSE',
+      year: s.year as string,
+      section: s.section as string,
+      email: (s.email as string) || ((s.users as Record<string, unknown>)?.email as string) || '',
+      createdAt: s.created_at as string,
     }));
 
     return apiSuccess(formattedStudents, 200, {
@@ -62,11 +62,11 @@ export async function GET(request: NextRequest) {
       page_size: pageSize,
       total: count || 0,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in GET /api/v1/records/students:', err);

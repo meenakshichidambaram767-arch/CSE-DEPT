@@ -43,39 +43,43 @@ export default function HODEventsPage() {
   const [newVenue, setNewVenue] = useState('');
   const [newCity, setNewCity] = useState('');
 
-  const [apiEvents, setApiEvents] = useState<any[]>([]);
+  const [apiEvents, setApiEvents] = useState<Record<string, unknown>[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(true);
 
-  // Fetch events from API
-  const fetchEvents = async () => {
-    try {
-      const res = await fetch('/api/v1/events');
-      if (res.ok) {
-        const body = await res.json();
-        if (body.data) {
-          setApiEvents(body.data);
+  useEffect(() => {
+    let ignore = false;
+    async function fetchEvents() {
+      try {
+        const res = await fetch('/api/v1/events');
+        if (res.ok) {
+          const body = await res.json();
+          if (body.data && !ignore) {
+            setApiEvents(body.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching events API:', err);
+      } finally {
+        if (!ignore) {
+          setIsLoadingApi(false);
         }
       }
-    } catch (err) {
-      console.error('Error fetching events API:', err);
-    } finally {
-      setIsLoadingApi(false);
     }
-  };
-
-  useEffect(() => {
     fetchEvents();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
-  const displayEventsList = apiEvents.length > 0 ? apiEvents.map(e => ({
-    id: e.id,
-    code: e.code,
-    title: e.title,
-    purpose: e.purpose,
-    date: e.date,
-    formattedDate: new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-    venue: e.venue,
-    city: e.city || 'Coimbatore',
+  const displayEventsList = apiEvents.length > 0 ? apiEvents.map((e: Record<string, unknown>) => ({
+    id: e.id as string,
+    code: e.code as string,
+    title: e.title as string,
+    purpose: e.purpose as ODPurpose,
+    date: e.date as string,
+    formattedDate: new Date(e.date as string).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    venue: e.venue as string,
+    city: (e.city as string) || 'Coimbatore',
     studentCount: 0,
     approvedCount: 0,
     pendingCount: 0,
@@ -115,7 +119,11 @@ export default function HODEventsPage() {
       });
 
       if (res.ok) {
-        await fetchEvents();
+        const listRes = await fetch('/api/v1/events');
+        if (listRes.ok) {
+          const body = await listRes.json();
+          if (body.data) setApiEvents(body.data);
+        }
       }
     } catch (err) {
       console.error('Error creating event via API:', err);

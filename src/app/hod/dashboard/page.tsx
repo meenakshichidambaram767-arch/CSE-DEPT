@@ -3,11 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
-import { ArrowRight, Calendar } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export default function HODDashboard() {
   const { odApplications, odEvents } = useData();
-  const [summaryData, setSummaryData] = React.useState<any>(null);
+  const [summaryData, setSummaryData] = React.useState<Record<string, Record<string, number>> | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = React.useState(true);
 
   React.useEffect(() => {

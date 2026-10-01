@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, CheckCircle2, AlertTriangle, Cpu, Lightbulb, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Sparkles, CheckCircle2, Cpu, Lightbulb, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export interface SmartSummaryProps {
-  title: string;
+  title?: string;
   problemStatement: string;
   category?: string;
   technologies?: string[];
@@ -14,11 +14,9 @@ export interface SmartSummaryProps {
 }
 
 export const SmartSummary: React.FC<SmartSummaryProps> = ({
-  title,
   problemStatement,
   category = 'Computer Science',
   technologies = [],
-  type = 'PROJECT',
   initialOpen = false,
 }) => {
   const [isGenerated, setIsGenerated] = useState(initialOpen);

@@ -3,12 +3,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Activity,
-  ActivityType,
   ActivityStatus,
   ODApplication,
   ODStatus,
   ODEvent,
-  AuditLog,
   ReviewSession,
   WeeklyProgress,
   AttendanceItem,
@@ -22,7 +20,6 @@ import {
   mockODApplications,
   mockODEvents,
   mockNotifications,
-  mockUsers,
 } from '@/data/mock';
 
 export interface DataContextType {

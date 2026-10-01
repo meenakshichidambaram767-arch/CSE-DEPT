@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    await requireAuth();
     const { id } = await params;
     const supabase = await createClient();
 
@@ -35,11 +35,11 @@ export async function GET(
     const targetStart = new Date(od.start_date).getTime();
     const targetEnd = new Date(od.end_date).getTime();
 
-    const conflictingRequests: any[] = [];
+    const conflictingRequests: Record<string, unknown>[] = [];
 
-    (otherODs || []).forEach((other: any) => {
-      const otherStart = new Date(other.start_date).getTime();
-      const otherEnd = new Date(other.end_date).getTime();
+    (otherODs || []).forEach((other: Record<string, unknown>) => {
+      const otherStart = new Date(other.start_date as string).getTime();
+      const otherEnd = new Date(other.end_date as string).getTime();
 
       // Check date range overlap: (startA <= endB) AND (endA >= startB)
       if (targetStart <= otherEnd && targetEnd >= otherStart) {
@@ -67,8 +67,8 @@ export async function GET(
       conflictCount: conflictingRequests.length,
       conflictingRequests,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in GET /api/v1/od-requests/[id]/conflicts:', err);

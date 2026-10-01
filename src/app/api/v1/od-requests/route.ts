@@ -75,37 +75,37 @@ export async function GET(request: NextRequest) {
     }
 
     // Format data to match API contract
-    const formattedData = (rawData || []).map((row: any) => ({
-      id: row.id,
-      code: row.code,
-      studentId: row.student_id,
-      studentName: row.students?.name || 'Student',
-      studentRegNo: row.students?.register_number || '',
-      department: row.students?.department || 'CSE',
-      year: row.students?.year || 'II',
-      section: row.students?.section || 'A',
-      eventId: row.event_id,
-      activityId: row.activity_id,
-      purpose: row.purpose,
-      eventName: row.event_name,
-      organization: row.organization,
-      reason: row.reason,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      date: row.start_date,
-      fromTime: row.from_time,
-      toTime: row.to_time,
-      slotType: row.slot_type,
-      totalDays: row.total_days,
-      venue: row.venue,
-      registrationId: row.registration_id,
-      additionalNotes: row.additional_notes,
-      status: row.status,
-      remarks: row.remarks,
-      rejectionReason: row.rejection_reason,
-      revisionNotes: row.revision_notes,
-      submittedDate: row.submitted_date,
-      approvedDate: row.approved_date,
+    const formattedData = (rawData || []).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      code: row.code as string,
+      studentId: row.student_id as string,
+      studentName: (row.students as Record<string, unknown>)?.name as string || 'Student',
+      studentRegNo: (row.students as Record<string, unknown>)?.register_number as string || '',
+      department: (row.students as Record<string, unknown>)?.department as string || 'CSE',
+      year: (row.students as Record<string, unknown>)?.year as string || 'II',
+      section: (row.students as Record<string, unknown>)?.section as string || 'A',
+      eventId: row.event_id as string | null,
+      activityId: row.activity_id as string | null,
+      purpose: row.purpose as string,
+      eventName: row.event_name as string,
+      organization: row.organization as string | null,
+      reason: row.reason as string,
+      startDate: row.start_date as string,
+      endDate: row.end_date as string,
+      date: row.start_date as string,
+      fromTime: row.from_time as string | null,
+      toTime: row.to_time as string | null,
+      slotType: row.slot_type as string | null,
+      totalDays: row.total_days as number,
+      venue: row.venue as string,
+      registrationId: row.registration_id as string | null,
+      additionalNotes: row.additional_notes as string | null,
+      status: row.status as string,
+      remarks: row.remarks as string | null,
+      rejectionReason: row.rejection_reason as string | null,
+      revisionNotes: row.revision_notes as string | null,
+      submittedDate: row.submitted_date as string,
+      approvedDate: row.approved_date as string | null,
     }));
 
     return apiSuccess(formattedData, 200, {
@@ -113,9 +113,10 @@ export async function GET(request: NextRequest) {
       page_size: pageSize,
       total: count || 0,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unexpected error occurred.';
     console.error('Error in GET /api/v1/od-requests:', err);
-    return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);
+    return apiError('INTERNAL_SERVER_ERROR', message, 500);
   }
 }
 
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
 
     // Insert Team Members if provided
     if (Array.isArray(team_members) && team_members.length > 0) {
-      const tmRows = team_members.map((tm: any) => ({
+      const tmRows = team_members.map((tm: { name: string; register_number?: string; regNo?: string; email?: string; role?: string }) => ({
         od_request_id: newOD.id,
         name: tm.name,
         register_number: tm.register_number || tm.regNo,
@@ -275,8 +276,8 @@ export async function POST(request: NextRequest) {
       status: newOD.status,
       submittedDate: newOD.submitted_date,
     }, 201);
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in POST /api/v1/od-requests:', err);

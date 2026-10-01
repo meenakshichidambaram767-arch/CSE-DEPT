@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    await requireAuth();
     const { id } = await params;
     const supabase = await createClient();
 
@@ -40,7 +40,7 @@ export async function GET(
       city: event.city || '',
       status: event.status,
       createdAt: event.created_at,
-      attachedODs: (odRequests || []).map((od: any) => ({
+      attachedODs: (odRequests || []).map((od: Record<string, unknown>) => ({
         id: od.id,
         code: od.code,
         status: od.status,
@@ -48,8 +48,8 @@ export async function GET(
         endDate: od.end_date,
       })),
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in GET /api/v1/events/[id]:', err);
@@ -63,7 +63,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const { id } = await params;
     const body = await request.json();
 
@@ -120,11 +120,11 @@ export async function PUT(
       city: updatedEvent.city,
       status: updatedEvent.status,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in PUT /api/v1/events/[id]:', err);
@@ -138,7 +138,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const { id } = await params;
     const supabase = await createClient();
 
@@ -170,11 +170,11 @@ export async function DELETE(
       status: 'CLOSED',
       message: 'Event successfully closed.',
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in DELETE /api/v1/events/[id]:', err);

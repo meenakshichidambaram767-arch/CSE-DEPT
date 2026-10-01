@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { AlertCircle, Clock, ArrowRight } from 'lucide-react';
+import { Clock, ArrowRight } from 'lucide-react';
 
 export interface ActionCardProps {
   title: string;

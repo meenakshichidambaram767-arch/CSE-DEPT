@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const { id } = await params;
     const supabase = await createClient();
 
@@ -59,11 +59,11 @@ export async function POST(
       qrExpiresAt: updatedSession.qr_expires_at,
       expiresInSeconds: 900,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in POST /api/v1/reviews/sessions/[id]/generate-qr:', err);

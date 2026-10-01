@@ -63,11 +63,11 @@ export async function POST(
     }
 
     return apiSuccess(rpcResult);
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in POST /api/v1/reviews/sessions/[id]/finalize:', err);

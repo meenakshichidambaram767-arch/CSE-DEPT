@@ -3,8 +3,9 @@
 import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataContext';
+import { ODApplication } from '@/types';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
-import { Search, ArrowRight, Check, X, Filter, GraduationCap } from 'lucide-react';
+import { Search, ArrowRight, Check, X, GraduationCap } from 'lucide-react';
 
 const CATEGORY_TABS = [
   { id: 'ALL', label: 'All Categories' },
@@ -18,7 +19,6 @@ const CATEGORY_TABS = [
 function RequestsContent() {
   const { odApplications: contextODs, bulkApproveOD } = useData();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // Simple 3-Tab switcher: 'PENDING' | 'APPROVED' | 'ALL'
   const [activeTab, setActiveTab] = useState<'PENDING' | 'APPROVED' | 'ALL'>('PENDING');
@@ -36,9 +36,8 @@ function RequestsContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // API Data State
-  const [apiData, setApiData] = useState<any[]>([]);
+  const [apiData, setApiData] = useState<ODApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [apiTotal, setApiTotal] = useState(0);
 
   // Fetch OD Requests from /api/v1/od-requests
   useEffect(() => {
@@ -57,7 +56,6 @@ function RequestsContent() {
           const body = await res.json();
           if (body.data) {
             setApiData(body.data);
-            setApiTotal(body.meta?.total || body.data.length);
             setIsLoading(false);
             return;
           }

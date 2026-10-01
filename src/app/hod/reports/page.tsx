@@ -11,7 +11,6 @@ import { MetricCard } from '@/components/common/MetricCard';
 import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
 import {
-  FileText,
   Download,
   Printer,
   ShieldCheck,
@@ -19,8 +18,6 @@ import {
   Trophy,
   BriefcaseBusiness,
   FileCheck,
-  CheckCircle2,
-  Filter,
   GraduationCap,
 } from 'lucide-react';
 
@@ -89,7 +86,14 @@ export default function HodReportsPage() {
     return true;
   });
 
-  const [accreditationMetrics, setAccreditationMetrics] = useState<any>(null);
+interface AccreditationMetrics {
+  criteria_1_3_2?: { count?: number };
+  criteria_5_3_1?: { count?: number };
+  criteria_1_3_3?: { count?: number };
+  total_approved_od_clearances?: number;
+}
+
+  const [accreditationMetrics, setAccreditationMetrics] = useState<AccreditationMetrics | null>(null);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -342,7 +346,7 @@ export default function HodReportsPage() {
               DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING
             </h3>
             <p className="text-[10px] text-slate-500 font-sans">
-              Accredited with NAAC 'A' Grade • NBA Tier-1 • Anna University Affiliated
+              Accredited with NAAC &apos;A&apos; Grade • NBA Tier-1 • Anna University Affiliated
             </p>
           </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card } from '../ui/Card';
 import { Sparkles } from 'lucide-react';
 
 export interface SummaryItem {

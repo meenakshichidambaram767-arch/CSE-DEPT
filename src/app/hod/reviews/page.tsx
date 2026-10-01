@@ -22,14 +22,13 @@ import {
   Sparkles,
   AlertTriangle,
   Send,
-  CheckCircle2,
 } from 'lucide-react';
+
 import { ReviewSession, AttendanceItem } from '@/types';
 
 export default function HodReviewsPage() {
   const {
     reviews,
-    projects,
     activities,
     scheduleRecurringReviews,
     recordReviewAttendance,
@@ -38,7 +37,7 @@ export default function HodReviewsPage() {
   } = useData();
   const { showToast } = useToast();
 
-  const [apiReviews, setApiReviews] = useState<any[]>([]);
+  const [apiReviews, setApiReviews] = useState<ReviewSession[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
 
@@ -53,8 +52,8 @@ export default function HodReviewsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Meeting & Notes State
-  const [meetingReview, setMeetingReview] = useState<any | null>(null);
-  const [attendanceState, setAttendanceState] = useState<any[]>([]);
+  const [meetingReview, setMeetingReview] = useState<ReviewSession | null>(null);
+  const [attendanceState, setAttendanceState] = useState<AttendanceItem[]>([]);
   const [meetingNotes, setMeetingNotes] = useState('');
   const [nextWeekDirective, setNextWeekDirective] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -81,8 +80,29 @@ export default function HodReviewsPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchReviewSessions();
-  }, [fetchReviewSessions]);
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await fetch('/api/v1/reviews/sessions');
+        if (res.ok) {
+          const body = await res.json();
+          if (body.data && !ignore) {
+            setApiReviews(body.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching review sessions API:', err);
+      } finally {
+        if (!ignore) {
+          setIsLoadingApi(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Broadcast Modal
   const [isReminderOpen, setIsReminderOpen] = useState(false);
@@ -95,13 +115,13 @@ export default function HodReviewsPage() {
     (a) => (a.type === 'PROJECT' || a.type === 'HACKATHON' || a.type === 'INTERNSHIP') && (a.status === 'ACTIVE' || a.status === 'APPROVED')
   );
 
-  const handleOpenMeeting = (rev: any) => {
+  const handleOpenMeeting = (rev: ReviewSession) => {
     setMeetingReview(rev);
     setAttendanceState(
-      rev.attendance && rev.attendance.length > 0
+      rev.attendance && Array.isArray(rev.attendance) && rev.attendance.length > 0
         ? rev.attendance
-        : (rev.studentTeam || []).map((m: any, idx: number) => ({
-            studentId: `usr-team-${idx + 1}`,
+        : (rev.studentTeam || []).map((m, idx: number) => ({
+            studentId: m.id || `usr-team-${idx + 1}`,
             name: m.name,
             regNo: m.regNo,
             attended: true,
@@ -109,12 +129,12 @@ export default function HodReviewsPage() {
     );
     setMeetingNotes(rev.meetingNotes || 'Progress verified.');
     setNextWeekDirective(rev.nextWeekGoal || 'Continue milestone deliverables.');
-    setQrData(rev.qrToken ? { token: rev.qrToken, expiresAt: rev.qrExpiresAt } : null);
+    setQrData(rev.qrCodeToken ? { token: rev.qrCodeToken, expiresAt: '' } : null);
   };
 
   const toggleAttendance = (studentId: string) => {
-    setAttendanceState((prev: any[]) =>
-      prev.map((a: any) =>
+    setAttendanceState((prev: AttendanceItem[]) =>
+      prev.map((a: AttendanceItem) =>
         a.studentId === studentId || a.name === studentId
           ? { ...a, attended: !a.attended }
           : a
@@ -139,9 +159,9 @@ export default function HodReviewsPage() {
       if (res.ok) {
         fetchReviewSessions();
       }
-      recordReviewAttendance(meetingReview.id, attendanceState);
-      saveMeetingNotes(meetingReview.id, meetingNotes, nextWeekDirective);
-      showToast(`Review ${meetingReview.code || `#${meetingReview.reviewNumber}`} Saved`, 'Records updated & notification sent.', 'success');
+      recordReviewAttendance(meetingReview.id as string, attendanceState);
+      saveMeetingNotes(meetingReview.id as string, meetingNotes, nextWeekDirective);
+      showToast(`Review ${(meetingReview.code as string) || `#${meetingReview.reviewNumber as number}`}`, 'Records updated & notification sent.', 'success');
     } catch (err) {
       console.error('Error saving review session:', err);
       showToast('Error saving review notes', 'error');
@@ -400,7 +420,7 @@ export default function HodReviewsPage() {
         title="Schedule Recurring Weekly Reviews"
         variant="information"
         confirmLabel={isGenerating ? 'Scheduling...' : 'Generate Schedule'}
-        onConfirm={() => handleConfirmRecurringSchedule({ preventDefault: () => {} } as any)}
+        onConfirm={() => handleConfirmRecurringSchedule({ preventDefault: () => {} } as unknown as React.FormEvent)}
         cancelLabel="Cancel"
       >
         <div className="space-y-3 text-xs">
@@ -515,6 +535,23 @@ export default function HodReviewsPage() {
               value={nextWeekDirective}
               onChange={(e) => setNextWeekDirective(e.target.value)}
             />
+
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleGenerateQr(meetingReview.id as string)}
+                isLoading={isGeneratingQr}
+              >
+                Generate Dynamic Check-In QR
+              </Button>
+              {qrData && (
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
+                  Active Token: {qrData.token} (Expires {new Date(qrData.expiresAt).toLocaleTimeString()})
+                </p>
+              )}
+            </div>
           </div>
         )}
       </Dialog>

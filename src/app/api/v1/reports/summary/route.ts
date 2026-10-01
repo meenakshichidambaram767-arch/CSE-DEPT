@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from '@/lib/api/response';
 // GET /api/v1/reports/summary - Department Dashboard & Summary Analytics (HOD Only)
 export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const { searchParams } = new URL(request.url);
 
     const year = searchParams.get('year');
@@ -131,11 +131,11 @@ export async function GET(request: NextRequest) {
       reviews: reviewSummary,
       events: eventSummary,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in GET /api/v1/reports/summary:', err);

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const startDate = new Date(activity.start_date);
     const endDate = new Date(activity.end_date);
-    const sessionsToInsert: any[] = [];
+    const sessionsToInsert: Record<string, unknown>[] = [];
 
     // Derive sessions based on activity.type
     if (activity.type === 'PROJECT') {
@@ -146,22 +146,22 @@ export async function POST(request: NextRequest) {
       activityCode: activity.code,
       activityType: activity.type,
       sessionCount: createdSessions.length,
-      sessions: (createdSessions || []).map((s: any) => ({
-        id: s.id,
-        code: s.code,
-        reviewNumber: s.review_number,
-        reviewType: s.review_type,
-        date: s.date,
-        time: s.time,
-        venue: s.venue,
-        status: s.status,
+      sessions: (createdSessions || []).map((s: Record<string, unknown>) => ({
+        id: s.id as string,
+        code: s.code as string,
+        reviewNumber: s.review_number as number,
+        reviewType: s.review_type as string,
+        date: s.date as string,
+        time: s.time as string,
+        venue: s.venue as string,
+        status: s.status as string,
       })),
     }, 201);
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in POST /api/v1/reviews/schedule:', err);

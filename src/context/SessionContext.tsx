@@ -29,31 +29,33 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [role, setRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshSession = async () => {
-    setIsLoading(true);
-    // 1. Try real Supabase auth session
-    const sbSession = await getSupabaseSession();
-    if (sbSession) {
-      setUser(sbSession.user);
-      setRole(sbSession.role);
-      setIsLoading(false);
-      return;
-    }
-
-    // 2. Fallback for demo dev mode
-    const mockSession = getCurrentSession();
-    if (mockSession) {
-      setUser(mockSession.user);
-      setRole(mockSession.role);
-    } else {
-      setUser(null);
-      setRole(null);
-    }
-    setIsLoading(false);
-  };
-
   useEffect(() => {
-    refreshSession();
+    let isMounted = true;
+    const loadSession = async () => {
+      const sbSession = await getSupabaseSession();
+      if (!isMounted) return;
+      if (sbSession) {
+        setUser(sbSession.user);
+        setRole(sbSession.role);
+        setIsLoading(false);
+        return;
+      }
+
+      const mockSession = getCurrentSession();
+      if (mockSession) {
+        setUser(mockSession.user);
+        setRole(mockSession.role);
+      } else {
+        setUser(null);
+        setRole(null);
+      }
+      setIsLoading(false);
+    };
+
+    loadSession();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Strict Role Protection & Navigation (Prevents Client Role Escalation)
