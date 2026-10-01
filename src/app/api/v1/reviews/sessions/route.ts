@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedSessions = (rawSessions || []).map((s: any) => {
+    const formattedSessions = (rawSessions || []).map((s: Record<string, unknown>) => {
       // Derive non-evaluative review title
       let title = `Weekly Review #${s.review_number}`;
       if (s.review_type === 'HACKATHON_POST') {
@@ -72,21 +72,21 @@ export async function GET(request: NextRequest) {
       }
 
       return {
-        id: s.id,
-        code: s.code,
-        activityId: s.activity_id,
-        activityTitle: s.activities?.title || '',
-        activityType: s.activities?.type || 'PROJECT',
-        reviewNumber: s.review_number,
-        reviewType: s.review_type || 'PROJECT_WEEKLY',
+        id: s.id as string,
+        code: s.code as string,
+        activityId: s.activity_id as string,
+        activityTitle: (s.activities as Record<string, unknown>)?.title as string || '',
+        activityType: (s.activities as Record<string, unknown>)?.type as string || 'PROJECT',
+        reviewNumber: s.review_number as number,
+        reviewType: (s.review_type as string) || 'PROJECT_WEEKLY',
         title,
-        date: s.date,
-        time: s.time,
-        venue: s.venue,
-        status: s.status,
-        meetingNotes: s.meeting_notes,
-        nextWeekGoal: s.next_week_goal,
-        createdAt: s.created_at,
+        date: s.date as string,
+        time: s.time as string,
+        venue: s.venue as string,
+        status: s.status as string,
+        meetingNotes: s.meeting_notes as string | null,
+        nextWeekGoal: s.next_week_goal as string | null,
+        createdAt: s.created_at as string,
       };
     });
 
@@ -95,8 +95,9 @@ export async function GET(request: NextRequest) {
       page_size: pageSize,
       total: count || 0,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unexpected error occurred.';
     console.error('Error in GET /api/v1/reviews/sessions:', err);
-    return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);
+    return apiError('INTERNAL_SERVER_ERROR', message, 500);
   }
 }

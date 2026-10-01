@@ -93,8 +93,8 @@ export async function POST(
       githubUrl: progressRecord.githubUrl,
       submittedAt: progressRecord.submitted_at,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in POST /api/v1/reviews/sessions/[id]/progress:', err);
