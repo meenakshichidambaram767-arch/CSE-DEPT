@@ -132,8 +132,8 @@ export async function PUT(
       status: updatedAct.status,
       updatedAt: updatedAct.updated_at,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in PUT /api/v1/activities/[id]/resubmit:', err);

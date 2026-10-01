@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError } from '@/lib/api/response';
 
-function escapeCsvCell(val: any): string {
+function escapeCsvCell(val: unknown): string {
   if (val === null || val === undefined) return '""';
   const str = String(val);
   const needsQuoting = /[",\n\r]/.test(str);
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const headers = ['Register Number', 'Student Name', 'Department', 'Year', 'Section', 'Email'];
     const csvLines: string[] = [headers.map(escapeCsvCell).join(',')];
 
-    (students || []).forEach((s: any) => {
+    (students || []).forEach((s: Record<string, unknown>) => {
       csvLines.push(
         [
           s.register_number,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           s.department || 'CSE',
           s.year,
           s.section,
-          s.email || s.users?.email || '',
+          s.email || (s.users as Record<string, unknown>)?.email || '',
         ]
           .map(escapeCsvCell)
           .join(',')
@@ -78,11 +78,11 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in GET /api/v1/records/export:', err);

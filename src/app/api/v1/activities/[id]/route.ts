@@ -74,13 +74,13 @@ export async function GET(
       .eq('activity_id', act.id)
       .order('changed_at', { ascending: true });
 
-    const formattedHistory = (history || []).map((h: Record<string, any>) => ({
-      id: h.id,
-      oldStatus: h.old_status,
-      newStatus: h.new_status,
-      note: h.note,
-      changedBy: h.users?.name || 'System',
-      changedAt: h.changed_at,
+    const formattedHistory = (history || []).map((h: Record<string, unknown>) => ({
+      id: h.id as string,
+      oldStatus: h.old_status as string,
+      newStatus: h.new_status as string,
+      note: h.note as string | null,
+      changedBy: (h.users as Record<string, unknown>)?.name as string || 'System',
+      changedAt: h.changed_at as string,
     }));
 
     const responsePayload = {
@@ -110,20 +110,20 @@ export async function GET(
       guideName: act.guide_name,
       createdAt: act.created_at,
       updatedAt: act.updated_at,
-      teamMembers: (teamMembers || []).map((m: Record<string, any>) => ({
-        id: m.id,
-        name: m.name,
-        regNo: m.register_number,
-        email: m.email,
-        role: m.role,
+      teamMembers: (teamMembers || []).map((m: Record<string, unknown>) => ({
+        id: m.id as string,
+        name: m.name as string,
+        regNo: m.register_number as string,
+        email: m.email as string,
+        role: m.role as string,
       })),
-      documents: (docs || []).map((d: Record<string, any>) => ({
-        id: d.id,
-        name: d.file_name,
-        type: d.document_type,
-        size: `${Math.round(d.size / 1024)} KB`,
-        uploadDate: d.created_at,
-        path: d.storage_path,
+      documents: (docs || []).map((d: Record<string, unknown>) => ({
+        id: d.id as string,
+        name: d.file_name as string,
+        type: d.document_type as string,
+        size: `${Math.round((d.size as number) / 1024)} KB`,
+        uploadDate: d.created_at as string,
+        path: d.storage_path as string,
       })),
       statusHistory: formattedHistory,
     };

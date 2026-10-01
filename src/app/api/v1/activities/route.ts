@@ -71,18 +71,18 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedData = (rawData || []).map((row: Record<string, any>) => ({
-      id: row.id,
-      code: row.code,
-      studentId: row.student_id,
-      studentName: row.students?.name || '',
-      studentRegNo: row.students?.register_number || '',
-      department: row.students?.department || 'CSE',
-      year: row.students?.year || 'II',
-      section: row.students?.section || 'A',
-      type: row.type,
-      title: row.title,
-      description: row.description,
+    const formattedData = (rawData || []).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      code: row.code as string,
+      studentId: row.student_id as string,
+      studentName: (row.students as Record<string, unknown>)?.name as string || '',
+      studentRegNo: (row.students as Record<string, unknown>)?.register_number as string || '',
+      department: (row.students as Record<string, unknown>)?.department as string || 'CSE',
+      year: (row.students as Record<string, unknown>)?.year as string || 'II',
+      section: (row.students as Record<string, unknown>)?.section as string || 'A',
+      type: row.type as string,
+      title: row.title as string,
+      description: row.description as string,
       technologies: row.technologies || [],
       startDate: row.start_date,
       endDate: row.end_date,

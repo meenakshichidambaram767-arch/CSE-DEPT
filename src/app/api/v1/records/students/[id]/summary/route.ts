@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const { id } = await params;
     const supabase = await createClient();
 
@@ -100,11 +100,11 @@ export async function GET(
     };
 
     return apiSuccess(payload);
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in GET /api/v1/records/students/[id]/summary:', err);
