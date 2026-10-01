@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from '@/lib/api/response';
 // GET /api/v1/events - List Department Events
 export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    await requireAuth();
     const { searchParams } = new URL(request.url);
 
     const status = searchParams.get('status');
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedEvents = (rawEvents || []).map((e: any) => ({
+    const formattedEvents = (rawEvents || []).map((e: Record<string, unknown>) => ({
       id: e.id,
       code: e.code,
       title: e.title,
@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
       page_size: pageSize,
       total: count || 0,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in GET /api/v1/events:', err);
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 // POST /api/v1/events - Create New Department Event (HOD Only)
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireRole(['HOD']);
+    await requireRole(['HOD']);
     const body = await request.json();
 
     const {
@@ -144,11 +144,11 @@ export async function POST(request: NextRequest) {
       },
       201
     );
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
-    if (err.message === 'FORBIDDEN') {
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
       return apiError('FORBIDDEN', 'HOD authorization required.', 403);
     }
     console.error('Error in POST /api/v1/events:', err);

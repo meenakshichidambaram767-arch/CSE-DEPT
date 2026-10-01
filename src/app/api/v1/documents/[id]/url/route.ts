@@ -50,7 +50,7 @@ export async function GET(
 
     // Try creating a signed URL from Supabase Storage bucket 'documents'
     let signedUrl: string | null = null;
-    const { data: urlData, error: urlErr } = await supabase
+    const { data: urlData } = await supabase
       .storage
       .from('documents')
       .createSignedUrl(doc.storage_path, 900); // 15 minutes (900s)
@@ -72,8 +72,8 @@ export async function GET(
       expiresInSeconds: 900,
       createdAt: doc.created_at,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in GET /api/v1/documents/[id]/url:', err);

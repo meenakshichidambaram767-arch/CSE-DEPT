@@ -74,7 +74,7 @@ export async function GET(
       .eq('activity_id', act.id)
       .order('changed_at', { ascending: true });
 
-    const formattedHistory = (history || []).map((h: any) => ({
+    const formattedHistory = (history || []).map((h: Record<string, any>) => ({
       id: h.id,
       oldStatus: h.old_status,
       newStatus: h.new_status,
@@ -110,14 +110,14 @@ export async function GET(
       guideName: act.guide_name,
       createdAt: act.created_at,
       updatedAt: act.updated_at,
-      teamMembers: (teamMembers || []).map((m: any) => ({
+      teamMembers: (teamMembers || []).map((m: Record<string, any>) => ({
         id: m.id,
         name: m.name,
         regNo: m.register_number,
         email: m.email,
         role: m.role,
       })),
-      documents: (docs || []).map((d: any) => ({
+      documents: (docs || []).map((d: Record<string, any>) => ({
         id: d.id,
         name: d.file_name,
         type: d.document_type,
@@ -129,7 +129,7 @@ export async function GET(
     };
 
     return apiSuccess(responsePayload);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error in GET /api/v1/activities/[id]:', err);
     return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);
   }

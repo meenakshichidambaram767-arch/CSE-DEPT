@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
       uploadedBy: newDoc.uploaded_by,
       createdAt: newDoc.created_at,
     }, 201);
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in POST /api/v1/documents/upload:', err);

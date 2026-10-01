@@ -103,8 +103,11 @@ export const documentsApi = {
       });
 
     if (storageErr) {
-      console.warn('Supabase storage upload error:', storageErr.message);
-      // Fallback: Proceed with metadata path if bucket permissions/creation is pending
+      throw new ApiError(
+        'STORAGE_UPLOAD_FAILED',
+        `Failed to upload file to storage: ${storageErr.message}`,
+        400
+      );
     }
 
     // 3. Post document metadata separately to POST /api/v1/documents/upload

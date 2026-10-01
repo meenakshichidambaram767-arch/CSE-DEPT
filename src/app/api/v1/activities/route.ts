@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedData = (rawData || []).map((row: any) => ({
+    const formattedData = (rawData || []).map((row: Record<string, any>) => ({
       id: row.id,
       code: row.code,
       studentId: row.student_id,
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       page_size: pageSize,
       total: count || 0,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error in GET /api/v1/activities:', err);
     return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);
   }
@@ -169,9 +169,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Team Member Validation against Database Students
-    const validatedTeamMembers: any[] = [];
+    const validatedTeamMembers: Array<{ name: string; register_number: string; email: string; role: string }> = [];
     if (Array.isArray(team_members) && team_members.length > 0) {
-      const regNos = team_members.map((tm: any) => (tm.register_number || tm.regNo || '').trim()).filter(Boolean);
+      const regNos = team_members.map((tm: { register_number?: string; regNo?: string }) => (tm.register_number || tm.regNo || '').trim()).filter(Boolean);
       
       // Duplicate register number check in submission
       const uniqueRegNos = new Set(regNos);
@@ -291,8 +291,8 @@ export async function POST(request: NextRequest) {
       status: newActivity.status,
       createdAt: newActivity.created_at,
     }, 201);
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in POST /api/v1/activities:', err);

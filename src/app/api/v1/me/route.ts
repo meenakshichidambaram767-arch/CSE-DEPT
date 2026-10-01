@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const authUser = await getAuthenticatedUser();
 
