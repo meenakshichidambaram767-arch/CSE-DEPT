@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Check,
   AlertTriangle,
-  FileText,
   Clock,
   Calendar,
   MapPin,
@@ -22,7 +21,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   const { getODById, checkODConflict } = useData();
 
-  const [requestData, setRequestData] = useState<any>(null);
+  const [requestData, setRequestData] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Decision Modal States
@@ -115,7 +114,8 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
         router.push('/hod/requests');
       }, 1200);
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      console.error('Error executing decision:', err);
       setActionError('An unexpected network error occurred.');
       return false;
     }
@@ -269,12 +269,12 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
               </div>
 
               {requestData.teamMembers &&
-                requestData.teamMembers
-                  .filter((m: any) => m.regNo !== requestData.studentRegNo)
-                  .map((m: any, idx: number) => (
+                (requestData.teamMembers as Record<string, unknown>[])
+                  .filter((m: Record<string, unknown>) => m.regNo !== requestData.studentRegNo)
+                  .map((m: Record<string, unknown>, idx: number) => (
                     <div key={idx} className="flex justify-between items-baseline p-2 rounded bg-white border border-[#dfe6dc] text-xs">
-                      <span className="text-[#172017]">{m.name}</span>
-                      <span className="text-[#586658] font-mono text-[11px] tabular-nums">{m.regNo}</span>
+                      <span className="text-[#172017]">{m.name as string}</span>
+                      <span className="text-[#586658] font-mono text-[11px] tabular-nums">{m.regNo as string}</span>
                     </div>
                   ))}
             </div>
@@ -286,16 +286,16 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
               OD Period &amp; Duty Hours
             </h2>
             <div className="text-xs text-[#172017] space-y-0.5">
-              <p className="font-semibold">{requestData.date || requestData.startDate}</p>
+              <p className="font-semibold">{(requestData.date || requestData.startDate) as string}</p>
               <p className="text-[#586658] flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-[#889688]" />
-                <span>{requestData.fromTime || '09:00 AM'} — {requestData.toTime || '05:00 PM'}</span>
+                <span>{(requestData.fromTime || '09:00 AM') as string} — {(requestData.toTime || '05:00 PM') as string}</span>
               </p>
             </div>
           </div>
 
           {/* Status Timeline History */}
-          {requestData.statusHistory && requestData.statusHistory.length > 0 && (
+          {requestData.statusHistory && Array.isArray(requestData.statusHistory) && requestData.statusHistory.length > 0 && (
             <div className="py-4 space-y-2">
               <h2 className="text-[11px] font-bold text-[#586658] uppercase tracking-wider flex items-center gap-1">
                 <History className="w-3.5 h-3.5 text-[#0a5c36]" />
@@ -303,16 +303,16 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
               </h2>
 
               <div className="space-y-2 pt-1">
-                {requestData.statusHistory.map((h: any, idx: number) => (
+                {(requestData.statusHistory as Record<string, unknown>[]).map((h: Record<string, unknown>, idx: number) => (
                   <div key={idx} className="p-2.5 rounded bg-[#f7f9f5] border border-[#dfe6dc] text-xs space-y-0.5">
                     <div className="flex justify-between items-center text-[11px]">
                       <span className="font-bold text-[#172017]">
-                        {h.oldStatus} → <span className="text-[#0a5c36]">{h.newStatus}</span>
+                        {h.oldStatus as string} → <span className="text-[#0a5c36]">{h.newStatus as string}</span>
                       </span>
-                      <span className="text-[#889688]">{new Date(h.changedAt).toLocaleString()}</span>
+                      <span className="text-[#889688]">{new Date(h.changedAt as string).toLocaleString()}</span>
                     </div>
-                    {h.note && <p className="text-[#586658] text-[11px] italic">&ldquo;{h.note}&rdquo;</p>}
-                    <p className="text-[10px] text-[#889688]">Actor: {h.changedBy}</p>
+                    {Boolean(h.note) && <p className="text-[#586658] text-[11px] italic">&ldquo;{h.note as string}&rdquo;</p>}
+                    <p className="text-[10px] text-[#889688]">Actor: {h.changedBy as string}</p>
                   </div>
                 ))}
               </div>
