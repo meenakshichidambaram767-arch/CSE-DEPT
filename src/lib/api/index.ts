@@ -7,3 +7,4 @@ export * from './documentsApi';
 export * from './eventsApi';
 export * from './activitiesApi';
 export * from './studentsApi';
+export * from './reportsApi';

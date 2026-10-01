@@ -55,6 +55,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
     { label: 'Apply for OD', href: '/student/apply-od', icon: PlusCircle },
     { label: 'Calendar', href: '/student/calendar', icon: CalendarIcon },
     { label: 'Events', href: '/student/events', icon: Sparkles },
+    { label: 'Reports', href: '/student/reports', icon: FileSpreadsheet },
   ];
 
   const hodNav = [
