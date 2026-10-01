@@ -54,7 +54,7 @@ export default function StudentProjectDetailPage() {
       .catch((err: unknown) => {
         if (isMounted) {
           if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-            setBackendNotice(`Backend endpoint GET /api/v1/activities/${id} returned 404. Displaying cached activity record.`);
+            setBackendNotice(`Backend endpoint GET /api/v1/activities/${id} returned HTTP 404 (Endpoint not deployed). Displaying static reference record (LOCAL / UNPERSISTED PROTOTYPE DATA).`);
             const fallback = activitiesApi.getFallbackById(id);
             if (fallback) setActivity(fallback);
             else setError(`Activity record '${id}' not found.`);

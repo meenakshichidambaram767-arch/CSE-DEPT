@@ -12,7 +12,6 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { useToast } from '@/components/ui/Toast';
-import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
 import { activitiesApi } from '@/lib/api/activitiesApi';
 import { studentsApi } from '@/lib/api/studentsApi';
@@ -36,7 +35,6 @@ import {
 function ActivitySubmissionForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addActivity } = useData();
   const { user } = useSession();
   const { showToast } = useToast();
 

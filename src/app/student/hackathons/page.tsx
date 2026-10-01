@@ -28,7 +28,7 @@ export default function StudentHackathonsPage() {
       if (res.data) setHackathons(res.data);
     } catch (err: unknown) {
       if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        setBackendNotice('Backend endpoint returned 404. Displaying cached fallback hackathon records.');
+        setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
         setHackathons(activitiesApi.getFallbackActivities('HACKATHON'));
       }
     } finally {
@@ -46,7 +46,7 @@ export default function StudentHackathonsPage() {
       })
       .catch((err: unknown) => {
         if (isMounted && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-          setBackendNotice('Backend endpoint returned 404. Displaying cached fallback hackathon records.');
+          setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
           setHackathons(activitiesApi.getFallbackActivities('HACKATHON'));
         }
       })

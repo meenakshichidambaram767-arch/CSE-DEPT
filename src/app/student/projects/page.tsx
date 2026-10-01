@@ -28,7 +28,7 @@ export default function StudentProjectsPage() {
       if (res.data) setProjects(res.data);
     } catch (err: unknown) {
       if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        setBackendNotice('Backend endpoint returned 404. Displaying cached fallback project records.');
+        setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
         setProjects(activitiesApi.getFallbackActivities('PROJECT'));
       }
     } finally {
@@ -46,7 +46,7 @@ export default function StudentProjectsPage() {
       })
       .catch((err: unknown) => {
         if (isMounted && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-          setBackendNotice('Backend endpoint returned 404. Displaying cached fallback project records.');
+          setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
           setProjects(activitiesApi.getFallbackActivities('PROJECT'));
         }
       })
