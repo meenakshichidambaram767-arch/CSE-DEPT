@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    let csvLines: string[] = [];
-    let filename = `SIET_CSE_Export_${exportType}_${new Date().toISOString().slice(0, 10)}.csv`;
+    const csvLines: string[] = [];
+    const filename = `SIET_CSE_Export_${exportType}_${new Date().toISOString().slice(0, 10)}.csv`;
 
     if (exportType === 'student') {
       let query = supabase.from('students').select('*, users(email)');

@@ -130,8 +130,8 @@ export async function PUT(
       status: updatedOD.status,
       updatedAt: updatedOD.updated_at,
     });
-  } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
     }
     console.error('Error in PUT /api/v1/od-requests/[id]/resubmit:', err);

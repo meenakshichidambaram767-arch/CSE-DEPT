@@ -74,13 +74,13 @@ export async function GET(
       .eq('od_request_id', od.id)
       .order('changed_at', { ascending: true });
 
-    const formattedHistory = (history || []).map((h: any) => ({
-      id: h.id,
-      oldStatus: h.old_status,
-      newStatus: h.new_status,
-      note: h.note,
-      changedBy: h.users?.name || 'System',
-      changedAt: h.changed_at,
+    const formattedHistory = (history || []).map((h: Record<string, unknown>) => ({
+      id: h.id as string,
+      oldStatus: h.old_status as string,
+      newStatus: h.new_status as string,
+      note: h.note as string | null,
+      changedBy: (h.users as Record<string, unknown>)?.name as string || 'System',
+      changedAt: h.changed_at as string,
     }));
 
     // Query OD Conflict Overlaps
@@ -93,11 +93,11 @@ export async function GET(
 
     const targetStart = new Date(od.start_date).getTime();
     const targetEnd = new Date(od.end_date).getTime();
-    const conflicts: any[] = [];
+    const conflicts: Record<string, unknown>[] = [];
 
-    (conflictingODs || []).forEach((other: any) => {
-      const oStart = new Date(other.start_date).getTime();
-      const oEnd = new Date(other.end_date).getTime();
+    (conflictingODs || []).forEach((other: Record<string, unknown>) => {
+      const oStart = new Date(other.start_date as string).getTime();
+      const oEnd = new Date(other.end_date as string).getTime();
       if (targetStart <= oEnd && targetEnd >= oStart) {
         conflicts.push({
           id: other.id,
@@ -145,27 +145,28 @@ export async function GET(
       hasConflict: conflicts.length > 0,
       conflictCount: conflicts.length,
       conflictingRequests: conflicts,
-      teamMembers: (teamMembers || []).map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        regNo: m.register_number,
-        email: m.email,
-        role: m.role,
+      teamMembers: (teamMembers || []).map((m: Record<string, unknown>) => ({
+        id: m.id as string,
+        name: m.name as string,
+        regNo: m.register_number as string,
+        email: m.email as string,
+        role: m.role as string,
       })),
-      documents: (docs || []).map((d: any) => ({
-        id: d.id,
-        name: d.file_name,
-        type: d.document_type,
-        size: `${Math.round(d.size / 1024)} KB`,
-        uploadDate: d.created_at,
-        path: d.storage_path,
+      documents: (docs || []).map((d: Record<string, unknown>) => ({
+        id: d.id as string,
+        name: d.file_name as string,
+        type: d.document_type as string,
+        size: `${Math.round((d.size as number) / 1024)} KB`,
+        uploadDate: d.created_at as string,
+        path: d.storage_path as string,
       })),
       statusHistory: formattedHistory,
     };
 
     return apiSuccess(responsePayload);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unexpected error occurred.';
     console.error('Error in GET /api/v1/od-requests/[id]:', err);
-    return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);
+    return apiError('INTERNAL_SERVER_ERROR', message, 500);
   }
 }
