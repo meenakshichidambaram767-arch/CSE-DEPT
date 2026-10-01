@@ -63,6 +63,27 @@ export interface WeeklyProgressPayload {
   github_url?: string;
 }
 
+export interface WeeklyProgressResult {
+  id: string;
+  reviewSessionId: string;
+  studentId: string;
+  completedWork: string;
+  currentWork: string;
+  nextSteps: string;
+  blockers: string;
+  githubUrl?: string;
+  submittedAt: string;
+}
+
+export interface CheckInResult {
+  sessionId: string;
+  studentId: string;
+  studentName: string;
+  attended: boolean;
+  checkInTime: string;
+  message: string;
+}
+
 export const reviewsApi = {
   /**
    * GET /api/v1/reviews/sessions
@@ -101,28 +122,28 @@ export const reviewsApi = {
   submitWeeklyProgress: async (
     sessionId: string,
     payload: WeeklyProgressPayload
-  ): Promise<{ data: any }> => {
+  ): Promise<{ data: WeeklyProgressResult }> => {
     const headers = await getAuthHeaders();
     const res = await fetch(`/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/progress`, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
     });
-    return handleResponse<{ data: any }>(res);
+    return handleResponse<{ data: WeeklyProgressResult }>(res);
   },
 
   /**
    * POST /api/v1/reviews/sessions/[id]/check-in
    * Verifies student attendance using dynamic HOD QR token
    */
-  checkInWithQR: async (sessionId: string, qrToken: string): Promise<{ data: any }> => {
+  checkInWithQR: async (sessionId: string, qrToken: string): Promise<{ data: CheckInResult }> => {
     const headers = await getAuthHeaders();
     const res = await fetch(`/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/check-in`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ qr_token: qrToken }),
     });
-    return handleResponse<{ data: any }>(res);
+    return handleResponse<{ data: CheckInResult }>(res);
   },
 
   /**

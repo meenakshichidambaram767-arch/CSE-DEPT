@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
 import { activitiesApi } from '@/lib/api/activitiesApi';
+import { reviewsApi } from '@/lib/api/reviewsApi';
 import { ApiError } from '@/lib/api/odApi';
 import { Activity, ReviewSession } from '@/types';
 import {

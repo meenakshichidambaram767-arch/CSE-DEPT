@@ -92,8 +92,33 @@ export default function StudentReviewsPage() {
   }, []);
 
   useEffect(() => {
-    fetchReviews();
-  }, [fetchReviews]);
+    let isMounted = true;
+
+    reviewsApi
+      .getReviewSessions()
+      .then((res) => {
+        if (isMounted && res.data) setReviews(res.data);
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setBackendNotice(
+              'Backend endpoint GET /api/v1/reviews/sessions returned HTTP 404 (Endpoint not deployed). Displaying static reference review sessions (LOCAL / UNPERSISTED PROTOTYPE DATA).'
+            );
+            setReviews(reviewsApi.getFallbackReviewSessions());
+          } else {
+            setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load review sessions from server.');
+          }
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredReviews = reviews.filter((r) => {
     if (activeTab === 'SCHEDULED') return r.status === 'SCHEDULED';
@@ -295,7 +320,7 @@ export default function StudentReviewsPage() {
           {filteredReviews.map((rev) => {
             const hasProgress = !!rev.progress;
             const myAttendance = (rev.attendance || []).find(
-              (a: any) => a.studentId === user?.id || a.student_id === user?.id
+              (a: { studentId?: string; student_id?: string }) => a.studentId === user?.id || a.student_id === user?.id
             );
 
             return (
