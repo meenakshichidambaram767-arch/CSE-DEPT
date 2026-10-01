@@ -1,23 +1,69 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SearchBar } from '@/components/common/SearchBar';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/common/EmptyState';
-import { useData } from '@/context/DataContext';
-import { Plus, FolderKanban, Sparkles, ExternalLink, Calendar, Users, ArrowRight } from 'lucide-react';
+import { activitiesApi } from '@/lib/api/activitiesApi';
+import { ApiError } from '@/lib/api/odApi';
+import { Activity } from '@/types';
+import { Plus, FolderKanban, Sparkles, Calendar, Users, ArrowRight, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function StudentProjectsPage() {
-  const { projects } = useData();
+  const [projects, setProjects] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [backendNotice, setBackendNotice] = useState<string | null>(null);
+
+  const fetchProjects = async (showRefreshing = false) => {
+    if (showRefreshing) setIsRefreshing(true);
+    else setIsLoading(true);
+    setBackendNotice(null);
+
+    try {
+      const res = await activitiesApi.getActivities({ type: 'PROJECT' });
+      if (res.data) setProjects(res.data);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+        setBackendNotice('Backend endpoint returned 404. Displaying cached fallback project records.');
+        setProjects(activitiesApi.getFallbackActivities('PROJECT'));
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    activitiesApi
+      .getActivities({ type: 'PROJECT' })
+      .then((res) => {
+        if (isMounted && res.data) setProjects(res.data);
+      })
+      .catch((err: unknown) => {
+        if (isMounted && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+          setBackendNotice('Backend endpoint returned 404. Displaying cached fallback project records.');
+          setProjects(activitiesApi.getFallbackActivities('PROJECT'));
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filtered = projects.filter(
     (p) =>
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.technologies.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
+      (p.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.technologies || []).some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -36,13 +82,36 @@ export default function StudentProjectsPage() {
           </span>
         }
         primaryAction={
-          <Link href="/student/activities/new?type=PROJECT">
-            <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
-              Submit Project Proposal
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fetchProjects(true)}
+              disabled={isRefreshing || isLoading}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl shadow-2xs transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <Link href="/student/activities/new?type=PROJECT">
+              <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
+                Submit Project Proposal
+              </Button>
+            </Link>
+          </div>
         }
       />
+
+      {backendNotice && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{backendNotice}</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded border border-amber-300">
+            Nattu Client Mode
+          </span>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <SearchBar
@@ -53,7 +122,12 @@ export default function StudentProjectsPage() {
         />
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs space-y-3">
+          <Loader2 className="w-6 h-6 text-emerald-800 animate-spin mx-auto" />
+          <p className="text-xs text-slate-600 font-semibold">Loading projects...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs">
           <EmptyState
             title="No capstone projects found"
@@ -102,12 +176,12 @@ export default function StudentProjectsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Team: {p.teamMembers.map((m) => m.name.split(' ')[0]).join(', ')}</span>
+                    <span>Team: {(p.teamMembers || []).map((m) => m.name.split(' ')[0]).join(', ')}</span>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                  {p.technologies.map((t, idx) => (
+                  {(p.technologies || []).map((t, idx) => (
                     <span key={idx} className="bg-emerald-50 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-semibold border border-emerald-200">
                       {t}
                     </span>
