@@ -10,7 +10,6 @@ import {
   Bell,
   CheckCheck,
   ArrowRightLeft,
-  Building,
 } from 'lucide-react';
 import Link from 'next/link';
 

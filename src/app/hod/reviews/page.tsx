@@ -53,8 +53,8 @@ export default function HodReviewsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Meeting & Notes State
-  const [meetingReview, setMeetingReview] = useState<any | null>(null);
-  const [attendanceState, setAttendanceState] = useState<any[]>([]);
+  const [meetingReview, setMeetingReview] = useState<Record<string, unknown> | null>(null);
+  const [attendanceState, setAttendanceState] = useState<Record<string, unknown>[]>([]);
   const [meetingNotes, setMeetingNotes] = useState('');
   const [nextWeekDirective, setNextWeekDirective] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -81,8 +81,29 @@ export default function HodReviewsPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchReviewSessions();
-  }, [fetchReviewSessions]);
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await fetch('/api/v1/reviews/sessions');
+        if (res.ok) {
+          const body = await res.json();
+          if (body.data && !ignore) {
+            setApiReviews(body.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching review sessions API:', err);
+      } finally {
+        if (!ignore) {
+          setIsLoadingApi(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Broadcast Modal
   const [isReminderOpen, setIsReminderOpen] = useState(false);
@@ -95,26 +116,26 @@ export default function HodReviewsPage() {
     (a) => (a.type === 'PROJECT' || a.type === 'HACKATHON' || a.type === 'INTERNSHIP') && (a.status === 'ACTIVE' || a.status === 'APPROVED')
   );
 
-  const handleOpenMeeting = (rev: any) => {
+  const handleOpenMeeting = (rev: Record<string, unknown>) => {
     setMeetingReview(rev);
     setAttendanceState(
-      rev.attendance && rev.attendance.length > 0
-        ? rev.attendance
-        : (rev.studentTeam || []).map((m: any, idx: number) => ({
+      rev.attendance && Array.isArray(rev.attendance) && rev.attendance.length > 0
+        ? (rev.attendance as Record<string, unknown>[])
+        : ((rev.studentTeam || []) as Record<string, unknown>[]).map((m: Record<string, unknown>, idx: number) => ({
             studentId: `usr-team-${idx + 1}`,
             name: m.name,
             regNo: m.regNo,
             attended: true,
           }))
     );
-    setMeetingNotes(rev.meetingNotes || 'Progress verified.');
-    setNextWeekDirective(rev.nextWeekGoal || 'Continue milestone deliverables.');
-    setQrData(rev.qrToken ? { token: rev.qrToken, expiresAt: rev.qrExpiresAt } : null);
+    setMeetingNotes((rev.meetingNotes as string) || 'Progress verified.');
+    setNextWeekDirective((rev.nextWeekGoal as string) || 'Continue milestone deliverables.');
+    setQrData(rev.qrToken ? { token: rev.qrToken as string, expiresAt: rev.qrExpiresAt as string } : null);
   };
 
   const toggleAttendance = (studentId: string) => {
-    setAttendanceState((prev: any[]) =>
-      prev.map((a: any) =>
+    setAttendanceState((prev: Record<string, unknown>[]) =>
+      prev.map((a: Record<string, unknown>) =>
         a.studentId === studentId || a.name === studentId
           ? { ...a, attended: !a.attended }
           : a
@@ -400,7 +421,7 @@ export default function HodReviewsPage() {
         title="Schedule Recurring Weekly Reviews"
         variant="information"
         confirmLabel={isGenerating ? 'Scheduling...' : 'Generate Schedule'}
-        onConfirm={() => handleConfirmRecurringSchedule({ preventDefault: () => {} } as any)}
+        onConfirm={() => handleConfirmRecurringSchedule({ preventDefault: () => {} } as unknown as React.FormEvent)}
         cancelLabel="Cancel"
       >
         <div className="space-y-3 text-xs">
@@ -515,6 +536,23 @@ export default function HodReviewsPage() {
               value={nextWeekDirective}
               onChange={(e) => setNextWeekDirective(e.target.value)}
             />
+
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleGenerateQr(meetingReview.id as string)}
+                isLoading={isGeneratingQr}
+              >
+                Generate Dynamic Check-In QR
+              </Button>
+              {qrData && (
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
+                  Active Token: {qrData.token} (Expires {new Date(qrData.expiresAt).toLocaleTimeString()})
+                </p>
+              )}
+            </div>
           </div>
         )}
       </Dialog>

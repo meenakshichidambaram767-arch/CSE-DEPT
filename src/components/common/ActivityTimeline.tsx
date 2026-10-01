@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TimelineStep } from '@/types';
-import { CheckCircle2, Clock, XCircle, Calendar } from 'lucide-react';
+import { CheckCircle2, XCircle, Calendar } from 'lucide-react';
 
 export interface ActivityTimelineProps {
   steps: TimelineStep[];
