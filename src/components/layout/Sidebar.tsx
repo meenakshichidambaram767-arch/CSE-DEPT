@@ -42,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, className = '' }) => {
     { id: 'apply', label: 'Apply for OD', href: '/student/apply-od', icon: PlusCircle },
     { id: 'calendar', label: 'Calendar', href: '/student/calendar', icon: CalendarIcon },
     { id: 'events', label: 'Events', href: '/student/events', icon: Sparkles },
+    { id: 'reports', label: 'Reports', href: '/student/reports', icon: FileSpreadsheet },
   ];
 
   // HOD Navigation: Home, Requests, Calendar, Events, Records
