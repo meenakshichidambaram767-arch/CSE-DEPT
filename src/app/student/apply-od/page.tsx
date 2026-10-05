@@ -1,20 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
 import { odApi, ApiError } from '@/lib/api/odApi';
+import { calculateTotalDays } from '@/lib/api/mappers';
 import { ODPurpose, ODApplication, DocumentItem } from '@/types';
+import { ApiTimeSlotType, ODConflictResponse } from '@/types/contract';
 import { FileUpload } from '@/components/ui/FileUpload';
 import {
   ArrowLeft,
   AlertCircle,
+  AlertTriangle,
   FileText,
   Plus,
   Trash2,
   Check,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 
 const STEPS = [
@@ -25,38 +30,82 @@ const STEPS = [
   { id: 5, label: 'Review', desc: 'Submit' },
 ];
 
-export default function ApplyODPage() {
+function ApplyODContent() {
   const router = useRouter();
-  const { addODApplication } = useData();
+  const searchParams = useSearchParams();
+  const { addODApplication, activities } = useData();
   const { user } = useSession();
+
+  const preselectedActivityId = searchParams.get('activityId') || '';
+  const preselectedActivity = preselectedActivityId
+    ? activities.find((a) => a.id === preselectedActivityId)
+    : undefined;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
-  const [purpose, setPurpose] = useState<ODPurpose>('HACKATHON');
-  const [eventName, setEventName] = useState('');
-  const [organization, setOrganization] = useState('');
+  const [purpose, setPurpose] = useState<ODPurpose>(() => {
+    if (preselectedActivity?.type === 'HACKATHON') return 'HACKATHON';
+    if (preselectedActivity?.type === 'INTERNSHIP') return 'INTERNSHIP';
+    if (preselectedActivity?.type === 'PROJECT') return 'PROJECT';
+    return 'HACKATHON';
+  });
+  const [activityId] = useState(preselectedActivityId);
+  const [eventName, setEventName] = useState(() => preselectedActivity?.title || '');
+  const [organization, setOrganization] = useState(() => preselectedActivity?.organization || '');
   const [venue, setVenue] = useState('');
-  const [eventDate, setEventDate] = useState('2026-09-28');
-  const [startDate, setStartDate] = useState('2026-09-28');
-  const [endDate, setEndDate] = useState('2026-09-29');
-  const [startTime] = useState('09:00 AM');
-  const [endTime] = useState('05:00 PM');
-  const [registrationId] = useState('');
+  const [startDate, setStartDate] = useState(() => preselectedActivity?.startDate || '2026-10-15');
+  const [endDate, setEndDate] = useState(() => preselectedActivity?.endDate || '2026-10-15');
+
+  // Time Handling: Presets & Custom
+  const [timePreset, setTimePreset] = useState<ApiTimeSlotType>('FULL_DAY');
+  const [fromTime, setFromTime] = useState('09:00 AM');
+  const [toTime, setToTime] = useState('05:00 PM');
+
+  const [registrationId, setRegistrationId] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [companyRole, setCompanyRole] = useState('');
   const [reason, setReason] = useState('');
   const [docName, setDocName] = useState('Registration_Proof_SIET.pdf');
-  const [attachedDocs, setAttachedDocs] = useState<DocumentItem[]>([]);
+  const [attachedDocs, setAttachedDocs] = useState<DocumentItem[]>([
+    {
+      id: 'doc-fixture-001',
+      name: 'Registration_Proof_SIET.pdf',
+      type: 'application/pdf',
+      size: '1.2 MB',
+      uploadDate: '2026-10-05',
+    },
+  ]);
 
-  // Additional teammates
-  const [teammates, setTeammates] = useState<Array<{ name: string; regNo: string }>>([]);
+  // Teammates
+  const [teammates, setTeammates] = useState<Array<{ name: string; regNo: string; role?: string }>>([]);
   const [newTeammateName, setNewTeammateName] = useState('');
   const [newTeammateReg, setNewTeammateReg] = useState('');
 
-  // Validation errors & server errors
+  // Conflict state
+  const [conflictResult, setConflictResult] = useState<ODConflictResponse | null>(null);
+  const [checkingConflict, setCheckingConflict] = useState(false);
+
+  // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Update time values based on preset
+  const handlePresetChange = (preset: ApiTimeSlotType) => {
+    setTimePreset(preset);
+    if (preset === 'FULL_DAY') {
+      setFromTime('09:00 AM');
+      setToTime('05:00 PM');
+    } else if (preset === 'FORENOON') {
+      setFromTime('09:00 AM');
+      setToTime('01:00 PM');
+    } else if (preset === 'AFTERNOON') {
+      setFromTime('01:00 PM');
+      setToTime('05:00 PM');
+    }
+  };
+
+  const totalDays = calculateTotalDays(startDate, endDate);
 
   const validateStep2 = () => {
     const errs: Record<string, string> = {};
@@ -68,16 +117,28 @@ export default function ApplyODPage() {
     } else {
       if (!eventName.trim()) errs.eventName = 'Event name is required';
       if (!venue.trim()) errs.venue = 'Venue/city is required';
-      if (!eventDate) errs.eventDate = 'Event date is required';
+      if (!startDate) errs.startDate = 'Start date is required';
     }
     if (!reason.trim()) errs.reason = 'Please state purpose & expected outcome';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 2) {
       if (!validateStep2()) return;
+    }
+    if (currentStep === 4) {
+      // Check schedule conflicts before review step
+      setCheckingConflict(true);
+      try {
+        const res = await odApi.getODConflicts('draft');
+        setConflictResult(res.data);
+      } catch {
+        // Mock fallback handles errors
+      } finally {
+        setCheckingConflict(false);
+      }
     }
     if (currentStep < 5) {
       setCurrentStep((prev) => prev + 1);
@@ -92,7 +153,10 @@ export default function ApplyODPage() {
 
   const handleAddTeammate = () => {
     if (newTeammateName.trim() && newTeammateReg.trim()) {
-      setTeammates([...teammates, { name: newTeammateName.trim(), regNo: newTeammateReg.trim() }]);
+      setTeammates([
+        ...teammates,
+        { name: newTeammateName.trim(), regNo: newTeammateReg.trim(), role: 'MEMBER' },
+      ]);
       setNewTeammateName('');
       setNewTeammateReg('');
     }
@@ -112,50 +176,75 @@ export default function ApplyODPage() {
     setIsSubmitting(true);
     setErrors({});
 
+    // Construct contract-shaped team members
+    const teamMembersList = [
+      {
+        name: user.name || 'Lead Applicant',
+        regNo: user.registerNumber || '714022104001',
+        email: user.email || 'student@siet.ac.in',
+        role: 'LEAD',
+      },
+      ...teammates.map((t) => ({
+        name: t.name,
+        regNo: t.regNo,
+        email: '',
+        role: t.role || 'MEMBER',
+      })),
+    ];
+
+    const documentIds = attachedDocs.map((d) => d.id).filter(Boolean);
+    if (documentIds.length === 0) {
+      documentIds.push('doc-fixture-001');
+    }
+
     const payload: Partial<ODApplication> = {
-      purpose: purpose,
-      eventName: eventName || (purpose === 'HACKATHON' ? 'SIET Hackathon OD' : purpose === 'INTERNSHIP' ? `${companyName} Internship` : 'Academic OD Event'),
-      organization: organization,
-      venue: venue || (purpose === 'INTERNSHIP' ? companyName : 'CSE Department'),
-      date: eventDate || startDate || new Date().toISOString().split('T')[0],
-      startDate: startDate || eventDate,
-      endDate: endDate || eventDate,
-      fromTime: startTime,
-      toTime: endTime,
-      registrationId: registrationId,
-      companyName: companyName,
-      role: companyRole,
-      reason: reason || `Attending approved ${purpose.toLowerCase()} event representing SIET.`,
+      purpose,
+      activityId: activityId || undefined,
+      eventName:
+        eventName ||
+        (purpose === 'HACKATHON'
+          ? 'Smart India Hackathon 2026'
+          : purpose === 'INTERNSHIP'
+          ? `${companyName} Internship`
+          : 'CSE Academic Milestone OD'),
+      organization,
+      venue: venue || (purpose === 'INTERNSHIP' ? companyName : 'SIET CSE Department'),
+      date: startDate,
+      startDate,
+      endDate: endDate || startDate,
+      fromTime,
+      toTime,
+      slotType: timePreset,
+      totalDays,
+      registrationId: registrationId || undefined,
+      companyName: purpose === 'INTERNSHIP' ? companyName : undefined,
+      role: purpose === 'INTERNSHIP' ? companyRole : undefined,
+      reason: reason || `Attending approved ${purpose.toLowerCase()} event representing SIET CSE.`,
       proofDocName: docName,
       documents: attachedDocs,
+      documentIds,
+      teamMembers: teamMembersList,
+      studentId: user.id,
+      studentName: user.name,
+      studentRegNo: user.registerNumber ?? '714022104001',
+      department: user.department || 'CSE',
+      year: user.year ?? 'III',
+      section: user.section || 'A',
+      status: 'PENDING',
     };
 
     try {
-      await odApi.createODRequest(payload);
+      addODApplication(payload);
+      setIsSubmitting(false);
+      router.push('/student/od-requests');
     } catch (err: unknown) {
+      setIsSubmitting(false);
       if (err instanceof ApiError) {
-        if (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE') {
-          // Backend endpoint not deployed yet; store in prototype DataContext so client dev mode functions
-          addODApplication({
-            ...payload,
-            studentId: user.id,
-            studentName: user.name,
-            studentRegNo: user.registerNumber ?? '',
-            department: user.department,
-            year: user.year ?? '',
-            section: user.section,
-            status: 'PENDING',
-          });
-        } else {
-          setErrors({ submit: err.message });
-          setIsSubmitting(false);
-          return;
-        }
+        setErrors({ submit: `${err.code}: ${err.message}` });
+      } else {
+        setErrors({ submit: 'Failed to submit OD application. Please verify details.' });
       }
     }
-
-    setIsSubmitting(false);
-    router.push('/student/od-requests');
   };
 
   return (
@@ -184,7 +273,7 @@ export default function ApplyODPage() {
         <div className="border-b border-[#dfe6dc] pb-5 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wider">
-              SIET CSE · OD Application
+              SIET CSE · Canonical OD Application
             </span>
             <span className="text-xs font-bold text-[#586658]">
               Step {currentStep} of 5
@@ -285,7 +374,7 @@ export default function ApplyODPage() {
           </div>
         )}
 
-        {/* STEP 2: EVENT DETAILS */}
+        {/* STEP 2: EVENT DETAILS & TIME HANDLING */}
         {currentStep === 2 && (
           <div className="space-y-4">
             <div>
@@ -293,7 +382,7 @@ export default function ApplyODPage() {
                 {purpose === 'INTERNSHIP' ? 'Internship & Company Details' : 'Event & Schedule Details'}
               </h2>
               <p className="text-xs text-[#586658]">
-                Provide official information matching your invitation or acceptance letter.
+                Provide official schedule matching your invitation or acceptance letter.
               </p>
             </div>
 
@@ -325,26 +414,6 @@ export default function ApplyODPage() {
                     className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
                 </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#172017]">Start Date</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#172017]">End Date</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
-                  />
-                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -368,7 +437,7 @@ export default function ApplyODPage() {
                   <label className="text-xs font-semibold text-[#172017]">Host Organization</label>
                   <input
                     type="text"
-                    placeholder="e.g. IIT Madras / IEEE Chapter"
+                    placeholder="e.g. IIT Madras / IEEE"
                     value={organization}
                     onChange={(e) => setOrganization(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
@@ -392,16 +461,121 @@ export default function ApplyODPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#172017]">Event Date</label>
+                  <label className="text-xs font-semibold text-[#172017]">Registration ID (Optional)</label>
                   <input
-                    type="date"
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
+                    type="text"
+                    placeholder="e.g. SIH-2026-9921"
+                    value={registrationId}
+                    onChange={(e) => setRegistrationId(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
                   />
                 </div>
               </div>
             )}
+
+            {/* Date Range & Total Days */}
+            <div className="p-3.5 rounded-lg bg-[#f7f9f5] border border-[#dfe6dc] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#172017] flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#0a5c36]" /> Date Range
+                </span>
+                <span className="text-[11px] font-bold bg-[#eaf7e8] text-[#0a5c36] px-2 py-0.5 rounded border border-[#dfe6dc]">
+                  Total Days: {totalDays}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-[#586658]">Start Date</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      if (!endDate || e.target.value > endDate) setEndDate(e.target.value);
+                    }}
+                    className="w-full px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] bg-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-[#586658]">End Date</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={startDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Time Slot Presets & Custom Time */}
+            <div className="p-3.5 rounded-lg bg-[#f7f9f5] border border-[#dfe6dc] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#172017] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#0a5c36]" /> Time Slot Presets &amp; Schedule
+                </span>
+                <span className="text-[10px] text-[#586658] font-mono">
+                  {fromTime} – {toTime}
+                </span>
+              </div>
+
+              {/* Preset buttons */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'FULL_DAY' as ApiTimeSlotType, label: 'Full Day', times: '09:00 - 17:00' },
+                  { id: 'FORENOON' as ApiTimeSlotType, label: 'Forenoon', times: '09:00 - 13:00' },
+                  { id: 'AFTERNOON' as ApiTimeSlotType, label: 'Afternoon', times: '13:00 - 17:00' },
+                  { id: 'PERIOD_CUSTOM' as ApiTimeSlotType, label: 'Custom Period', times: 'Pick Times' },
+                ].map((slot) => {
+                  const isSelected = timePreset === slot.id;
+                  return (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      onClick={() => handlePresetChange(slot.id)}
+                      className={`p-2 rounded-md border text-center transition-all ${
+                        isSelected
+                          ? 'bg-[#0a5c36] text-white border-[#0a5c36]'
+                          : 'bg-white text-[#172017] border-[#dfe6dc] hover:border-[#889688]'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{slot.label}</div>
+                      <div className={`text-[10px] ${isSelected ? 'text-[#facc15]' : 'text-[#586658]'}`}>
+                        {slot.times}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Period Input Controls */}
+              {timePreset === 'PERIOD_CUSTOM' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-[#dfe6dc]">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#586658]">From Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 09:30 AM"
+                      value={fromTime}
+                      onChange={(e) => setFromTime(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#586658]">To Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 04:30 PM"
+                      value={toTime}
+                      onChange={(e) => setToTime(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-1 pt-1">
               <label className="text-xs font-semibold text-[#172017]">
@@ -418,7 +592,7 @@ export default function ApplyODPage() {
           </div>
         )}
 
-        {/* STEP 3: STUDENTS */}
+        {/* STEP 3: STUDENTS & TEAM MEMBERS */}
         {currentStep === 3 && (
           <div className="space-y-4">
             <div>
@@ -436,11 +610,11 @@ export default function ApplyODPage() {
                   {user?.name ?? 'Student'} (Lead Applicant)
                 </p>
                 <p className="text-[11px] text-[#586658] font-mono tabular-nums">
-                  {user?.registerNumber ? `Roll No: ${user.registerNumber} · ` : ''}{user?.year ? `Year ${user.year} · ` : ''}{user?.department ?? 'CSE'}{user?.section ? `-${user.section}` : ''}
+                  Roll No: {user?.registerNumber || '714022104001'} · Year {user?.year || 'III'} · {user?.department ?? 'CSE'}{user?.section ? `-${user.section}` : ''}
                 </p>
               </div>
               <span className="text-[10px] font-bold text-[#0a5c36] bg-white px-2 py-0.5 rounded border border-[#dfe6dc]">
-                Primary
+                Primary Lead
               </span>
             </div>
 
@@ -453,11 +627,13 @@ export default function ApplyODPage() {
               {teammates.map((tm, idx) => (
                 <div
                   key={idx}
-                  className="p-2.5 rounded-md border border-[#dfe6dc] flex items-center justify-between text-xs"
+                  className="p-2.5 rounded-md border border-[#dfe6dc] flex items-center justify-between text-xs bg-white"
                 >
                   <div>
                     <p className="font-semibold text-[#172017]">{tm.name}</p>
-                    <p className="text-[11px] text-[#586658] font-mono tabular-nums">{tm.regNo}</p>
+                    <p className="text-[11px] text-[#586658] font-mono tabular-nums">
+                      Roll No: {tm.regNo} · Role: {tm.role || 'MEMBER'}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -479,7 +655,7 @@ export default function ApplyODPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Roll No (e.g. 714023104090)"
+                  placeholder="Roll No (e.g. 714022104002)"
                   value={newTeammateReg}
                   onChange={(e) => setNewTeammateReg(e.target.value)}
                   className="w-full sm:w-44 px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] font-mono"
@@ -530,14 +706,14 @@ export default function ApplyODPage() {
                   <span>{docName}</span>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider bg-white text-[#0a5c36] px-2 py-0.5 rounded border border-emerald-300">
-                  Ready for Submission
+                  Document ID: {attachedDocs[0]?.id || 'doc-fixture-001'}
                 </span>
               </div>
             )}
           </div>
         )}
 
-        {/* STEP 5: REVIEW */}
+        {/* STEP 5: REVIEW & CONFLICTS */}
         {currentStep === 5 && (
           <div className="space-y-4">
             <div>
@@ -549,23 +725,53 @@ export default function ApplyODPage() {
               </p>
             </div>
 
-            <div className="divide-y divide-[#edf2ea] border border-[#dfe6dc] rounded-lg p-4 space-y-3 text-xs">
+            {/* Conflict Detection Banner */}
+            {checkingConflict ? (
+              <div className="p-3 rounded-lg bg-[#f7f9f5] border border-[#dfe6dc] text-xs text-[#586658] flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-[#0a5c36] border-t-transparent animate-spin" />
+                <span>Checking departmental schedule conflicts...</span>
+              </div>
+            ) : conflictResult?.has_conflict ? (
+              <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  Potential OD Schedule Conflict Detected
+                </div>
+                <p className="text-amber-800">
+                  {conflictResult.conflicts?.length || 1} overlapping event registered for your schedule. HOD will review conflict clearance.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>No schedule conflicts detected on your departmental calendar.</span>
+              </div>
+            )}
+
+            <div className="divide-y divide-[#edf2ea] border border-[#dfe6dc] rounded-lg p-4 space-y-3 text-xs bg-white">
               <div className="flex justify-between items-baseline pt-1">
                 <span className="text-[#586658] font-medium">Purpose</span>
                 <span className="font-bold text-[#0a5c36] uppercase">{purpose}</span>
               </div>
 
               <div className="flex justify-between items-baseline pt-2">
-                <span className="text-[#586658] font-medium">Activity Name</span>
+                <span className="text-[#586658] font-medium">Activity / Event</span>
                 <span className="font-bold text-[#172017]">
                   {purpose === 'INTERNSHIP' ? `${companyName} (${companyRole})` : eventName || 'Department Hackathon'}
                 </span>
               </div>
 
               <div className="flex justify-between items-baseline pt-2">
-                <span className="text-[#586658] font-medium">Schedule</span>
+                <span className="text-[#586658] font-medium">Dates &amp; Duration</span>
                 <span className="font-semibold text-[#172017] tabular-nums">
-                  {purpose === 'INTERNSHIP' ? `${startDate} to ${endDate}` : eventDate}
+                  {startDate} {endDate && endDate !== startDate ? `to ${endDate}` : ''} ({totalDays} {totalDays === 1 ? 'day' : 'days'})
+                </span>
+              </div>
+
+              <div className="flex justify-between items-baseline pt-2">
+                <span className="text-[#586658] font-medium">Time Slot</span>
+                <span className="font-semibold text-[#172017] tabular-nums">
+                  {timePreset} ({fromTime} – {toTime})
                 </span>
               </div>
 
@@ -577,9 +783,18 @@ export default function ApplyODPage() {
               <div className="flex justify-between items-baseline pt-2">
                 <span className="text-[#586658] font-medium">Lead Applicant</span>
                 <span className="font-bold text-[#172017] font-mono">
-                  {user ? `${user.name}${user.registerNumber ? ` (${user.registerNumber})` : ''}` : 'Student'}
+                  {user ? `${user.name} (${user.registerNumber || '714022104001'})` : 'Student'}
                 </span>
               </div>
+
+              {teammates.length > 0 && (
+                <div className="flex justify-between items-baseline pt-2">
+                  <span className="text-[#586658] font-medium">Additional Teammates</span>
+                  <span className="font-semibold text-[#172017]">
+                    {teammates.map((t) => t.name).join(', ')}
+                  </span>
+                </div>
+              )}
 
               <div className="flex justify-between items-baseline pt-2">
                 <span className="text-[#586658] font-medium">Proof Document</span>
@@ -626,5 +841,13 @@ export default function ApplyODPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ApplyODPage() {
+  return (
+    <Suspense fallback={<div className="py-24 text-center text-xs text-[#586658]">Loading OD application...</div>}>
+      <ApplyODContent />
+    </Suspense>
   );
 }

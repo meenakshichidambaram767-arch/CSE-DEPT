@@ -23,7 +23,6 @@ import {
   fixtureApiReviews,
   fixtureCheckInResponse,
   fixtureGenerateQrResponse,
-  fixturePaginatedReviews,
 } from '@/data/fixtures/reviewsFixtures';
 import { mockReviewSessions } from '@/data/mock';
 

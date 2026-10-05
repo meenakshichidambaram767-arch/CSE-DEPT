@@ -5,39 +5,38 @@
 
 export * from './student';
 export * from './contract';
-import { ApiTimeSlotType } from './contract';
+import {
+  ApiUserRole,
+  ApiActivityType,
+  ApiActivityStatus,
+  ApiODStatus,
+  ApiReviewSessionStatus,
+  ApiReviewType,
+  ApiTimeSlotType,
+} from './contract';
 
-export type UserRole = 'STUDENT' | 'HOD';
-
-export type ActivityType = 'PROJECT' | 'INTERNSHIP' | 'HACKATHON';
+export type UserRole = ApiUserRole;
+export type ActivityType = ApiActivityType;
+export type ReviewSessionStatus = ApiReviewSessionStatus;
 
 export type ActivityStatus =
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'UNDER_REVIEW'
-  | 'PENDING_APPROVAL'
-  | 'REVISION_REQUESTED'
+  | ApiActivityStatus
   | 'APPROVED'
-  | 'REJECTED'
-  | 'ACTIVE'
+  | 'UNDER_REVIEW'
+  | 'DRAFT'
   | 'IN_PROGRESS'
   | 'REVIEW_DUE'
   | 'REVIEW_COMPLETED'
-  | 'COMPLETED';
+  | 'PENDING_APPROVAL';
 
 export type ODStatus =
-  | 'PENDING'
-  | 'APPROVED'
-  | 'REVISION_REQUESTED'
-  | 'REJECTED'
+  | ApiODStatus
   | 'SUBMITTED'
   | 'UNDER_REVIEW'
   | 'PENDING_SUBMISSION'
   | 'NOT_REQUIRED';
 
 export type AllStatus = ActivityStatus | ODStatus;
-
-export type ReviewSessionStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
 export type EventStatus = 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CLOSED';
 
@@ -182,11 +181,7 @@ export interface AttendanceItem {
 
 export * from './contract';
 
-export type ReviewType =
-  | 'PROJECT_WEEKLY'
-  | 'HACKATHON_POST'
-  | 'INTERNSHIP_MID'
-  | 'INTERNSHIP_FINAL';
+export type ReviewType = ApiReviewType;
 
 export interface ReviewSession {
   id: string;

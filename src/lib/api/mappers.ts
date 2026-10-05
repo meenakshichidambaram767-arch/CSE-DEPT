@@ -100,6 +100,23 @@ export function formatDateToYYYYMMDD(dateStr?: string): string {
   return clean;
 }
 
+/**
+ * Calculates total days between two date strings (inclusive), returning minimum 1.
+ */
+export function calculateTotalDays(startDateStr?: string, endDateStr?: string, explicitTotal?: number): number {
+  if (explicitTotal && explicitTotal > 0) return explicitTotal;
+  if (!startDateStr) return 1;
+  const start = formatDateToYYYYMMDD(startDateStr);
+  const end = formatDateToYYYYMMDD(endDateStr || startDateStr);
+  if (start === end) return 1;
+  const d1 = new Date(start);
+  const d2 = new Date(end);
+  const diffTime = d2.getTime() - d1.getTime();
+  if (diffTime < 0) return 1;
+  const days = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return isNaN(days) || days < 1 ? 1 : days;
+}
+
 // ==========================================
 // 2. OD REQUEST MAPPERS
 // ==========================================
@@ -120,6 +137,8 @@ export function mapODApplicationToApiPayload(od: Partial<ODApplication>): Create
     ? [...od.documentIds]
     : (od.documents || []).map((d) => d.id).filter(Boolean);
 
+  const totalDays = calculateTotalDays(startDate, endDate, od.totalDays);
+
   return {
     event_id: od.eventId || null,
     activity_id: od.activityId || null,
@@ -131,7 +150,7 @@ export function mapODApplicationToApiPayload(od: Partial<ODApplication>): Create
     from_time: fromTime,
     to_time: toTime,
     slot_type: od.slotType || 'FULL_DAY',
-    total_days: od.totalDays || 1,
+    total_days: totalDays,
     venue: od.venue || 'On Campus',
     registration_id: od.registrationId,
     team_members: teamMembers,

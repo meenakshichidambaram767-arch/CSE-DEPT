@@ -7,7 +7,7 @@
  */
 
 import { createClient as createSupabaseClient } from '@/lib/supabase/client';
-import { ApiErrorDetail, ApiErrorPayload, ApiSuccessEnvelope } from '@/types/contract';
+import { ApiErrorDetail, ApiErrorPayload } from '@/types/contract';
 
 // ==========================================
 // 1. RFC 7807 ERROR MODEL & HELPERS
@@ -64,6 +64,20 @@ export function parseApiError(err: unknown): ApiErrorPayload {
   };
 }
 
+export function createApiErrorPayload(
+  code: string,
+  message: string,
+  details?: ApiErrorDetail
+): ApiErrorPayload {
+  return {
+    error: {
+      code,
+      message,
+      ...(details ? { details } : {}),
+    },
+  };
+}
+
 export function getFieldError(err: unknown, fieldName: string): string | null {
   if (err instanceof ApiError) {
     if (err.field === fieldName) {
@@ -74,6 +88,24 @@ export function getFieldError(err: unknown, fieldName: string): string | null {
       return typeof val === 'string' ? val : JSON.stringify(val);
     }
   }
+
+  // Handle parsed ApiErrorPayload: { error: { message, details: { field, ... } } }
+  if (err && typeof err === 'object' && 'error' in err) {
+    const errorObj = (err as ApiErrorPayload).error;
+    if (errorObj) {
+      const details = errorObj.details;
+      if (details && typeof details === 'object') {
+        if ('field' in details && details.field === fieldName) {
+          return errorObj.message;
+        }
+        if (fieldName in details) {
+          const val = details[fieldName];
+          return typeof val === 'string' ? val : JSON.stringify(val);
+        }
+      }
+    }
+  }
+
   return null;
 }
 

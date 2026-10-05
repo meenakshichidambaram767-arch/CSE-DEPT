@@ -14,7 +14,6 @@ import {
 } from '@/types/contract';
 import {
   fixtureApiStudents,
-  fixturePaginatedStudents,
   fixtureStudentSummary,
 } from '@/data/fixtures/recordsFixtures';
 

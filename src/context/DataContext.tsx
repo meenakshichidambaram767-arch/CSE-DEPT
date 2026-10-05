@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import {
   Activity,
   ActivityStatus,
@@ -15,6 +15,27 @@ import {
   StudentStats,
 } from '@/types';
 import {
+  ApiNotification,
+} from '@/types/contract';
+import { ApiError } from '@/lib/api/client';
+import { odApi } from '@/lib/api/odApi';
+import { activitiesApi } from '@/lib/api/activitiesApi';
+import { reviewsApi } from '@/lib/api/reviewsApi';
+import { notificationsApi } from '@/lib/api/notificationsApi';
+import {
+  mapODApplicationToApiPayload,
+  mapApiODToODApplication,
+  mapActivityToApiPayload,
+  mapApiActivityToActivity,
+  mapWeeklyProgressToApiPayload,
+  mapApiReviewToReviewSession,
+  formatDateToYYYYMMDD,
+} from '@/lib/api/mappers';
+import { fixtureApiODs } from '@/data/fixtures/odFixtures';
+import { fixtureApiActivities } from '@/data/fixtures/activitiesFixtures';
+import { fixtureApiReviews } from '@/data/fixtures/reviewsFixtures';
+import { fixtureApiNotifications } from '@/data/fixtures/notificationsFixtures';
+import {
   mockActivities,
   mockReviewSessions,
   mockODApplications,
@@ -22,7 +43,43 @@ import {
   mockNotifications,
 } from '@/data/mock';
 
+// ==========================================
+// 1. DOMAIN STATE LIFECYCLE MODEL (RFC 7807)
+// ==========================================
+
+export type DomainStateStatus = 'idle' | 'loading' | 'success' | 'error' | 'empty';
+
+export interface DomainState {
+  status: DomainStateStatus;
+  error: ApiError | null;
+  isLoading: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  isEmpty: boolean;
+}
+
+function createDomainState(
+  count: number,
+  error: ApiError | null = null,
+  status: DomainStateStatus = 'success'
+): DomainState {
+  const effectiveStatus = error ? 'error' : count === 0 ? 'empty' : status;
+  return {
+    status: effectiveStatus,
+    error,
+    isLoading: effectiveStatus === 'loading',
+    isSuccess: effectiveStatus === 'success',
+    isError: effectiveStatus === 'error',
+    isEmpty: effectiveStatus === 'empty',
+  };
+}
+
+// ==========================================
+// 2. CONTEXT INTERFACE DEFINITION
+// ==========================================
+
 export interface DataContextType {
+  // Domain Entities
   activities: Activity[];
   projects: Activity[];
   internships: Activity[];
@@ -33,13 +90,23 @@ export interface DataContextType {
   odEvents: ODEvent[];
   notifications: Notification[];
 
-  // Student Actions
+  // Domain State Lifecycles
+  odState: DomainState;
+  activitiesState: DomainState;
+  reviewsState: DomainState;
+  notificationsState: DomainState;
+  lastError: ApiError | null;
+  clearError: () => void;
+
+  // Student Actions (Contract-Aligned)
   addActivity: (data: Partial<Activity>) => Activity;
   addProject: (data: Partial<Activity>) => Activity;
   addInternship: (data: Partial<Activity>) => Activity;
   addHackathon: (data: Partial<Activity>) => Activity;
+  resubmitActivity: (id: string, notes?: string) => Activity | undefined;
   addODApplication: (data: Partial<ODApplication>) => ODApplication;
   addODSubmission: (data: Partial<ODApplication>) => ODApplication; // alias
+  resubmitOD: (id: string, notes?: string) => ODApplication | undefined;
   addODEvent: (event: ODEvent) => ODEvent;
   submitWeeklyProgress: (
     reviewSessionId: string,
@@ -55,7 +122,7 @@ export interface DataContextType {
   ) => WeeklyProgress;
   markAttendanceViaQR: (reviewSessionId: string, studentId: string) => boolean;
 
-  // HOD Actions
+  // HOD Actions (Contract-Aligned)
   approveActivity: (id: string, remarks?: string) => void;
   rejectActivity: (id: string, reason: string) => void;
   requestRevisionActivity: (id: string, notes: string) => void;
@@ -91,201 +158,619 @@ export interface DataContextType {
   getPendingODSubmissions: () => ODApplication[];
   getScheduledReviews: () => ReviewSession[];
   getReviewsForProject: (projectId: string) => ReviewSession[];
-  checkODConflict: (studentRegNo: string, date?: string) => { hasConflict: boolean; conflictingEventName?: string; conflictingDate?: string; conflictingTime?: string } | null;
+  checkODConflict: (studentRegNo: string, date?: string) => {
+    hasConflict: boolean;
+    conflictingEventName?: string;
+    conflictingDate?: string;
+    conflictingTime?: string;
+  } | null;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY_PREFIX = 'siet_portal_data_v2_';
+// ==========================================
+// 3. CONTRACT-COMPATIBLE INITIALIZERS
+// ==========================================
+
+function buildInitialActivities(): Activity[] {
+  const contractActs = fixtureApiActivities.map(mapApiActivityToActivity);
+  const contractIds = new Set(contractActs.map((a) => a.id));
+  const remainingMocks = mockActivities.filter((a) => !contractIds.has(a.id));
+  return [...contractActs, ...remainingMocks];
+}
+
+function buildInitialODApplications(): ODApplication[] {
+  const contractODs = fixtureApiODs.map(mapApiODToODApplication);
+  const contractIds = new Set(contractODs.map((o) => o.id));
+  const remainingMocks = mockODApplications.filter((o) => !contractIds.has(o.id));
+  return [...contractODs, ...remainingMocks];
+}
+
+function buildInitialReviews(): ReviewSession[] {
+  const contractRevs = fixtureApiReviews.map(mapApiReviewToReviewSession);
+  const contractIds = new Set(contractRevs.map((r) => r.id));
+  const remainingMocks = mockReviewSessions.filter((r) => !contractIds.has(r.id));
+  return [...contractRevs, ...remainingMocks];
+}
+
+function buildInitialNotifications(): Notification[] {
+  const contractNotifs: Notification[] = fixtureApiNotifications.map((n: ApiNotification) => ({
+    id: n.id,
+    userId: n.userId,
+    title: n.title,
+    message: n.message,
+    type: n.type,
+    isRead: n.isRead,
+    createdAt: n.createdAt,
+    linkUrl: n.linkUrl,
+  }));
+  const contractIds = new Set(contractNotifs.map((n) => n.id));
+  const remainingMocks = mockNotifications.filter((n) => !contractIds.has(n.id));
+  return [...contractNotifs, ...remainingMocks];
+}
+
+// ==========================================
+// 4. DATA PROVIDER COMPONENT
+// ==========================================
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [activities, setActivities] = useState<Activity[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}activities`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return mockActivities;
-  });
+  // Domain Entity Collections initialized from Contract Fixtures
+  const [activities, setActivities] = useState<Activity[]>(buildInitialActivities);
+  const [reviews, setReviews] = useState<ReviewSession[]>(buildInitialReviews);
+  const [odApplications, setODApplications] = useState<ODApplication[]>(buildInitialODApplications);
+  const [notifications, setNotifications] = useState<Notification[]>(buildInitialNotifications);
+  const [odEvents, setODEvents] = useState<ODEvent[]>(() => [...mockODEvents]);
 
-  const [reviews, setReviews] = useState<ReviewSession[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}reviews`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return mockReviewSessions;
-  });
+  // Domain Lifecycle State & RFC 7807 Error Tracking
+  const [odError, setOdError] = useState<ApiError | null>(null);
+  const [activitiesError, setActivitiesError] = useState<ApiError | null>(null);
+  const [reviewsError, setReviewsError] = useState<ApiError | null>(null);
+  const [notificationsError, setNotificationsError] = useState<ApiError | null>(null);
+  const [lastError, setLastError] = useState<ApiError | null>(null);
 
-  const [odApplications, setODApplications] = useState<ODApplication[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}od`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return mockODApplications;
-  });
+  const clearError = () => {
+    setOdError(null);
+    setActivitiesError(null);
+    setReviewsError(null);
+    setNotificationsError(null);
+    setLastError(null);
+  };
 
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}notifs`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return mockNotifications;
-  });
-
-  // Sync state to local storage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}activities`, JSON.stringify(activities));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}reviews`, JSON.stringify(reviews));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}od`, JSON.stringify(odApplications));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}notifs`, JSON.stringify(notifications));
-    }
-  }, [activities, reviews, odApplications, notifications]);
+  const odState = createDomainState(odApplications.length, odError);
+  const activitiesState = createDomainState(activities.length, activitiesError);
+  const reviewsState = createDomainState(reviews.length, reviewsError);
+  const notificationsState = createDomainState(notifications.length, notificationsError);
 
   // Filtered views
   const projects = activities.filter((a) => a.type === 'PROJECT');
   const hackathons = activities.filter((a) => a.type === 'HACKATHON');
   const internships = activities.filter((a) => a.type === 'INTERNSHIP');
 
-  // Add Unified Activity
+  // ==========================================
+  // ACTIVITIES ACTIONS (API CONTRACT ALIGNED)
+  // ==========================================
+
   const addActivity = (data: Partial<Activity>): Activity => {
-    const typePrefix = data.type === 'PROJECT' ? 'PRJ' : data.type === 'HACKATHON' ? 'HCK' : 'INT';
-    const typeCount = activities.filter((a) => a.type === data.type).length + 1;
-    const newId = `${typePrefix}-2026-${String(typeCount).padStart(3, '0')}`;
-    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    try {
+      const payload = mapActivityToApiPayload(data);
+      // Route through Phase 1 API abstraction (offline fixture resolver)
+      activitiesApi.createActivity(payload);
 
-    const newActivity: Activity = {
-      id: newId,
-      studentId: data.studentId || 'usr-student-001',
-      studentName: data.studentName || 'Meena C',
-      studentRegNo: data.studentRegNo || '714023104088',
-      department: data.department || 'CSE',
-      year: data.year || 'II',
-      type: data.type || 'PROJECT',
-      title: data.title || 'Untitled Activity',
-      description: data.description || '',
-      organization: data.organization || (data.type === 'HACKATHON' ? 'National Tech Sprint' : 'CSE Department Lab'),
-      eventName: data.eventName,
-      startDate: data.startDate || new Date().toISOString().split('T')[0],
-      endDate: data.endDate || '2026-12-15',
-      technologies: data.technologies || ['Python', 'FastAPI'],
-      githubUrl: data.githubUrl,
-      demoUrl: data.demoUrl,
-      proofUrl: data.proofUrl || '/docs/submitted-proof.pdf',
-      proofDocName: data.proofDocName || 'Proposal_Document.pdf',
-      additionalNotes: data.additionalNotes,
-      teamMembers: data.teamMembers && data.teamMembers.length > 0 ? data.teamMembers : [
-        { name: data.studentName || 'Meena C', regNo: data.studentRegNo || '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' }
-      ],
-      status: 'SUBMITTED',
-      timeline: [
-        {
-          id: `t-${Date.now()}-1`,
-          date: todayStr,
-          title: `${data.type === 'PROJECT' ? 'Project' : data.type === 'HACKATHON' ? 'Hackathon Entry' : 'Internship NOC'} Submitted`,
-          description: `Submitted by ${data.studentName || 'Meena C'} for HOD review.`,
-          status: 'COMPLETED',
-        },
-        {
-          id: `t-${Date.now()}-2`,
-          date: 'Pending',
-          title: 'Under HOD Review',
-          description: 'Awaiting department evaluation and clearance.',
-          status: 'CURRENT',
-        },
-      ],
-      guideName: data.guideName || 'Dr. Priya Kumar',
-      category: data.category || 'Computer Science & AI',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      const typePrefix = data.type === 'PROJECT' ? 'PRJ' : data.type === 'HACKATHON' ? 'HCK' : 'INT';
+      const typeCount = activities.filter((a) => a.type === data.type).length + 1;
+      const newId = `${typePrefix}-2026-${String(typeCount).padStart(3, '0')}`;
+      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    setActivities((prev) => [newActivity, ...prev]);
+      const newActivity: Activity = {
+        id: newId,
+        studentId: data.studentId || 'usr-student-001',
+        studentName: data.studentName || 'Meena C',
+        studentRegNo: data.studentRegNo || '714023104088',
+        department: data.department || 'CSE',
+        year: data.year || 'II',
+        type: payload.type,
+        title: payload.title || 'Untitled Activity',
+        description: payload.description || '',
+        organization: payload.organization || (payload.type === 'HACKATHON' ? 'National Tech Sprint' : 'CSE Department Lab'),
+        eventName: data.eventName,
+        startDate: payload.start_date,
+        endDate: payload.end_date || '2026-12-15',
+        technologies: payload.technologies || ['Python', 'FastAPI'],
+        githubUrl: payload.github_url,
+        demoUrl: payload.demo_url,
+        proofUrl: data.proofUrl || '/docs/submitted-proof.pdf',
+        proofDocName: data.proofDocName || 'Proposal_Document.pdf',
+        additionalNotes: data.additionalNotes,
+        teamMembers: data.teamMembers && data.teamMembers.length > 0 ? data.teamMembers : [
+          { name: data.studentName || 'Meena C', regNo: data.studentRegNo || '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' }
+        ],
+        status: 'SUBMITTED',
+        timeline: [
+          {
+            id: `t-${Date.now()}-1`,
+            date: todayStr,
+            title: `${payload.type === 'PROJECT' ? 'Project' : payload.type === 'HACKATHON' ? 'Hackathon Entry' : 'Internship NOC'} Submitted`,
+            description: `Submitted by ${data.studentName || 'Meena C'} for HOD review.`,
+            status: 'COMPLETED',
+          },
+          {
+            id: `t-${Date.now()}-2`,
+            date: 'Pending',
+            title: 'Under HOD Review',
+            description: 'Awaiting department evaluation and clearance.',
+            status: 'CURRENT',
+          },
+        ],
+        guideName: payload.guide_name || 'Dr. Priya Kumar',
+        category: data.category || 'Computer Science & AI',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    // Send notification to HOD
-    const newNotif: Notification = {
-      id: `notif-${Date.now()}`,
-      userId: 'usr-hod-001',
-      title: `New ${newActivity.type} Submission Awaiting Approval`,
-      message: `${newActivity.studentName} (${newActivity.studentRegNo}) submitted "${newActivity.title}".`,
-      type: 'SUBMISSION_UPDATE',
-      isRead: false,
-      createdAt: new Date().toISOString(),
-      linkUrl: '/hod/approvals',
-    };
-    setNotifications((prev) => [newNotif, ...prev]);
+      setActivities((prev) => [newActivity, ...prev]);
 
-    return newActivity;
+      const newNotif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: 'usr-hod-001',
+        title: `New ${newActivity.type} Submission Awaiting Approval`,
+        message: `${newActivity.studentName} (${newActivity.studentRegNo}) submitted "${newActivity.title}".`,
+        type: 'SUBMISSION_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: '/hod/approvals',
+      };
+      setNotifications((prev) => [newNotif, ...prev]);
+
+      setActivitiesError(null);
+      return newActivity;
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_CREATION_FAILED', String(err));
+      setActivitiesError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
   const addProject = (data: Partial<Activity>) => addActivity({ ...data, type: 'PROJECT' });
   const addHackathon = (data: Partial<Activity>) => addActivity({ ...data, type: 'HACKATHON' });
   const addInternship = (data: Partial<Activity>) => addActivity({ ...data, type: 'INTERNSHIP' });
 
-  // Add OD Application
-  const addODApplication = (data: Partial<ODApplication>): ODApplication => {
-    const newId = `OD-2026-${String(odApplications.length + 1).padStart(3, '0')}`;
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const newOD: ODApplication = {
-      id: newId,
-      studentId: data.studentId || 'usr-student-001',
-      studentName: data.studentName || 'Meena C',
-      studentRegNo: data.studentRegNo || '714023104088',
-      department: data.department || 'CSE',
-      year: data.year || 'II',
-      purpose: data.purpose || 'HACKATHON',
-      activityId: data.activityId,
-      activityTitle: data.activityTitle,
-      activityType: data.activityType,
-      reason: data.reason || 'Attending approved departmental academic milestone / event',
-      eventName: data.eventName || 'Department Technical Event',
-      date: data.date || todayStr,
-      fromTime: data.fromTime || '09:00 AM',
-      toTime: data.toTime || '05:00 PM',
-      venue: data.venue || 'CSE Department',
-      proofUrl: data.proofUrl || '/docs/od-proof.pdf',
-      proofDocName: data.proofDocName || 'OD_Proof_Document.pdf',
-      additionalNotes: data.additionalNotes,
-      status: 'PENDING',
-      submittedDate: todayStr,
-    };
-
-    setODApplications((prev) => [newOD, ...prev]);
-
-    // If attached to activity, update activity's odStatus
-    if (data.activityId) {
+  const resubmitActivity = (id: string, notes?: string): Activity | undefined => {
+    try {
+      activitiesApi.resubmitActivity(id, { revision_notes: notes });
+      let updatedAct: Activity | undefined;
       setActivities((prev) =>
-        prev.map((a) => (a.id === data.activityId ? { ...a, odStatus: 'PENDING' } : a))
+        prev.map((a) => {
+          if (a.id !== id) return a;
+          updatedAct = {
+            ...a,
+            status: 'SUBMITTED',
+            revisionNotes: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+          return updatedAct;
+        })
       );
+      setActivitiesError(null);
+      return updatedAct;
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_RESUBMISSION_FAILED', String(err));
+      setActivitiesError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
     }
+  };
 
-    // Add notification
-    const newNotif: Notification = {
-      id: `notif-${Date.now()}`,
-      userId: 'usr-hod-001',
-      title: `New OD Request: ${newOD.studentName}`,
-      message: `OD requested for "${newOD.eventName}" on ${newOD.date} (${newOD.fromTime} - ${newOD.toTime}).`,
-      type: 'OD_UPDATE',
-      isRead: false,
-      createdAt: new Date().toISOString(),
-      linkUrl: '/hod/od-submissions',
-    };
-    setNotifications((prev) => [newNotif, ...prev]);
+  const approveActivity = (id: string, remarks?: string) => {
+    try {
+      activitiesApi.executeDecision(id, { decision: 'ACTIVE', remarks });
+      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    return newOD;
+      setActivities((prev) =>
+        prev.map((a) => {
+          if (a.id !== id) return a;
+          const newTimeline = [
+            ...a.timeline.filter((t) => t.status === 'COMPLETED'),
+            {
+              id: `t-${Date.now()}`,
+              date: todayStr,
+              title: 'HOD Approved',
+              description: remarks || 'Endorsed by HOD. Project transitioned to ACTIVE.',
+              status: 'COMPLETED' as const,
+            },
+          ];
+          return {
+            ...a,
+            status: 'ACTIVE' as ActivityStatus,
+            rejectionReason: undefined,
+            timeline: newTimeline,
+            updatedAt: new Date().toISOString(),
+          };
+        })
+      );
+
+      const act = activities.find((a) => a.id === id);
+      if (act) {
+        const notif: Notification = {
+          id: `notif-${Date.now()}`,
+          userId: act.studentId,
+          title: `Submission Approved: ${act.title}`,
+          message: `Dr. Priya Kumar (HOD) approved your ${act.type.toLowerCase()}. Status is now ACTIVE.`,
+          type: 'SUBMISSION_UPDATE',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          linkUrl: `/student/projects/${act.id}`,
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+      setActivitiesError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_DECISION_FAILED', String(err));
+      setActivitiesError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  const rejectActivity = (id: string, reason: string) => {
+    try {
+      activitiesApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
+      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      setActivities((prev) =>
+        prev.map((a) => {
+          if (a.id !== id) return a;
+          const newTimeline = [
+            ...a.timeline.filter((t) => t.status === 'COMPLETED'),
+            {
+              id: `t-${Date.now()}`,
+              date: todayStr,
+              title: 'HOD Rejected',
+              description: `Reason: ${reason}`,
+              status: 'COMPLETED' as const,
+            },
+          ];
+          return {
+            ...a,
+            status: 'REJECTED' as ActivityStatus,
+            rejectionReason: reason,
+            timeline: newTimeline,
+            updatedAt: new Date().toISOString(),
+          };
+        })
+      );
+
+      const act = activities.find((a) => a.id === id);
+      if (act) {
+        const notif: Notification = {
+          id: `notif-${Date.now()}`,
+          userId: act.studentId,
+          title: `Submission Rejected: ${act.title}`,
+          message: `HOD Review note: "${reason}".`,
+          type: 'SUBMISSION_UPDATE',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          linkUrl: `/student/projects/${act.id}`,
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+      setActivitiesError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_DECISION_FAILED', String(err));
+      setActivitiesError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  const requestRevisionActivity = (id: string, notes: string) => {
+    try {
+      activitiesApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
+      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      setActivities((prev) =>
+        prev.map((a) => {
+          if (a.id !== id) return a;
+          const newTimeline = [
+            ...a.timeline.filter((t) => t.status === 'COMPLETED'),
+            {
+              id: `t-${Date.now()}`,
+              date: todayStr,
+              title: 'Clarification & Revision Requested',
+              description: `HOD Directive: "${notes}"`,
+              status: 'CURRENT' as const,
+            },
+          ];
+          return {
+            ...a,
+            status: 'REVISION_REQUESTED' as ActivityStatus,
+            revisionNotes: notes,
+            timeline: newTimeline,
+            updatedAt: new Date().toISOString(),
+          };
+        })
+      );
+
+      const act = activities.find((a) => a.id === id);
+      if (act) {
+        const notif: Notification = {
+          id: `notif-${Date.now()}`,
+          userId: act.studentId,
+          title: `Action Required: Revision Requested for "${act.title}"`,
+          message: `Dr. Priya Kumar requested updates: "${notes}". Please adjust your submission.`,
+          type: 'SUBMISSION_UPDATE',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          linkUrl: `/student/projects/${act.id}`,
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+      setActivitiesError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_DECISION_FAILED', String(err));
+      setActivitiesError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  const bulkApproveActivities = (ids: string[]) => {
+    ids.forEach((id) => approveActivity(id));
+  };
+
+  // ==========================================
+  // ON-DUTY (OD) ACTIONS (API CONTRACT ALIGNED)
+  // ==========================================
+
+  const addODApplication = (data: Partial<ODApplication>): ODApplication => {
+    try {
+      const payload = mapODApplicationToApiPayload(data);
+      // Route through Phase 1 API abstraction (offline fixture resolver)
+      odApi.createODRequest(payload);
+
+      const newId = `OD-2026-${String(odApplications.length + 1).padStart(3, '0')}`;
+      const todayStr = formatDateToYYYYMMDD(data.startDate || data.date);
+
+      const newOD: ODApplication = {
+        id: newId,
+        studentId: data.studentId || 'usr-student-001',
+        studentName: data.studentName || 'Meena C',
+        studentRegNo: data.studentRegNo || '714023104088',
+        department: data.department || 'CSE',
+        year: data.year || 'II',
+        purpose: payload.purpose,
+        activityId: data.activityId,
+        activityTitle: data.activityTitle,
+        activityType: data.activityType,
+        reason: payload.reason || 'Attending approved departmental academic milestone / event',
+        eventName: payload.event_name,
+        date: todayStr,
+        startDate: payload.start_date,
+        endDate: payload.end_date,
+        fromTime: payload.from_time,
+        toTime: payload.to_time,
+        slotType: payload.slot_type,
+        totalDays: payload.total_days,
+        venue: payload.venue,
+        registrationId: payload.registration_id,
+        teamMembers: data.teamMembers && data.teamMembers.length > 0 ? data.teamMembers : [
+          { name: data.studentName || 'Meena C', regNo: data.studentRegNo || '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' }
+        ],
+        documentIds: payload.document_ids || [],
+        proofUrl: data.proofUrl || '/docs/od-proof.pdf',
+        proofDocName: data.proofDocName || 'OD_Proof_Document.pdf',
+        additionalNotes: payload.additional_notes,
+        status: 'PENDING',
+        submittedDate: todayStr,
+      };
+
+      setODApplications((prev) => [newOD, ...prev]);
+
+      if (data.activityId) {
+        setActivities((prev) =>
+          prev.map((a) => (a.id === data.activityId ? { ...a, odStatus: 'PENDING' } : a))
+        );
+      }
+
+      const newNotif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: 'usr-hod-001',
+        title: `New OD Request: ${newOD.studentName}`,
+        message: `OD requested for "${newOD.eventName}" on ${newOD.startDate} (${newOD.fromTime} - ${newOD.toTime}).`,
+        type: 'OD_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: '/hod/od-submissions',
+      };
+      setNotifications((prev) => [newNotif, ...prev]);
+
+      setOdError(null);
+      return newOD;
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('OD_CREATION_FAILED', String(err));
+      setOdError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
   const addODSubmission = addODApplication;
 
-  // Submit Weekly Progress
+  const resubmitOD = (id: string, notes?: string): ODApplication | undefined => {
+    try {
+      odApi.resubmitODRequest(id, { revision_notes: notes });
+      let updatedOD: ODApplication | undefined;
+      setODApplications((prev) =>
+        prev.map((od) => {
+          if (od.id !== id) return od;
+          updatedOD = {
+            ...od,
+            status: 'PENDING',
+            revisionNotes: undefined,
+          };
+          return updatedOD;
+        })
+      );
+      setOdError(null);
+      return updatedOD;
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('OD_RESUBMISSION_FAILED', String(err));
+      setOdError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  const approveOD = (id: string, remarks?: string) => {
+    try {
+      odApi.executeDecision(id, { decision: 'APPROVED', remarks });
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      setODApplications((prev) =>
+        prev.map((od) => {
+          if (od.id !== id) return od;
+          return {
+            ...od,
+            status: 'APPROVED' as ODStatus,
+            approvedDate: todayStr,
+            remarks: remarks || 'Approved by HOD. Academic attendance granted.',
+            rejectionReason: undefined,
+            revisionNotes: undefined,
+          };
+        })
+      );
+
+      const od = odApplications.find((o) => o.id === id);
+      if (od) {
+        if (od.activityId) {
+          setActivities((prev) =>
+            prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'APPROVED' } : a))
+          );
+        }
+
+        const notif: Notification = {
+          id: `notif-${Date.now()}`,
+          userId: od.studentId,
+          title: `OD Request Approved: ${od.eventName}`,
+          message: `Your OD for ${od.date} (${od.fromTime} - ${od.toTime}) has been approved by HOD.`,
+          type: 'OD_UPDATE',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          linkUrl: '/student/od-requests',
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+      setOdError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('OD_DECISION_FAILED', String(err));
+      setOdError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  const rejectOD = (id: string, reason: string) => {
+    try {
+      odApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
+      setODApplications((prev) =>
+        prev.map((od) => {
+          if (od.id !== id) return od;
+          return {
+            ...od,
+            status: 'REJECTED' as ODStatus,
+            rejectionReason: reason,
+          };
+        })
+      );
+
+      const od = odApplications.find((o) => o.id === id);
+      if (od) {
+        if (od.activityId) {
+          setActivities((prev) =>
+            prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'REJECTED' } : a))
+          );
+        }
+
+        const notif: Notification = {
+          id: `notif-${Date.now()}`,
+          userId: od.studentId,
+          title: `OD Request Rejected: ${od.eventName}`,
+          message: `Reason: ${reason}`,
+          type: 'OD_UPDATE',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          linkUrl: '/student/od-requests',
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+      setOdError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('OD_DECISION_FAILED', String(err));
+      setOdError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  const requestRevisionOD = (id: string, notes: string) => {
+    try {
+      odApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
+      setODApplications((prev) =>
+        prev.map((od) => {
+          if (od.id !== id) return od;
+          return {
+            ...od,
+            status: 'REVISION_REQUESTED' as ODStatus,
+            revisionNotes: notes,
+          };
+        })
+      );
+
+      const od = odApplications.find((o) => o.id === id);
+      if (od) {
+        if (od.activityId) {
+          setActivities((prev) =>
+            prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'REVISION_REQUESTED' } : a))
+          );
+        }
+
+        const notif: Notification = {
+          id: `notif-${Date.now()}`,
+          userId: od.studentId,
+          title: `OD Revision Requested: ${od.eventName}`,
+          message: `HOD requested clarification: "${notes}".`,
+          type: 'OD_UPDATE',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          linkUrl: '/student/od-requests',
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+      setOdError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('OD_DECISION_FAILED', String(err));
+      setOdError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  const bulkApproveOD = (ids: string[]) => {
+    try {
+      odApi.executeBulkDecision({ od_ids: ids, decision: 'APPROVED' });
+      ids.forEach((id) => approveOD(id));
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('OD_BULK_DECISION_FAILED', String(err));
+      setOdError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
+  };
+
+  // ==========================================
+  // REVIEW ACTIONS (NON-EVALUATIVE CONTRACT)
+  // ==========================================
+
   const submitWeeklyProgress = (
     reviewSessionId: string,
     progressData: {
@@ -298,309 +783,80 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       githubUrl?: string;
     }
   ): WeeklyProgress => {
-    const newProgress: WeeklyProgress = {
-      id: `prog-${Date.now()}`,
-      reviewSessionId,
-      studentId: progressData.studentId,
-      studentName: progressData.studentName,
-      completedThisWeek: progressData.completedThisWeek,
-      currentlyWorkingOn: progressData.currentlyWorkingOn,
-      nextWeekGoal: progressData.nextWeekGoal,
-      blockers: progressData.blockers,
-      githubUrl: progressData.githubUrl,
-      submittedAt: new Date().toISOString(),
-    };
+    try {
+      const payload = mapWeeklyProgressToApiPayload(progressData);
+      // Route through Phase 1 API abstraction (offline fixture resolver)
+      reviewsApi.submitProgress(reviewSessionId, payload);
 
-    setReviews((prev) =>
-      prev.map((r) => (r.id === reviewSessionId ? { ...r, progress: newProgress } : r))
-    );
+      const newProgress: WeeklyProgress = {
+        id: `prog-${Date.now()}`,
+        reviewSessionId,
+        studentId: progressData.studentId,
+        studentName: progressData.studentName,
+        completedThisWeek: payload.completed_this_week,
+        currentlyWorkingOn: payload.currently_working_on,
+        nextWeekGoal: payload.next_week_goal,
+        blockers: payload.blockers,
+        githubUrl: payload.github_url,
+        submittedAt: new Date().toISOString(),
+      };
 
-    // Notify HOD
-    const rev = reviews.find((r) => r.id === reviewSessionId);
-    const notif: Notification = {
-      id: `notif-${Date.now()}`,
-      userId: 'usr-hod-001',
-      title: `Progress Submitted: Review #${rev?.reviewNumber || 1}`,
-      message: `${progressData.studentName} submitted weekly progress for "${rev?.activityTitle}".`,
-      type: 'PROGRESS_DUE',
-      isRead: false,
-      createdAt: new Date().toISOString(),
-      linkUrl: `/hod/reviews/${reviewSessionId}`,
-    };
-    setNotifications((prev) => [notif, ...prev]);
+      setReviews((prev) =>
+        prev.map((r) => (r.id === reviewSessionId ? { ...r, progress: newProgress } : r))
+      );
 
-    return newProgress;
+      const rev = reviews.find((r) => r.id === reviewSessionId);
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: 'usr-hod-001',
+        title: `Progress Submitted: Review #${rev?.reviewNumber || 1}`,
+        message: `${progressData.studentName} submitted weekly progress for "${rev?.activityTitle}".`,
+        type: 'PROGRESS_DUE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: `/hod/reviews/${reviewSessionId}`,
+      };
+      setNotifications((prev) => [notif, ...prev]);
+
+      setReviewsError(null);
+      return newProgress;
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('PROGRESS_SUBMISSION_FAILED', String(err));
+      setReviewsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
-  // Mark Attendance via QR Code
   const markAttendanceViaQR = (reviewSessionId: string, studentId: string): boolean => {
-    let success = false;
-    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      reviewsApi.checkIn(reviewSessionId, studentId);
+      let success = false;
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    setReviews((prev) =>
-      prev.map((r) => {
-        if (r.id !== reviewSessionId) return r;
-        const updatedAttendance = r.attendance.map((att) => {
-          if (att.studentId === studentId || att.name.toLowerCase() === studentId.toLowerCase()) {
-            success = true;
-            return { ...att, attended: true, checkInTime: nowTime };
-          }
-          return att;
-        });
-        return { ...r, attendance: updatedAttendance };
-      })
-    );
-    return success;
-  };
-
-  // Approve Activity
-  const approveActivity = (id: string, remarks?: string) => {
-    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    setActivities((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        const newTimeline = [
-          ...a.timeline.filter((t) => t.status === 'COMPLETED'),
-          {
-            id: `t-${Date.now()}`,
-            date: todayStr,
-            title: 'HOD Approved',
-            description: remarks || 'Endorsed by HOD. Project transitioned to ACTIVE.',
-            status: 'COMPLETED' as const,
-          },
-        ];
-        return {
-          ...a,
-          status: 'ACTIVE' as ActivityStatus,
-          rejectionReason: undefined,
-          timeline: newTimeline,
-          updatedAt: new Date().toISOString(),
-        };
-      })
-    );
-
-    const act = activities.find((a) => a.id === id);
-    if (act) {
-      const notif: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: act.studentId,
-        title: `Submission Approved: ${act.title}`,
-        message: `Dr. Priya Kumar (HOD) approved your ${act.type.toLowerCase()}. Status is now ACTIVE.`,
-        type: 'SUBMISSION_UPDATE',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        linkUrl: `/student/projects/${act.id}`,
-      };
-      setNotifications((prev) => [notif, ...prev]);
+      setReviews((prev) =>
+        prev.map((r) => {
+          if (r.id !== reviewSessionId) return r;
+          const updatedAttendance = r.attendance.map((att) => {
+            if (att.studentId === studentId || att.name.toLowerCase() === studentId.toLowerCase() || att.regNo === studentId) {
+              success = true;
+              return { ...att, attended: true, checkInTime: nowTime };
+            }
+            return att;
+          });
+          return { ...r, attendance: updatedAttendance };
+        })
+      );
+      setReviewsError(null);
+      return success;
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('QR_CHECKIN_FAILED', String(err));
+      setReviewsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
     }
   };
 
-  // Reject Activity
-  const rejectActivity = (id: string, reason: string) => {
-    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    setActivities((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        const newTimeline = [
-          ...a.timeline.filter((t) => t.status === 'COMPLETED'),
-          {
-            id: `t-${Date.now()}`,
-            date: todayStr,
-            title: 'HOD Rejected',
-            description: `Reason: ${reason}`,
-            status: 'COMPLETED' as const,
-          },
-        ];
-        return {
-          ...a,
-          status: 'REJECTED' as ActivityStatus,
-          rejectionReason: reason,
-          timeline: newTimeline,
-          updatedAt: new Date().toISOString(),
-        };
-      })
-    );
-
-    const act = activities.find((a) => a.id === id);
-    if (act) {
-      const notif: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: act.studentId,
-        title: `Submission Rejected: ${act.title}`,
-        message: `HOD Review note: "${reason}".`,
-        type: 'SUBMISSION_UPDATE',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        linkUrl: `/student/projects/${act.id}`,
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    }
-  };
-
-  // Request Revision Activity (Non-punitive revision request)
-  const requestRevisionActivity = (id: string, notes: string) => {
-    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    setActivities((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        const newTimeline = [
-          ...a.timeline.filter((t) => t.status === 'COMPLETED'),
-          {
-            id: `t-${Date.now()}`,
-            date: todayStr,
-            title: 'Clarification & Revision Requested',
-            description: `HOD Directive: "${notes}"`,
-            status: 'CURRENT' as const,
-          },
-        ];
-        return {
-          ...a,
-          status: 'REVISION_REQUESTED' as ActivityStatus,
-          revisionNotes: notes,
-          timeline: newTimeline,
-          updatedAt: new Date().toISOString(),
-        };
-      })
-    );
-
-    const act = activities.find((a) => a.id === id);
-    if (act) {
-      const notif: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: act.studentId,
-        title: `Action Required: Revision Requested for "${act.title}"`,
-        message: `Dr. Priya Kumar requested updates: "${notes}". Please adjust your submission.`,
-        type: 'SUBMISSION_UPDATE',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        linkUrl: `/student/projects/${act.id}`,
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    }
-  };
-
-  const bulkApproveActivities = (ids: string[]) => {
-    ids.forEach((id) => approveActivity(id));
-  };
-
-  // Approve OD
-  const approveOD = (id: string, remarks?: string) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    setODApplications((prev) =>
-      prev.map((od) => {
-        if (od.id !== id) return od;
-        return {
-          ...od,
-          status: 'APPROVED' as ODStatus,
-          approvedDate: todayStr,
-          remarks: remarks || 'Approved by HOD. Academic attendance granted.',
-          rejectionReason: undefined,
-          revisionNotes: undefined,
-        };
-      })
-    );
-
-    const od = odApplications.find((o) => o.id === id);
-    if (od) {
-      if (od.activityId) {
-        setActivities((prev) =>
-          prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'APPROVED' } : a))
-        );
-      }
-
-      const notif: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: od.studentId,
-        title: `OD Request Approved: ${od.eventName}`,
-        message: `Your OD for ${od.date} (${od.fromTime} - ${od.toTime}) has been approved by HOD.`,
-        type: 'OD_UPDATE',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        linkUrl: '/student/od-requests',
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    }
-  };
-
-  // Reject OD
-  const rejectOD = (id: string, reason: string) => {
-    setODApplications((prev) =>
-      prev.map((od) => {
-        if (od.id !== id) return od;
-        return {
-          ...od,
-          status: 'REJECTED' as ODStatus,
-          rejectionReason: reason,
-        };
-      })
-    );
-
-    const od = odApplications.find((o) => o.id === id);
-    if (od) {
-      if (od.activityId) {
-        setActivities((prev) =>
-          prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'REJECTED' } : a))
-        );
-      }
-
-      const notif: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: od.studentId,
-        title: `OD Request Rejected: ${od.eventName}`,
-        message: `Reason: ${reason}`,
-        type: 'OD_UPDATE',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        linkUrl: '/student/od-requests',
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    }
-  };
-
-  // Request Revision OD
-  const requestRevisionOD = (id: string, notes: string) => {
-    setODApplications((prev) =>
-      prev.map((od) => {
-        if (od.id !== id) return od;
-        return {
-          ...od,
-          status: 'REVISION_REQUESTED' as ODStatus,
-          revisionNotes: notes,
-        };
-      })
-    );
-
-    const od = odApplications.find((o) => o.id === id);
-    if (od) {
-      if (od.activityId) {
-        setActivities((prev) =>
-          prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'REVISION_REQUESTED' } : a))
-        );
-      }
-
-      const notif: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: od.studentId,
-        title: `OD Revision Requested: ${od.eventName}`,
-        message: `HOD requested clarification: "${notes}".`,
-        type: 'OD_UPDATE',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        linkUrl: '/student/od-requests',
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    }
-  };
-
-  const bulkApproveOD = (ids: string[]) => {
-    ids.forEach((id) => approveOD(id));
-  };
-
-  // Automatic Weekly Review Scheduling
   const scheduleRecurringReviews = (params: {
     projectId: string;
     dayOfWeek?: string;
@@ -610,126 +866,164 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     count: number;
     intervalWeeks?: number;
   }): ReviewSession[] => {
-    const project = activities.find((a) => a.id === params.projectId);
-    if (!project) return [];
-
-    const generated: ReviewSession[] = [];
-    const baseDate = new Date(params.startDate);
-    const stepWeeks = params.intervalWeeks || 1;
-
-    const teamRoster: TeamMember[] =
-      project.teamMembers.length > 0
-        ? project.teamMembers
-        : [{ name: project.studentName, regNo: project.studentRegNo, email: 'student@siet.ac.in', role: 'Lead' }];
-
-    for (let i = 1; i <= params.count; i++) {
-      const reviewDate = new Date(baseDate);
-      reviewDate.setDate(baseDate.getDate() + (i - 1) * 7 * stepWeeks);
-
-      const rawDateStr = reviewDate.toISOString().split('T')[0];
-      const formattedDate = reviewDate.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-
-      const initialAttendance: AttendanceItem[] = teamRoster.map((m, idx) => ({
-        studentId: `usr-team-${idx + 1}`,
-        name: m.name,
-        regNo: m.regNo,
-        attended: false,
-      }));
-
-      const session: ReviewSession = {
-        id: `REV-${project.id.replace('PRJ-', '')}-${String(i).padStart(3, '0')}`,
-        activityId: project.id,
-        activityTitle: project.title,
-        activityType: 'PROJECT',
-        reviewNumber: i,
-        date: formattedDate,
-        rawDate: rawDateStr,
+    try {
+      reviewsApi.scheduleReviews({
+        activity_id: params.projectId,
+        start_date: params.startDate,
         time: params.time,
         venue: params.venue,
-        status: 'SCHEDULED',
-        studentTeam: teamRoster,
-        attendance: initialAttendance,
-        qrCodeToken: `QR-${project.id}-REV${i}-${rawDateStr}`,
-        createdAt: new Date().toISOString(),
-      };
+        count: params.count,
+        review_type: 'PROJECT_WEEKLY',
+      });
 
-      generated.push(session);
-    }
+      const project = activities.find((a) => a.id === params.projectId);
+      if (!project) return [];
 
-    // Append to reviews
-    setReviews((prev) => [...generated, ...prev]);
+      const generated: ReviewSession[] = [];
+      const baseDate = new Date(params.startDate);
+      const stepWeeks = params.intervalWeeks || 1;
 
-    // Update project timeline
-    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    setActivities((prev) =>
-      prev.map((a) => {
-        if (a.id !== params.projectId) return a;
-        return {
-          ...a,
-          reviewCount: params.count,
-          timeline: [
-            ...a.timeline,
-            {
-              id: `t-${Date.now()}`,
-              date: todayStr,
-              title: 'Review Schedule Created',
-              description: `${params.count} ${stepWeeks === 2 ? 'bi-weekly' : 'weekly'} review sessions generated for ${params.time} in ${params.venue}.`,
-              status: 'COMPLETED' as const,
-            },
-          ],
+      const teamRoster: TeamMember[] =
+        project.teamMembers.length > 0
+          ? project.teamMembers
+          : [{ name: project.studentName, regNo: project.studentRegNo, email: 'student@siet.ac.in', role: 'Lead' }];
+
+      for (let i = 1; i <= params.count; i++) {
+        const reviewDate = new Date(baseDate);
+        reviewDate.setDate(baseDate.getDate() + (i - 1) * 7 * stepWeeks);
+
+        const rawDateStr = reviewDate.toISOString().split('T')[0];
+        const formattedDate = reviewDate.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        });
+
+        const initialAttendance: AttendanceItem[] = teamRoster.map((m, idx) => ({
+          studentId: `usr-team-${idx + 1}`,
+          name: m.name,
+          regNo: m.regNo,
+          attended: false,
+        }));
+
+        const session: ReviewSession = {
+          id: `REV-${project.id.replace('PRJ-', '')}-${String(i).padStart(3, '0')}`,
+          activityId: project.id,
+          activityTitle: project.title,
+          activityType: 'PROJECT',
+          reviewNumber: i,
+          reviewType: 'PROJECT_WEEKLY',
+          date: formattedDate,
+          rawDate: rawDateStr,
+          time: params.time,
+          venue: params.venue,
+          status: 'SCHEDULED',
+          studentTeam: teamRoster,
+          attendance: initialAttendance,
+          qrCodeToken: `QR-${project.id}-REV${i}-${rawDateStr}`,
+          createdAt: new Date().toISOString(),
         };
-      })
-    );
 
-    // Notify student team
-    const notif: Notification = {
-      id: `notif-${Date.now()}`,
-      userId: project.studentId,
-      title: `Weekly Review Schedule Created: ${project.title}`,
-      message: `${params.count} weekly review sessions scheduled starting ${generated[0].date} at ${params.time} (${params.venue}).`,
-      type: 'REVIEW_REMINDER',
-      isRead: false,
-      createdAt: new Date().toISOString(),
-      linkUrl: `/student/projects/${project.id}`,
-    };
-    setNotifications((prev) => [notif, ...prev]);
+        generated.push(session);
+      }
 
-    return generated;
+      setReviews((prev) => [...generated, ...prev]);
+
+      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      setActivities((prev) =>
+        prev.map((a) => {
+          if (a.id !== params.projectId) return a;
+          return {
+            ...a,
+            reviewCount: params.count,
+            timeline: [
+              ...a.timeline,
+              {
+                id: `t-${Date.now()}`,
+                date: todayStr,
+                title: 'Review Schedule Created',
+                description: `${params.count} ${stepWeeks === 2 ? 'bi-weekly' : 'weekly'} review sessions generated for ${params.time} in ${params.venue}.`,
+                status: 'COMPLETED' as const,
+              },
+            ],
+          };
+        })
+      );
+
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: project.studentId,
+        title: `Weekly Review Schedule Created: ${project.title}`,
+        message: `${params.count} weekly review sessions scheduled starting ${generated[0].date} at ${params.time} (${params.venue}).`,
+        type: 'REVIEW_REMINDER',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: `/student/projects/${project.id}`,
+      };
+      setNotifications((prev) => [notif, ...prev]);
+
+      setReviewsError(null);
+      return generated;
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('SCHEDULE_REVIEWS_FAILED', String(err));
+      setReviewsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
-  // Update Review Session
   const updateReviewSession = (id: string, updates: Partial<ReviewSession>) => {
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
   };
 
-  // Cancel Review Session
   const cancelReviewSession = (id: string) => {
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'CANCELLED' } : r)));
   };
 
-  // Record Attendance
   const recordReviewAttendance = (reviewSessionId: string, attendance: AttendanceItem[]) => {
-    setReviews((prev) =>
-      prev.map((r) => (r.id === reviewSessionId ? { ...r, attendance, status: 'COMPLETED' } : r))
-    );
+    try {
+      reviewsApi.finalizeSession(reviewSessionId, {
+        attendance: attendance.map((a) => ({ student_id: a.studentId, attended: a.attended })),
+        meeting_notes: 'Attendance recorded',
+      });
+      setReviews((prev) =>
+        prev.map((r) => (r.id === reviewSessionId ? { ...r, attendance, status: 'COMPLETED' } : r))
+      );
+      setReviewsError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('RECORD_ATTENDANCE_FAILED', String(err));
+      setReviewsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
-  // Save Meeting Notes
   const saveMeetingNotes = (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string) => {
-    setReviews((prev) =>
-      prev.map((r) =>
-        r.id === reviewSessionId
-          ? { ...r, meetingNotes, nextWeekGoal: nextWeekGoal || r.nextWeekGoal, status: 'COMPLETED' }
-          : r
-      )
-    );
+    try {
+      reviewsApi.finalizeSession(reviewSessionId, {
+        meeting_notes: meetingNotes,
+        next_week_goal: nextWeekGoal,
+      });
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === reviewSessionId
+            ? { ...r, meetingNotes, nextWeekGoal: nextWeekGoal || r.nextWeekGoal, status: 'COMPLETED' }
+            : r
+        )
+      );
+      setReviewsError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('SAVE_NOTES_FAILED', String(err));
+      setReviewsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
-  // Broadcast Reminder
+  // ==========================================
+  // NOTIFICATIONS ACTIONS (API CONTRACT ALIGNED)
+  // ==========================================
+
   const broadcastReminder = (title: string, message: string, targetType: 'ALL' | 'STUDENT' = 'STUDENT') => {
     const newNotif: Notification = {
       id: `notif-${Date.now()}`,
@@ -744,35 +1038,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markNotificationAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    try {
+      notificationsApi.markAsRead(id);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      setNotificationsError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('MARK_NOTIFICATION_FAILED', String(err));
+      setNotificationsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
   const clearAllNotifications = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      notificationsApi.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setNotificationsError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('CLEAR_NOTIFICATIONS_FAILED', String(err));
+      setNotificationsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
-  const [odEvents, setODEvents] = useState<ODEvent[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}od_events`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return mockODEvents;
-  });
+  // ==========================================
+  // QUERY HELPERS (PRESERVED UI BEHAVIOR)
+  // ==========================================
 
-  // Sync state to local storage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}activities`, JSON.stringify(activities));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}reviews`, JSON.stringify(reviews));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}od`, JSON.stringify(odApplications));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}od_events`, JSON.stringify(odEvents));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}notifs`, JSON.stringify(notifications));
-    }
-  }, [activities, reviews, odApplications, odEvents, notifications]);
-
-  // Query Helpers
   const getActivityById = (id: string) => activities.find((a) => a.id === id);
   const getReviewById = (id: string) => reviews.find((r) => r.id === id);
   const getODById = (id: string) => odApplications.find((o) => o.id === id);
@@ -812,7 +1106,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const totalDays = approvedODs.reduce((acc, curr) => acc + (curr.totalDays || 1), 0);
 
-    // Review attendance calculation
     const relevantReviews = reviews.filter((r) =>
       r.studentTeam?.some((m) => m.regNo === studentRegNo) || r.attendance?.some((att) => att.regNo === studentRegNo)
     );
@@ -853,12 +1146,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         odSubmissions: odApplications,
         odEvents,
         notifications,
+        odState,
+        activitiesState,
+        reviewsState,
+        notificationsState,
+        lastError,
+        clearError,
         addActivity,
         addProject,
         addInternship,
         addHackathon,
+        resubmitActivity,
         addODApplication,
         addODSubmission,
+        resubmitOD,
         addODEvent,
         submitWeeklyProgress,
         markAttendanceViaQR,

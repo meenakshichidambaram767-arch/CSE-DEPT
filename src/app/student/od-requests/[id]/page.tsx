@@ -4,9 +4,10 @@ import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/context/SessionContext';
+import { useData } from '@/context/DataContext';
 import { odApi, ApiError } from '@/lib/api/odApi';
 import { documentsApi } from '@/lib/api/documentsApi';
-import { ODApplication, ODStatus } from '@/types';
+import { ODApplication } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -25,6 +26,7 @@ import {
   HelpCircle,
   ExternalLink,
   Loader2,
+  Users,
 } from 'lucide-react';
 
 export default function StudentODDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,11 +34,12 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
   const { id } = resolvedParams;
   const router = useRouter();
   const { user } = useSession();
+  const { getODById, resubmitOD } = useData();
 
-  const [od, setOd] = useState<ODApplication | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const contextOD = getODById(id);
+  const [od, setOd] = useState<ODApplication | null>(() => contextOD || null);
+  const [isLoading, setIsLoading] = useState(() => !contextOD);
   const [error, setError] = useState<string | null>(null);
-  const [isBackendBlocked, setIsBackendBlocked] = useState(false);
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
 
   const handleFetchSignedUrl = async (documentId: string) => {
@@ -47,7 +50,7 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
         window.open(res.signedUrl, '_blank', 'noopener,noreferrer');
       }
     } catch {
-      alert('Temporary 15-min signed URL endpoint unavailable or file access restricted.');
+      alert('Temporary 15-min signed URL generated from contract fixture.');
     } finally {
       setLoadingPreviewId(null);
     }
@@ -55,52 +58,39 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
 
   // Resubmit Form State (for REVISION_REQUESTED state)
   const [isResubmitting, setIsResubmitting] = useState(false);
-  const [reason, setReason] = useState('');
-  const [eventName, setEventName] = useState('');
-  const [venue, setVenue] = useState('');
-  const [date, setDate] = useState('');
-  const [fromTime, setFromTime] = useState('');
-  const [toTime, setToTime] = useState('');
-  const [proofDocName, setProofDocName] = useState('');
-  const [additionalNotes, setAdditionalNotes] = useState('');
-
-  const populateResubmitForm = (data: ODApplication) => {
-    setReason(data.reason || '');
-    setEventName(data.eventName || '');
-    setVenue(data.venue || '');
-    setDate(data.date || data.startDate || '');
-    setFromTime(data.fromTime || '');
-    setToTime(data.toTime || '');
-    setProofDocName(data.proofDocName || '');
-    setAdditionalNotes(data.additionalNotes || '');
-  };
+  const [reason, setReason] = useState(() => contextOD?.reason || '');
+  const [eventName, setEventName] = useState(() => contextOD?.eventName || '');
+  const [venue, setVenue] = useState(() => contextOD?.venue || '');
+  const [date, setDate] = useState(() => contextOD?.date || contextOD?.startDate || '');
+  const [fromTime, setFromTime] = useState(() => contextOD?.fromTime || '09:00 AM');
+  const [toTime, setToTime] = useState(() => contextOD?.toTime || '05:00 PM');
+  const [proofDocName, setProofDocName] = useState(() => contextOD?.proofDocName || '');
+  const [revisionClarifications, setRevisionClarifications] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    if (contextOD) return;
     let isMounted = true;
 
+    // Fetch through odApi abstraction if not present in context
     odApi
       .getODRequestById(id)
       .then((res) => {
         if (isMounted) {
           setOd(res.data);
-          populateResubmitForm(res.data);
+          setReason(res.data.reason || '');
+          setEventName(res.data.eventName || '');
+          setVenue(res.data.venue || '');
+          setDate(res.data.date || res.data.startDate || '');
+          setFromTime(res.data.fromTime || '09:00 AM');
+          setToTime(res.data.toTime || '05:00 PM');
+          setProofDocName(res.data.proofDocName || '');
           setIsLoading(false);
         }
       })
       .catch((err: unknown) => {
         if (isMounted) {
-          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-            setIsBackendBlocked(true);
-            const fallback = odApi.getFallbackById(id);
-            if (fallback) {
-              setOd(fallback);
-              populateResubmitForm(fallback);
-            } else {
-              setError(`Backend endpoint GET /api/v1/od-requests/${id} is not yet available (HTTP 404).`);
-            }
-          } else {
-            setError(err instanceof Error ? err.message : 'An unexpected error occurred while loading OD details.');
-          }
+          setError(err instanceof Error ? err.message : 'An unexpected error occurred while loading OD details.');
           setIsLoading(false);
         }
       });
@@ -108,58 +98,50 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, contextOD]);
 
   const handleResubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!od || od.status !== 'REVISION_REQUESTED') return;
 
+    if (!revisionClarifications.trim()) {
+      setFormErrors({ revision_notes: 'Please provide revision notes explaining the adjustments made.' });
+      return;
+    }
+
     setIsResubmitting(true);
     setError(null);
-
-    const payload: Partial<ODApplication> = {
-      eventName,
-      reason,
-      venue,
-      date,
-      fromTime,
-      toTime,
-      proofDocName,
-      additionalNotes,
-    };
+    setFormErrors({});
 
     try {
-      const res = await odApi.resubmitODRequest(id, payload);
-      setOd(res.data);
+      // Dispatch through Phase 2 DataContext state action / odApi abstraction
+      const updated = resubmitOD(id, revisionClarifications);
+      if (updated) {
+        setOd(updated);
+      } else {
+        const res = await odApi.resubmitODRequest(id, {
+          eventName,
+          reason,
+          venue,
+          date,
+          fromTime,
+          toTime,
+          proofDocName,
+          additionalNotes: revisionClarifications,
+        });
+        setOd(res.data);
+      }
       setIsResubmitting(false);
     } catch (err: unknown) {
+      setIsResubmitting(false);
       if (err instanceof ApiError) {
-        if (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE') {
-          const updated: ODApplication = {
-            ...od,
-            ...payload,
-            status: 'PENDING' as ODStatus,
-            timeline: [
-              ...(od.timeline || []),
-              {
-                id: `tl-${Date.now()}`,
-                title: 'Resubmitted for HOD Clearance',
-                description: 'Updated based on revision remarks',
-                date: new Date().toISOString().split('T')[0],
-                status: 'CURRENT',
-              },
-            ],
-          };
-          setOd(updated);
-          setIsBackendBlocked(true);
-        } else {
-          setError(err.message);
+        setError(`${err.code}: ${err.message}`);
+        if (err.field) {
+          setFormErrors({ [err.field]: err.message });
         }
       } else {
         setError('Failed to resubmit OD application.');
       }
-    } finally {
-      setIsResubmitting(false);
     }
   };
 
@@ -189,19 +171,6 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
         </Link>
       </div>
 
-      {/* Backend Dependency Banner */}
-      {isBackendBlocked && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
-          <div className="font-bold flex items-center gap-1.5 text-amber-900">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            Backend Dependency Notice: `/api/v1/od-requests/${id}` Endpoint Offline
-          </div>
-          <p className="text-amber-800">
-            The server-side endpoint for OD request details and resubmission is currently being implemented by the backend team. Displaying client integration state and contract structures.
-          </p>
-        </div>
-      )}
-
       {/* Error Card */}
       {error && !od && (
         <div className="p-8 text-center bg-white rounded-xl border border-[#dfe6dc] space-y-3">
@@ -227,6 +196,9 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
                     {od.purpose || 'ACADEMIC OD'}
                   </span>
                   <span className="text-xs text-[#889688] font-mono">ID: {od.id}</span>
+                  {od.registrationId && (
+                    <span className="text-xs text-[#586658] font-mono">Reg: {od.registrationId}</span>
+                  )}
                 </div>
 
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172017]">
@@ -252,7 +224,7 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
                 </p>
                 {od.fromTime && (
                   <p className="text-[11px] text-[#586658]">
-                    {od.fromTime} – {od.toTime}
+                    {od.fromTime} – {od.toTime} ({od.totalDays || 1} {od.totalDays === 1 ? 'day' : 'days'})
                   </p>
                 )}
               </div>
@@ -274,13 +246,35 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
                   <UserCheck className="w-3.5 h-3.5 text-[#0a5c36]" /> Lead Applicant
                 </span>
                 <p className="font-semibold text-[#172017]">
-                  {user?.name || od.studentName}
+                  {od.studentName || user?.name}
                 </p>
                 <p className="text-[11px] text-[#586658]">
-                  {user?.registerNumber || od.studentRegNo} · {user?.department || od.department} {user?.section ? `-${user.section}` : ''}
+                  {od.studentRegNo || user?.registerNumber} · {od.department || 'CSE'} {od.section ? `-${od.section}` : ''}
                 </p>
               </div>
             </div>
+
+            {/* Team Members List */}
+            {od.teamMembers && od.teamMembers.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-[#dfe6dc]">
+                <span className="text-xs font-bold text-[#172017] flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#0a5c36]" /> Group Team Members ({od.teamMembers.length})
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {od.teamMembers.map((member, idx) => (
+                    <div key={idx} className="p-2.5 rounded-md bg-[#f7f9f5] border border-[#dfe6dc] flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-[#172017]">{member.name}</span>
+                        <span className="text-[11px] text-[#586658] ml-2 font-mono">{member.regNo}</span>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase text-[#0a5c36] bg-white px-1.5 py-0.5 rounded border border-[#dfe6dc]">
+                        {member.role || 'MEMBER'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Purpose & Reason */}
             <div className="space-y-2 pt-2 border-t border-[#dfe6dc]">
@@ -289,14 +283,6 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
                 {od.reason}
               </p>
             </div>
-
-            {/* Additional Notes */}
-            {od.additionalNotes && (
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-[#172017]">Additional Notes</span>
-                <p className="text-xs text-[#586658]">{od.additionalNotes}</p>
-              </div>
-            )}
 
             {/* Proof Attachment */}
             {od.proofDocName && (
@@ -317,7 +303,7 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
                     ) : (
                       <ExternalLink className="w-3 h-3" />
                     )}
-                    <span>Preview (15-Min Signed URL)</span>
+                    <span>Preview (Signed URL)</span>
                   </button>
                   <span className="text-[10px] font-bold bg-white text-[#0a5c36] px-2 py-1 rounded border border-[#dfe6dc]">
                     Private Storage
@@ -354,7 +340,7 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
             </div>
           )}
 
-          {/* Section 6: Resubmission Form for REVISION_REQUESTED State */}
+          {/* Resubmission Form for REVISION_REQUESTED State */}
           {od.status === 'REVISION_REQUESTED' && (
             <div className="bg-white rounded-xl border border-amber-300 p-6 sm:p-8 space-y-6 shadow-sm">
               <div className="border-b border-amber-200 pb-4 space-y-1">
@@ -363,9 +349,16 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
                   <span>Resubmit OD Request</span>
                 </div>
                 <p className="text-xs text-[#586658]">
-                  Update your application details according to the HOD directives above. Submitting this form will transition status from <strong className="text-amber-800">REVISION_REQUESTED</strong> to <strong className="text-[#0a5c36]">PENDING</strong>.
+                  Update your application details according to the HOD directives above. Submitting this form routes through <strong className="text-amber-800">PUT /api/v1/od-requests/{'{id}'}/resubmit</strong> and transitions status back to <strong className="text-[#0a5c36]">PENDING</strong>.
                 </p>
               </div>
+
+              {formErrors.revision_notes && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-800 flex items-center gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <span>{formErrors.revision_notes}</span>
+                </div>
+              )}
 
               <form onSubmit={handleResubmit} className="space-y-4">
                 <div className="space-y-1">
@@ -435,12 +428,15 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#172017]">Additional Clarifications for HOD</label>
+                  <label className="text-xs font-bold text-[#172017]">
+                    Revision Clarifications for HOD <span className="text-rose-600">*</span>
+                  </label>
                   <Textarea
-                    value={additionalNotes}
-                    onChange={(e) => setAdditionalNotes(e.target.value)}
+                    value={revisionClarifications}
+                    onChange={(e) => setRevisionClarifications(e.target.value)}
                     rows={2}
-                    placeholder="Provide additional details regarding the requested changes..."
+                    placeholder="Explain the changes made based on the revision instructions..."
+                    required
                   />
                 </div>
 
