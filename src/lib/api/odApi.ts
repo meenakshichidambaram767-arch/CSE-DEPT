@@ -20,7 +20,6 @@ import { mapApiODToODApplication, mapODApplicationToApiPayload } from './mappers
 import {
   fixtureApiODs,
   fixtureODConflictResponse,
-  fixturePaginatedODs,
 } from '@/data/fixtures/odFixtures';
 import { mockODApplications } from '@/data/mock';
 
@@ -54,7 +53,23 @@ export const odApi = {
   async getRawODRequests(params?: ODQueryParams): Promise<PaginatedResponse<ApiODRequest>> {
     return apiClient.get<PaginatedResponse<ApiODRequest>>('/api/v1/od-requests', {
       params: params ? { ...params } : undefined,
-      fallback: () => fixturePaginatedODs,
+      fallback: () => {
+        let filtered = [...fixtureApiODs];
+        if (params?.status && params.status !== 'ALL') {
+          filtered = filtered.filter((o) => o.status === params.status);
+        }
+        if (params?.purpose && params.purpose !== 'ALL') {
+          filtered = filtered.filter((o) => o.purpose === params.purpose);
+        }
+        return {
+          data: filtered,
+          meta: {
+            page: params?.page || 1,
+            page_size: params?.page_size || 20,
+            total: filtered.length,
+          },
+        };
+      },
     });
   },
 

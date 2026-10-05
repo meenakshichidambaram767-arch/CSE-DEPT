@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, Suspense, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
+import { odApi } from '@/lib/api/odApi';
 import { ODApplication } from '@/types';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { Search, ArrowRight, Check, X, GraduationCap } from 'lucide-react';
@@ -39,29 +40,25 @@ function RequestsContent() {
   const [apiData, setApiData] = useState<ODApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch OD Requests from /api/v1/od-requests
+  // Fetch OD Requests through odApi abstraction
   useEffect(() => {
     async function fetchODs() {
       setIsLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (activeTab !== 'ALL') params.append('status', activeTab);
-        if (selectedYear !== 'ALL') params.append('year', selectedYear);
-        if (selectedSection !== 'ALL') params.append('section', selectedSection);
-        if (selectedCategory !== 'ALL') params.append('purpose', selectedCategory);
-        if (searchTerm.trim() !== '') params.append('search', searchTerm.trim());
-
-        const res = await fetch(`/api/v1/od-requests?${params.toString()}`);
-        if (res.ok) {
-          const body = await res.json();
-          if (body.data) {
-            setApiData(body.data);
-            setIsLoading(false);
-            return;
-          }
+        const res = await odApi.getODRequests({
+          status: activeTab !== 'ALL' ? activeTab : undefined,
+          year: selectedYear !== 'ALL' ? selectedYear : undefined,
+          section: selectedSection !== 'ALL' ? selectedSection : undefined,
+          purpose: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+          search: searchTerm.trim() || undefined,
+        });
+        if (res && res.data) {
+          setApiData(res.data);
+          setIsLoading(false);
+          return;
         }
       } catch (err) {
-        console.error('Error fetching ODs from API:', err);
+        console.error('Error fetching ODs from odApi:', err);
       }
       setIsLoading(false);
     }

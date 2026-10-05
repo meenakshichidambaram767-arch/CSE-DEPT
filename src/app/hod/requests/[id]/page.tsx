@@ -4,6 +4,7 @@ import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
+import { odApi } from '@/lib/api/odApi';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import {
   ArrowLeft,
@@ -59,7 +60,7 @@ export interface ODDetailRecord {
 export default function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { getODById, checkODConflict } = useData();
+  const { getODById, checkODConflict, approveOD, rejectOD, requestRevisionOD } = useData();
 
   const [requestData, setRequestData] = useState<ODDetailRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,27 +78,31 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
   const [actionError, setActionError] = useState('');
   const [approvalToast, setApprovalToast] = useState('');
 
-  // Fetch from API
+  // Fetch from API / DataContext
   useEffect(() => {
     async function fetchDetail() {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/v1/od-requests/${resolvedParams.id}`);
-        if (res.ok) {
-          const body = await res.json();
-          if (body.data) {
-            setRequestData(body.data);
-            setIsLoading(false);
-            return;
-          }
+        const contextReq = getODById(resolvedParams.id);
+        if (contextReq) {
+          setRequestData(contextReq as unknown as ODDetailRecord);
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await odApi.getODRequestById(resolvedParams.id);
+        if (res && res.data) {
+          setRequestData(res.data as unknown as ODDetailRecord);
+          setIsLoading(false);
+          return;
         }
       } catch (err) {
-        console.error('API fetch error:', err);
+        console.error('odApi fetch error:', err);
       }
 
       // Context Fallback
       const contextReq = getODById(resolvedParams.id);
-      if (contextReq) setRequestData(contextReq);
+      if (contextReq) setRequestData(contextReq as unknown as ODDetailRecord);
       setIsLoading(false);
     }
 
@@ -121,31 +126,31 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
 
   const conflict = checkODConflict(requestData.studentRegNo, requestData.date || requestData.startDate);
 
-  // Execute Decision API
+  // Execute Decision via odApi abstraction & DataContext
   const executeDecision = async (
     decision: 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED',
     payload: { remarks?: string; rejection_reason?: string; revision_notes?: string }
   ) => {
     setActionError('');
     try {
-      const res = await fetch(`/api/v1/od-requests/${requestData.id}/decision`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          decision,
-          ...payload,
-        }),
+      await odApi.executeDecision(requestData.id, {
+        decision,
+        remarks: payload.remarks,
+        rejection_reason: payload.rejection_reason,
+        revision_notes: payload.revision_notes,
       });
 
-      const body = await res.json();
-
-      if (!res.ok) {
-        setActionError(body.error?.message || 'Failed to process decision.');
-        return false;
+      // Update DataContext state
+      if (decision === 'APPROVED') {
+        approveOD(requestData.id, payload.remarks);
+      } else if (decision === 'REJECTED') {
+        rejectOD(requestData.id, payload.rejection_reason || 'Rejected by HOD');
+      } else if (decision === 'REVISION_REQUESTED') {
+        requestRevisionOD(requestData.id, payload.revision_notes || 'Revision requested');
       }
 
       // Success
-      setRequestData(body.data);
+      setRequestData((prev) => (prev ? { ...prev, status: decision } : null));
       setApprovalToast(`✓ Decision '${decision}' recorded successfully.`);
       setShowConfirmApprove(false);
       setShowRejectModal(false);
@@ -156,7 +161,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
       return true;
     } catch (err: unknown) {
       console.error('Error executing decision:', err);
-      setActionError('An unexpected network error occurred.');
+      setActionError(err instanceof Error ? err.message : 'An unexpected error occurred processing decision.');
       return false;
     }
   };

@@ -15,7 +15,6 @@ import { Activity } from '@/types';
 import { mapActivityToApiPayload, mapApiActivityToActivity } from './mappers';
 import {
   fixtureApiActivities,
-  fixturePaginatedActivities,
 } from '@/data/fixtures/activitiesFixtures';
 import { mockActivities } from '@/data/mock';
 

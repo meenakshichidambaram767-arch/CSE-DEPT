@@ -1,53 +1,37 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from '@/context/SessionContext';
-import { odApi, ApiError } from '@/lib/api/odApi';
+import { useData } from '@/context/DataContext';
 import { ODApplication, PaginationMeta } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import { Plus, Calendar as CalendarIcon, MapPin, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function StudentODPortalPage() {
   const { user } = useSession();
+  const { odApplications: contextODs } = useData();
 
-  const [odList, setOdList] = useState<ODApplication[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isBackendBlocked, setIsBackendBlocked] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  // Sync with context state and filter by authenticated student via useMemo
+  const odList: ODApplication[] = useMemo(() => {
+    const studentRegNo = user?.registerNumber;
+    const studentId = user?.id;
 
-    odApi
-      .getODRequests({ page: 1, page_size: 20 })
-      .then((res) => {
-        if (isMounted) {
-          setOdList(res.data);
-          setMeta(res.meta);
-          setIsLoading(false);
-        }
-      })
-      .catch((err: unknown) => {
-        if (isMounted) {
-          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-            setIsBackendBlocked(true);
-            const fallback = odApi.getFallbackODs().filter(
-              (od) => od.studentId === user?.id || od.studentRegNo === user?.registerNumber
-            );
-            setOdList(fallback);
-          } else {
-            setError(err instanceof Error ? err.message : 'An unexpected error occurred while fetching your OD requests.');
-          }
-          setIsLoading(false);
-        }
-      });
+    return contextODs.filter((od) => {
+      if (!studentRegNo && !studentId) return true;
+      if (od.studentRegNo === studentRegNo || od.studentId === studentId) return true;
+      // Also match if user is in teamMembers
+      return (od.teamMembers || []).some((tm) => tm.regNo === studentRegNo);
+    });
+  }, [contextODs, user?.registerNumber, user?.id]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id, user?.registerNumber]);
+  const meta: PaginationMeta = useMemo(() => ({
+    page: 1,
+    page_size: 20,
+    total: odList.length,
+  }), [odList.length]);
 
   const approvedCount = odList.filter((od) => od.status === 'APPROVED').length;
   const pendingCount = odList.filter((od) => od.status === 'PENDING').length;
@@ -55,19 +39,6 @@ export default function StudentODPortalPage() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
-      {/* Backend Dependency Banner */}
-      {isBackendBlocked && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
-          <div className="font-bold flex items-center gap-1.5 text-amber-900">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            Backend Dependency Notice: `/api/v1/od-requests` Endpoint Offline
-          </div>
-          <p className="text-amber-800">
-            The server-side endpoint `GET /api/v1/od-requests` is currently being implemented by the backend team. The client integration is complete and ready. Displaying prototype dataset matching your authenticated profile.
-          </p>
-        </div>
-      )}
-
       {/* Student Welcome Card with Authenticated SIET Identity */}
       <div className="relative overflow-hidden rounded-xl bg-[#eaf7e8] border border-[#dfe6dc] p-6 sm:p-8 space-y-3">
         <div className="absolute top-0 left-0 right-0 h-1 bg-[#facc15]" />
@@ -104,24 +75,17 @@ export default function StudentODPortalPage() {
       </div>
 
       {/* Error Card */}
-      {error && !isBackendBlocked && (
+      {error && (
         <div className="p-6 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600" />
             <span>{error}</span>
           </div>
           <button
-            onClick={() => {
-              setIsLoading(true);
-              setError(null);
-              odApi.getODRequests({ page: 1, page_size: 20 })
-                .then((res) => { setOdList(res.data); setMeta(res.meta); })
-                .catch((e) => setError(e.message))
-                .finally(() => setIsLoading(false));
-            }}
+            onClick={() => setError(null)}
             className="px-3 py-1 bg-white border border-rose-200 rounded font-bold hover:bg-rose-100 transition-colors flex items-center gap-1"
           >
-            <RefreshCw className="w-3 h-3" /> Retry
+            <RefreshCw className="w-3 h-3" /> Dismiss
           </button>
         </div>
       )}
@@ -137,14 +101,7 @@ export default function StudentODPortalPage() {
           </span>
         </div>
 
-        {isLoading ? (
-          <div className="p-12 text-center bg-white rounded-xl border border-[#dfe6dc]">
-            <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#0a5c36]">
-              <div className="w-4 h-4 rounded-full border-2 border-[#0a5c36] border-t-transparent animate-spin" />
-              Loading OD Requests...
-            </div>
-          </div>
-        ) : odList.length === 0 ? (
+        {odList.length === 0 ? (
           <div className="p-10 text-center bg-white rounded-xl border border-[#dfe6dc] space-y-3">
             <p className="text-sm font-bold text-[#172017]">No OD applications found</p>
             <p className="text-xs text-[#586658]">Apply for your upcoming hackathon, internship, or conference.</p>

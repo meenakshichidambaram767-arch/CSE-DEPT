@@ -38,6 +38,19 @@ export interface ApiSuccessEnvelope<T> {
   meta?: Record<string, unknown>;
 }
 
+// Convenient Contract Aliases
+export type ODRequestListResponse = PaginatedResponse<ApiODRequest>;
+export type ODRequestDetailResponse = ApiSuccessEnvelope<ApiODRequest>;
+export type ActivityListResponse = PaginatedResponse<ApiActivity>;
+export type ActivityDetailResponse = ApiSuccessEnvelope<ApiActivity>;
+export type ReviewSessionListResponse = PaginatedResponse<ApiReviewSession>;
+export type ReviewSessionDetailResponse = ApiSuccessEnvelope<ApiReviewSession>;
+export type StudentRecordListResponse = PaginatedResponse<ApiStudentRecord>;
+export type StudentSummaryResponse = ApiSuccessEnvelope<ApiStudentSummary>;
+export type ReportSummaryResponse = ApiSuccessEnvelope<ApiReportSummary>;
+export type AccreditationMetricsResponse = ApiSuccessEnvelope<ApiAccreditationMetrics>;
+export type NotificationListResponse = ApiSuccessEnvelope<ApiNotification[]>;
+
 // ==========================================
 // 2. ENUMS & CONSTANTS
 // ==========================================

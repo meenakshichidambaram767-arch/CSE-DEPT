@@ -10,7 +10,11 @@
     "typecheck": "tsc --noEmit",
     "check:env": "node scripts/check-supabase-env.mjs",
     "student-import": "node scripts/student-import.mjs",
-    "test:student-import": "node scripts/test-student-import.mjs"
+    "test:student-import": "node scripts/test-student-import.mjs",
+    "test:compatibility": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts",
+    "test:phase1": "npx -y tsx scripts/test-frontend-compatibility.ts",
+    "test:phase2": "npx -y tsx scripts/test-phase2-state-compatibility.ts",
+    "test:phase3": "npx -y tsx scripts/test-phase3-od-ui-compatibility.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
