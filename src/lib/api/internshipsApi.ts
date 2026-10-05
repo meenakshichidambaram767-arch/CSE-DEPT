@@ -19,3 +19,5 @@ export const internshipsApi = {
     }
   },
 };
+
+export default internshipsApi;

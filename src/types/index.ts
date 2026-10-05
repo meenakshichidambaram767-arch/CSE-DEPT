@@ -4,6 +4,8 @@
  */
 
 export * from './student';
+export * from './contract';
+import { ApiTimeSlotType } from './contract';
 
 export type UserRole = 'STUDENT' | 'HOD';
 
@@ -137,6 +139,7 @@ export interface Activity {
   proofUrl?: string;
   proofDocName?: string;
   documents?: DocumentItem[];
+  documentIds?: string[];
   additionalNotes?: string;
   teamMembers: TeamMember[];
   status: ActivityStatus;
@@ -177,13 +180,13 @@ export interface AttendanceItem {
   checkInTime?: string;
 }
 
-export interface ReviewScore {
-  technicalKnowledge: number;
-  implementation: number;
-  presentation: number;
-  problemUnderstanding: number;
-  progress: number;
-}
+export * from './contract';
+
+export type ReviewType =
+  | 'PROJECT_WEEKLY'
+  | 'HACKATHON_POST'
+  | 'INTERNSHIP_MID'
+  | 'INTERNSHIP_FINAL';
 
 export interface ReviewSession {
   id: string;
@@ -194,7 +197,7 @@ export interface ReviewSession {
   studentName?: string;
   studentRegNo?: string;
   reviewNumber: number;
-  reviewType?: string;
+  reviewType?: ReviewType | string;
   date: string;
   rawDate?: string; // YYYY-MM-DD
   time: string;
@@ -206,8 +209,6 @@ export interface ReviewSession {
   attendance: AttendanceItem[];
   meetingNotes?: string;
   nextWeekGoal?: string;
-  scores?: ReviewScore;
-  totalScore?: number;
   feedback?: string;
   qrCodeToken?: string;
   createdAt?: string;
@@ -264,6 +265,7 @@ export interface ODEvent {
 
 export interface ODApplication {
   id: string;
+  code?: string;
   studentId: string;
   studentName: string;
   studentRegNo: string;
@@ -283,8 +285,10 @@ export interface ODApplication {
   endDate?: string;
   fromTime?: string;
   toTime?: string;
+  slotType?: ApiTimeSlotType;
   totalDays?: number;
   venue?: string;
+  documentIds?: string[];
 
   // Hackathon specific fields
   hackathonName?: string;

@@ -19,3 +19,5 @@ export const projectsApi = {
     }
   },
 };
+
+export default projectsApi;

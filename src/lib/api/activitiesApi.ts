@@ -1,136 +1,204 @@
-import { createClient as createSupabaseClient } from '@/lib/supabase/client';
-import { ApiError } from './odApi';
-import { Activity, ActivityType, ApiErrorEnvelope, PaginatedResponse } from '@/types';
+/**
+ * Activities (Projects, Hackathons, Internships) API Client
+ * SIET CSE Department Platform - API Contract v2.0
+ */
+
+import { apiClient, ApiError } from './client';
+import {
+  ActivityDecisionPayload,
+  ApiActivity,
+  CreateActivityPayload,
+  PaginatedResponse,
+  ResubmitActivityPayload,
+} from '@/types/contract';
+import { Activity } from '@/types';
+import { mapActivityToApiPayload, mapApiActivityToActivity } from './mappers';
+import {
+  fixtureApiActivities,
+  fixturePaginatedActivities,
+} from '@/data/fixtures/activitiesFixtures';
 import { mockActivities } from '@/data/mock';
 
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  try {
-    const supabase = createSupabaseClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
-    }
-  } catch {
-    // Suppress token errors if unauthenticated
-  }
-  return headers;
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let errorCode = res.status === 404 ? 'BACKEND_DEPENDENCY_UNAVAILABLE' : 'UNKNOWN_ERROR';
-    let errorMessage =
-      res.status === 404
-        ? `Backend endpoint ${res.url} is not yet available (HTTP 404).`
-        : `HTTP ${res.status}: ${res.statusText}`;
-    let details: Record<string, unknown> | undefined;
-
-    try {
-      const body = (await res.json()) as ApiErrorEnvelope;
-      if (body?.error) {
-        errorCode = body.error.code || errorCode;
-        errorMessage = body.error.message || errorMessage;
-        details = body.error.details;
-      }
-    } catch {
-      // Non-JSON response payload
-    }
-
-    throw new ApiError(errorCode, errorMessage, res.status, details);
-  }
-
-  return res.json();
-}
+export { ApiError };
 
 export interface ActivitiesQueryParams {
   type?: string;
   status?: string;
+  year?: string;
+  section?: string;
   search?: string;
   page?: number;
   page_size?: number;
 }
 
-export interface CreateActivityPayload {
-  type: ActivityType;
-  title: string;
-  description: string;
-  technologies?: string[];
-  start_date: string;
-  end_date?: string;
-  organization?: string;
-  company_name?: string;
-  github_url?: string;
-  demo_url?: string;
-  guide_name?: string;
-  team_members?: Array<{
-    name: string;
-    register_number?: string;
-    regNo?: string;
-    email?: string;
-    role?: string;
-  }>;
-}
-
 export const activitiesApi = {
   /**
-   * GET /api/v1/activities
-   * Fetches paginated list of student activities (Projects, Hackathons, Internships)
+   * GET /api/v1/activities (Mapped to UI model)
    */
-  getActivities: async (params?: ActivitiesQueryParams): Promise<PaginatedResponse<Activity>> => {
-    const headers = await getAuthHeaders();
-    const searchParams = new URLSearchParams();
-    if (params?.type && params.type !== 'ALL') searchParams.set('type', params.type);
-    if (params?.status && params.status !== 'ALL') searchParams.set('status', params.status);
-    if (params?.search) searchParams.set('search', params.search);
-    if (params?.page) searchParams.set('page', String(params.page));
-    if (params?.page_size) searchParams.set('page_size', String(params.page_size));
-
-    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    const res = await fetch(`/api/v1/activities${query}`, { headers });
-    return handleResponse<PaginatedResponse<Activity>>(res);
+  async getActivities(params?: ActivitiesQueryParams): Promise<PaginatedResponse<Activity>> {
+    const res = await this.getRawActivities(params);
+    return {
+      data: res.data.map(mapApiActivityToActivity),
+      meta: res.meta,
+    };
   },
 
   /**
-   * GET /api/v1/activities/[id]
-   * Fetches single activity details including team members, documents, and status history
+   * GET /api/v1/activities (Raw Contract format)
    */
-  getActivityById: async (id: string): Promise<{ data: Activity }> => {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`/api/v1/activities/${encodeURIComponent(id)}`, { headers });
-    return handleResponse<{ data: Activity }>(res);
+  async getRawActivities(params?: ActivitiesQueryParams): Promise<PaginatedResponse<ApiActivity>> {
+    return apiClient.get<PaginatedResponse<ApiActivity>>('/api/v1/activities', {
+      params: params ? { ...params } : undefined,
+      fallback: () => {
+        let filtered = [...fixtureApiActivities];
+        if (params?.type && params.type !== 'ALL') {
+          filtered = filtered.filter((a) => a.type === params.type);
+        }
+        if (params?.status && params.status !== 'ALL') {
+          filtered = filtered.filter((a) => a.status === params.status);
+        }
+        return {
+          data: filtered,
+          meta: { page: params?.page || 1, page_size: params?.page_size || 20, total: filtered.length },
+        };
+      },
+    });
+  },
+
+  /**
+   * GET /api/v1/activities/{id}
+   */
+  async getActivityById(id: string): Promise<{ data: Activity }> {
+    const res = await apiClient.get<{ data: ApiActivity }>(`/api/v1/activities/${encodeURIComponent(id)}`, {
+      fallback: () => {
+        const found = fixtureApiActivities.find((a) => a.id === id || a.code === id);
+        return { data: found || fixtureApiActivities[0] };
+      },
+    });
+    return { data: mapApiActivityToActivity(res.data) };
   },
 
   /**
    * POST /api/v1/activities
-   * Creates a new activity proposal (Student Only). Status set to SUBMITTED by server.
    */
-  createActivity: async (payload: CreateActivityPayload): Promise<{ data: Activity }> => {
-    const headers = await getAuthHeaders();
-    const res = await fetch('/api/v1/activities', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
+  async createActivity(
+    payload: CreateActivityPayload | Partial<Activity>
+  ): Promise<{ data: Activity }> {
+    const body: CreateActivityPayload = 'start_date' in payload
+      ? (payload as CreateActivityPayload)
+      : mapActivityToApiPayload(payload as Partial<Activity>);
+
+    const res = await apiClient.post<{ data: ApiActivity }>('/api/v1/activities', body, {
+      fallback: () => ({
+        data: {
+          id: `local-act-${Date.now()}`,
+          code: `ACT-2026-${String(Math.floor(Math.random() * 900) + 100)}`,
+          student_id: 'usr-student-001',
+          student_name: 'Meena C',
+          student_reg_no: '714023104088',
+          department: 'CSE',
+          year: 'III',
+          type: body.type,
+          title: body.title,
+          description: body.description,
+          technologies: body.technologies || [],
+          start_date: body.start_date,
+          end_date: body.end_date,
+          organization: body.organization,
+          company_name: body.company_name,
+          company_role: body.company_role,
+          company_location: body.company_location,
+          stipend: body.stipend,
+          github_url: body.github_url,
+          demo_url: body.demo_url,
+          guide_name: body.guide_name,
+          guide_email: body.guide_email,
+          team_members: body.team_members || [],
+          document_ids: body.document_ids || [],
+          status: 'SUBMITTED',
+          created_at: new Date().toISOString(),
+        },
+      }),
     });
-    return handleResponse<{ data: Activity }>(res);
+
+    return { data: mapApiActivityToActivity(res.data) };
   },
 
   /**
-   * Prototype fallback helper to get local mock activities when backend returns 404
+   * POST /api/v1/activities/{id}/decision
    */
-  getFallbackActivities: (type?: ActivityType): Activity[] => {
-    if (!type || (type as ActivityType | 'ALL') === 'ALL') return [...mockActivities];
-    return mockActivities.filter((a) => a.type === type);
+  async executeDecision(
+    id: string,
+    payload: ActivityDecisionPayload
+  ): Promise<{ data: Activity }> {
+    const res = await apiClient.post<{ data: ApiActivity }>(
+      `/api/v1/activities/${encodeURIComponent(id)}/decision`,
+      payload,
+      {
+        fallback: () => {
+          const existing = fixtureApiActivities.find((a) => a.id === id) || fixtureApiActivities[0];
+          return {
+            data: {
+              ...existing,
+              status: payload.decision,
+              rejection_reason: payload.rejection_reason || undefined,
+              revision_notes: payload.revision_notes || undefined,
+            },
+          };
+        },
+      }
+    );
+
+    return { data: mapApiActivityToActivity(res.data) };
   },
 
   /**
-   * Prototype fallback helper to get single activity by ID
+   * PUT /api/v1/activities/{id}/resubmit
    */
-  getFallbackById: (id: string): Activity | undefined => {
+  async resubmitActivity(
+    id: string,
+    payload: ResubmitActivityPayload | Partial<Activity>
+  ): Promise<{ data: Activity }> {
+    const body: ResubmitActivityPayload = 'start_date' in payload
+      ? (payload as ResubmitActivityPayload)
+      : mapActivityToApiPayload(payload as Partial<Activity>);
+
+    const res = await apiClient.put<{ data: ApiActivity }>(
+      `/api/v1/activities/${encodeURIComponent(id)}/resubmit`,
+      body,
+      {
+        fallback: () => {
+          const existing = fixtureApiActivities.find((a) => a.id === id) || fixtureApiActivities[0];
+          return {
+            data: {
+              ...existing,
+              status: 'SUBMITTED',
+              revision_notes: undefined,
+            },
+          };
+        },
+      }
+    );
+
+    return { data: mapApiActivityToActivity(res.data) };
+  },
+
+  /**
+   * Fallback mock helpers for testing & offline mode
+   */
+  getFallbackActivities(type?: string): Activity[] {
+    if (type) {
+      return mockActivities.filter((a) => a.type === type);
+    }
+    return [...mockActivities];
+  },
+
+  getFallbackById(id: string): Activity | undefined {
     return mockActivities.find((a) => a.id === id);
   },
+
+  mapToUI: mapApiActivityToActivity,
+  mapToApi: mapActivityToApiPayload,
 };
+
+export default activitiesApi;

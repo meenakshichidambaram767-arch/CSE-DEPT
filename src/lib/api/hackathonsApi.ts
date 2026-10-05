@@ -19,3 +19,5 @@ export const hackathonsApi = {
     }
   },
 };
+
+export default hackathonsApi;
