@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Textarea } from '@/components/ui/Textarea';
@@ -12,21 +11,14 @@ import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
 import {
-  FolderKanban,
   FileCheck,
   Users,
   Calendar,
   Clock,
   MapPin,
-  CheckCircle2,
   AlertCircle,
   ExternalLink,
   ArrowLeft,
-  Sparkles,
-  Send,
-  Plus,
-  QrCode,
-  ShieldCheck,
   History,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/common/GithubIcon';
@@ -89,8 +81,8 @@ export default function StudentProjectDetailPage() {
     }
   };
 
-  const handleConfirmProgressSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmProgressSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedReview) return;
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
@@ -100,8 +92,8 @@ export default function StudentProjectDetailPage() {
 
     setIsSubmittingProgress(true);
 
-    setTimeout(() => {
-      submitWeeklyProgress(selectedReview.id, {
+    try {
+      await submitWeeklyProgress(selectedReview.id, {
         studentId: user?.id || 'usr-student-001',
         studentName: user?.name || 'Meena C',
         completedThisWeek,
@@ -113,12 +105,11 @@ export default function StudentProjectDetailPage() {
 
       setIsSubmittingProgress(false);
       setSelectedReview(null);
-      showToast(
-        `Progress Logged for Review #${selectedReview.reviewNumber}!`,
-        'HOD summary updated for meeting discussion.',
-        'success'
-      );
-    }, 400);
+      showToast('Weekly Progress Logged!', 'Progress updated.', 'success');
+    } catch {
+      setIsSubmittingProgress(false);
+      showToast('Submission Failed', 'Could not record progress.', 'error');
+    }
   };
 
   return (
@@ -444,7 +435,7 @@ export default function StudentProjectDetailPage() {
         title={`Weekly Progress Submission: Review #${selectedReview?.reviewNumber}`}
         variant="information"
         confirmLabel={isSubmittingProgress ? 'Submitting...' : 'Submit Progress'}
-        onConfirm={() => handleConfirmProgressSubmit({ preventDefault: () => {} } as any)}
+        onConfirm={() => handleConfirmProgressSubmit()}
         cancelLabel="Cancel"
       >
         <div className="space-y-4 text-xs">
@@ -541,7 +532,7 @@ export default function StudentProjectDetailPage() {
 
               <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200/80 space-y-1">
                 <span className="text-[10px] font-bold uppercase text-purple-800">
-                  Next Week's Goal
+                  Next Week&apos;s Goal
                 </span>
                 <p className="text-xs text-slate-800 whitespace-pre-line font-medium">
                   {viewingProgressReview.progress.nextWeekGoal}

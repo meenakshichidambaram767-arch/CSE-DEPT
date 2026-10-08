@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "npx tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts",
+    "test:phase5": "npx tsx scripts/test-phase5-reviews-ui-compatibility.ts",
+    "test:phase6": "npx tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

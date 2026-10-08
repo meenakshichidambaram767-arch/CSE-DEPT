@@ -153,13 +153,11 @@ export interface AttendanceItem {
   checkInTime?: string;
 }
 
-export interface ReviewScore {
-  technicalKnowledge: number;
-  implementation: number;
-  presentation: number;
-  problemUnderstanding: number;
-  progress: number;
-}
+export type ReviewType =
+  | 'PROJECT_WEEKLY'
+  | 'HACKATHON_POST'
+  | 'INTERNSHIP_MID'
+  | 'INTERNSHIP_FINAL';
 
 export interface ReviewSession {
   id: string;
@@ -169,7 +167,7 @@ export interface ReviewSession {
   studentName?: string;
   studentRegNo?: string;
   reviewNumber: number;
-  reviewType?: string;
+  reviewType: ReviewType;
   date: string;
   rawDate?: string; // YYYY-MM-DD
   time: string;
@@ -181,10 +179,11 @@ export interface ReviewSession {
   attendance: AttendanceItem[];
   meetingNotes?: string;
   nextWeekGoal?: string;
-  scores?: ReviewScore;
-  totalScore?: number;
-  feedback?: string;
   qrCodeToken?: string;
+  qrExpiresAt?: string;
+  qrValidSeconds?: number;
+  finalizedAt?: string;
+  finalizedBy?: string;
   createdAt?: string;
 }
 

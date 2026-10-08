@@ -19,7 +19,7 @@ export interface TableProps<T> {
   className?: string;
 }
 
-export function Table<T extends Record<string, any>>({
+export function Table<T extends object>({
   columns,
   data,
   isLoading = false,
@@ -67,7 +67,7 @@ export function Table<T extends Record<string, any>>({
                 >
                   {columns.map((col) => (
                     <td key={col.key} className={`py-3 px-4 ${col.className || ''}`}>
-                      {col.render ? col.render(row, idx) : row[col.key] ?? '—'}
+                      {col.render ? col.render(row, idx) : (((row as Record<string, unknown>)[col.key] as React.ReactNode) ?? '—')}
                     </td>
                   ))}
                 </tr>

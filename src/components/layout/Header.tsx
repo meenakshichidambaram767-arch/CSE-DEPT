@@ -40,15 +40,26 @@ export const Header: React.FC<HeaderProps> = ({
   const { notifications, markNotificationAsRead, clearAllNotifications } = useData();
   const { user } = useSession();
   const [showNotifs, setShowNotifs] = useState(false);
+  const [markingId, setMarkingId] = useState<string | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   // Filter notifications for this role/user
   const userNotifs = notifications.filter(
     (n) =>
       n.userId === 'all' ||
-      (role === 'HOD' ? n.userId === 'usr-hod-001' : n.userId !== 'usr-hod-001')
+      (role === 'HOD' ? n.userId === user?.id || n.userId === 'usr-hod-001' : n.userId !== 'usr-hod-001')
   );
   const unreadCount = userNotifs.filter((n) => !n.isRead).length;
+
+  const handleMarkAsRead = async (id: string) => {
+    if (markingId) return; // prevent duplicate clicks
+    setMarkingId(id);
+    try {
+      await markNotificationAsRead(id);
+    } finally {
+      setMarkingId(null);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -155,10 +166,10 @@ export const Header: React.FC<HeaderProps> = ({
                   userNotifs.map((n) => (
                     <div
                       key={n.id}
-                      onClick={() => markNotificationAsRead(n.id)}
+                      onClick={() => handleMarkAsRead(n.id)}
                       className={`p-3.5 hover:bg-emerald-50/40 transition-colors cursor-pointer ${
                         !n.isRead ? 'bg-amber-50/40' : ''
-                      }`}
+                      } ${markingId === n.id ? 'opacity-50 pointer-events-none' : ''}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <strong className="text-xs font-bold text-slate-900 line-clamp-1">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserRole } from '@/types';
@@ -44,19 +44,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   className = '',
 }) => {
   const pathname = usePathname();
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
-
-  // Initialize and persist collapse state from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('siet_sidebar_collapsed');
-      if (saved !== null) {
-        setInternalCollapsed(saved === 'true');
+  const dataContext = useData();
+  const [internalCollapsed, setInternalCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('siet_sidebar_collapsed');
+        return saved === 'true';
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
     }
-  }, []);
+    return false;
+  });
 
   const isCollapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
 
@@ -74,8 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  // Student navigation: Dashboard, My Activities, Projects, Internships, Hackathons, Reviews
-  // Note: DO NOT include Students, Reports, Notifications
+  // Student navigation: Dashboard, My Activities, Projects, Internships, Hackathons, Reviews, Apply OD, My ODs
   const studentNav: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
     { id: 'activities', label: 'My Activities', href: '/student/activities', icon: Layers },
@@ -83,30 +81,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'internships', label: 'Internships', href: '/student/internships', icon: BriefcaseBusiness },
     { id: 'hackathons', label: 'Hackathons', href: '/student/hackathons', icon: Trophy },
     { id: 'reviews', label: 'Reviews', href: '/student/reviews', icon: ClipboardCheck },
-    { id: 'od', label: 'On-Duty (OD)', href: '/student/od-requests', icon: FileCheck },
+    { id: 'apply-od', label: 'Apply OD', href: '/student/apply-od', icon: FileCheck },
+    { id: 'od', label: 'My OD Requests', href: '/student/od-requests', icon: ClipboardCheck },
   ];
 
   // Live data counts
-  let pendingApprovalsCount = 0;
-  let pendingODCount = 0;
-  try {
-    const { getPendingApprovals, getPendingODSubmissions } = useData();
-    pendingApprovalsCount = getPendingApprovals().length;
-    pendingODCount = getPendingODSubmissions().length;
-  } catch (e) {
-    // Fallback if rendered outside DataProvider
-  }
+  const pendingApprovalsCount = dataContext?.getPendingApprovals?.()?.length || 0;
+  const pendingODCount = dataContext?.getPendingODSubmissions?.()?.length || 0;
 
-  // HOD navigation: Dashboard, Approvals, Projects, Internships, Hackathons, Reviews, OD Submissions
-  // Note: DO NOT include Students, Reports, Notifications
+  // HOD navigation: Dashboard, Approvals, Requests, Records, Projects, Internships, Hackathons, Reviews, Reports
   const hodNav: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', href: '/hod/dashboard', icon: LayoutDashboard },
     { id: 'approvals', label: 'Approvals', href: '/hod/approvals', icon: BadgeCheck, badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined },
+    { id: 'requests', label: 'OD Requests', href: '/hod/requests', icon: FileCheck, badge: pendingODCount > 0 ? pendingODCount : undefined },
+    { id: 'records', label: 'Student Records', href: '/hod/records', icon: GraduationCap },
     { id: 'projects', label: 'Projects', href: '/hod/projects', icon: FolderKanban },
     { id: 'internships', label: 'Internships', href: '/hod/internships', icon: BriefcaseBusiness },
     { id: 'hackathons', label: 'Hackathons', href: '/hod/hackathons', icon: Trophy },
     { id: 'reviews', label: 'Reviews', href: '/hod/reviews', icon: ClipboardCheck },
-    { id: 'od-submissions', label: 'OD Clearances', href: '/hod/od-submissions', icon: FileCheck, badge: pendingODCount > 0 ? pendingODCount : undefined },
     { id: 'reports', label: 'NAAC / NBA Reports', href: '/hod/reports', icon: FileText },
   ];
 

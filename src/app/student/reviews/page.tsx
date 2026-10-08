@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
+import { formatApiErrorMessage } from '@/lib/api';
 import {
   ClipboardCheck,
   Calendar,
@@ -19,11 +20,28 @@ import {
   CheckCircle2,
   Sparkles,
   Users,
+  QrCode,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
-import { ReviewSession } from '@/types';
+import { ReviewSession, ReviewType } from '@/types';
+
+function getReviewTypeLabel(type?: ReviewType): string {
+  switch (type) {
+    case 'HACKATHON_POST':
+      return 'Post-Hackathon Review';
+    case 'INTERNSHIP_MID':
+      return 'Internship Mid Review';
+    case 'INTERNSHIP_FINAL':
+      return 'Internship Final Review';
+    case 'PROJECT_WEEKLY':
+    default:
+      return 'Weekly Project Review';
+  }
+}
 
 export default function StudentReviewsPage() {
-  const { reviews, submitWeeklyProgress } = useData();
+  const { reviews, submitWeeklyProgress, checkInReviewQR } = useData();
   const { user } = useSession();
   const { showToast } = useToast();
 
@@ -37,19 +55,28 @@ export default function StudentReviewsPage() {
   const [blockers, setBlockers] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // View progress state
   const [viewingProgress, setViewingProgress] = useState<ReviewSession | null>(null);
 
+  // QR Check-in state
+  const [checkInReview, setCheckInReview] = useState<ReviewSession | null>(null);
+  const [qrTokenInput, setQrTokenInput] = useState('');
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
+
   const filteredReviews = reviews.filter((r) => {
     if (activeTab === 'SCHEDULED') return r.status === 'SCHEDULED';
     if (activeTab === 'COMPLETED') return r.status === 'COMPLETED';
+    if (activeTab === 'CANCELLED') return r.status === 'CANCELLED';
     if (activeTab === 'WITH_PROGRESS') return !!r.progress;
     return true;
   });
 
   const handleOpenSubmit = (rev: ReviewSession) => {
     setSelectedReview(rev);
+    setSubmitError(null);
     if (rev.progress) {
       setCompletedThisWeek(rev.progress.completedThisWeek);
       setCurrentlyWorkingOn(rev.progress.currentlyWorkingOn);
@@ -65,32 +92,80 @@ export default function StudentReviewsPage() {
     }
   };
 
-  const handleConfirmSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedReview) return;
+    setSubmitError(null);
 
     if (!completedThisWeek.trim() || !currentlyWorkingOn.trim() || !nextWeekGoal.trim()) {
-      showToast('Please complete all 3 progress fields.', 'warning');
+      setSubmitError('Please complete all 3 required progress quadrants (minimum 5 characters each).');
+      showToast('Validation Error', 'Please complete all required fields.', 'warning');
+      return;
+    }
+
+    if (githubUrl.trim() && !githubUrl.trim().startsWith('http://') && !githubUrl.trim().startsWith('https://')) {
+      setSubmitError('GitHub URL must be a valid HTTP or HTTPS address.');
+      showToast('Validation Error', 'Invalid GitHub URL format.', 'warning');
       return;
     }
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      submitWeeklyProgress(selectedReview.id, {
+    try {
+      await submitWeeklyProgress(selectedReview.id, {
         studentId: user?.id || 'usr-student-001',
         studentName: user?.name || 'Meena C',
-        completedThisWeek,
-        currentlyWorkingOn,
-        nextWeekGoal,
+        completedThisWeek: completedThisWeek.trim(),
+        currentlyWorkingOn: currentlyWorkingOn.trim(),
+        nextWeekGoal: nextWeekGoal.trim(),
         blockers: blockers.trim() || 'None',
         githubUrl: githubUrl.trim() || undefined,
       });
 
       setIsSubmitting(false);
       setSelectedReview(null);
-      showToast('Weekly Progress Logged!', 'Meeting progress updated.', 'success');
-    }, 400);
+      showToast('Weekly Progress Logged!', 'Meeting progress updated in state/API layer.', 'success');
+    } catch (err: unknown) {
+      setIsSubmitting(false);
+      const msg = formatApiErrorMessage(err);
+      setSubmitError(msg);
+      showToast('Submission Failed', msg, 'error');
+    }
+  };
+
+  const handleOpenCheckIn = (rev: ReviewSession) => {
+    setCheckInReview(rev);
+    setQrTokenInput(rev.qrCodeToken || '');
+    setCheckInError(null);
+  };
+
+  const handleConfirmCheckIn = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!checkInReview) return;
+    setCheckInError(null);
+
+    if (!qrTokenInput.trim()) {
+      setCheckInError('Please provide a valid session QR token.');
+      return;
+    }
+
+    setIsCheckingIn(true);
+    try {
+      await checkInReviewQR(
+        checkInReview.id,
+        qrTokenInput.trim(),
+        user?.id || 'usr-student-001',
+        user?.registerNumber || '714023104088'
+      );
+      setIsCheckingIn(false);
+      setCheckInReview(null);
+      showToast('Check-in Verified!', 'Attendance recorded for this review session.', 'success');
+    } catch (err: unknown) {
+      setIsCheckingIn(false);
+      const msg = formatApiErrorMessage(err);
+      setCheckInError(msg);
+      showToast('Check-in Rejected', msg, 'error');
+    }
   };
 
   const tabItems = [
@@ -98,22 +173,23 @@ export default function StudentReviewsPage() {
     { id: 'SCHEDULED', label: `Upcoming (${reviews.filter((r) => r.status === 'SCHEDULED').length})` },
     { id: 'WITH_PROGRESS', label: `Progress Logged (${reviews.filter((r) => !!r.progress).length})` },
     { id: 'COMPLETED', label: `Completed (${reviews.filter((r) => r.status === 'COMPLETED').length})` },
+    { id: 'CANCELLED', label: `Cancelled (${reviews.filter((r) => r.status === 'CANCELLED').length})` },
   ];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12">
       {/* 1. Page Header */}
       <PageHeader
-        title="Weekly Reviews & Progress"
-        description="Submit your weekly progress logs and check meeting schedules."
+        title="Reviews & Progress Logs"
+        description="Submit milestone progress logs, view scheduled sessions, and check in via attendance QR."
         breadcrumbs={[
           { label: 'Dashboard', href: '/student/dashboard' },
-          { label: 'Weekly Reviews', current: true },
+          { label: 'Reviews', current: true },
         ]}
         badge={
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200 inline-flex items-center gap-1.5 shadow-2xs">
             <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-            <span>Progress Discussions (No Marks / Grading)</span>
+            <span>Non-Evaluative Progress Tracking</span>
           </span>
         }
       />
@@ -135,8 +211,13 @@ export default function StudentReviewsPage() {
           {filteredReviews.map((rev) => {
             const hasProgress = !!rev.progress;
             const myAttendance = rev.attendance.find(
-              (a) => a.studentId === user?.id || a.name.toLowerCase().includes('meena')
+              (a) =>
+                a.studentId === user?.id ||
+                a.regNo === user?.registerNumber ||
+                a.name.toLowerCase().includes('meena')
             );
+            const isCompleted = rev.status === 'COMPLETED';
+            const isCancelled = rev.status === 'CANCELLED';
 
             return (
               <div
@@ -148,7 +229,7 @@ export default function StudentReviewsPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono font-bold text-slate-400">{rev.id}</span>
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
-                        Review #{rev.reviewNumber}
+                        {getReviewTypeLabel(rev.reviewType)} #{rev.reviewNumber}
                       </span>
                     </div>
 
@@ -160,8 +241,10 @@ export default function StudentReviewsPage() {
                       )}
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                          rev.status === 'COMPLETED'
+                          isCompleted
                             ? 'bg-emerald-100 text-emerald-800'
+                            : isCancelled
+                            ? 'bg-slate-100 text-slate-600'
                             : 'bg-amber-100 text-amber-800'
                         }`}
                       >
@@ -200,10 +283,25 @@ export default function StudentReviewsPage() {
                     {myAttendance?.attended ? (
                       <span className="text-emerald-700 font-bold flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        Present
+                        Present {myAttendance.checkInTime ? `(${myAttendance.checkInTime})` : ''}
                       </span>
+                    ) : isCompleted ? (
+                      <span className="text-slate-500 font-medium">Session Concluded</span>
+                    ) : isCancelled ? (
+                      <span className="text-slate-400 font-medium">Session Cancelled</span>
                     ) : (
-                      <span className="text-amber-700 font-medium">Pending Check-in</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-700 font-medium">Pending Check-in</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenCheckIn(rev)}
+                          leftIcon={<QrCode className="w-3 h-3 text-purple-600" />}
+                          className="text-[11px] h-6 px-2 text-purple-700 border-purple-300 hover:bg-purple-50"
+                        >
+                          Check In
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -213,6 +311,11 @@ export default function StudentReviewsPage() {
                         HOD Notes:
                       </strong>
                       <p className="italic text-xs">&ldquo;{rev.meetingNotes}&rdquo;</p>
+                      {rev.nextWeekGoal && (
+                        <p className="text-[11px] text-emerald-900 mt-1">
+                          <span className="font-semibold">Goal:</span> {rev.nextWeekGoal}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -229,18 +332,20 @@ export default function StudentReviewsPage() {
                     </Button>
                   ) : (
                     <span className="text-xs text-amber-700 font-medium">
-                      Submit progress log
+                      {isCancelled ? 'No progress required' : 'Submit progress log'}
                     </span>
                   )}
 
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => handleOpenSubmit(rev)}
-                    className="bg-purple-700 hover:bg-purple-800 text-xs font-bold"
-                  >
-                    {hasProgress ? 'Update Progress' : 'Submit Progress'}
-                  </Button>
+                  {!isCancelled && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleOpenSubmit(rev)}
+                      className="bg-purple-700 hover:bg-purple-800 text-xs font-bold"
+                    >
+                      {hasProgress ? 'Update Progress' : 'Submit Progress'}
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -252,53 +357,65 @@ export default function StudentReviewsPage() {
       <Dialog
         isOpen={!!selectedReview}
         onClose={() => setSelectedReview(null)}
-        title={`Log Weekly Progress: Review #${selectedReview?.reviewNumber}`}
+        title={`Log Progress: ${getReviewTypeLabel(selectedReview?.reviewType)} #${selectedReview?.reviewNumber}`}
         variant="information"
         confirmLabel={isSubmitting ? 'Submitting...' : 'Submit Progress'}
-        onConfirm={() => handleConfirmSubmit({ preventDefault: () => {} } as any)}
+        onConfirm={() => handleConfirmSubmit()}
         cancelLabel="Cancel"
       >
         <div className="space-y-3 text-xs">
+          {submitError && (
+            <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           <Textarea
-            label="1. What did you complete this week?"
-            placeholder="e.g. Completed baseline model training..."
+            label="1. Completed This Week (completed_this_week)"
+            placeholder="e.g. Completed baseline model training and dataset ingestion..."
             value={completedThisWeek}
             onChange={(e) => setCompletedThisWeek(e.target.value)}
             rows={2}
             isRequired
+            disabled={isSubmitting}
           />
 
           <Textarea
-            label="2. What are you currently working on?"
-            placeholder="e.g. Integrating API endpoints..."
+            label="2. Currently Working On (currently_working_on)"
+            placeholder="e.g. Integrating API endpoints and optimizing inference..."
             value={currentlyWorkingOn}
             onChange={(e) => setCurrentlyWorkingOn(e.target.value)}
             rows={2}
             isRequired
+            disabled={isSubmitting}
           />
 
           <Textarea
-            label="3. Next week goal?"
-            placeholder="e.g. Optimize inference speed..."
+            label="3. Next Week Goal (next_week_goal)"
+            placeholder="e.g. Optimize inference speed and run field test in lab..."
             value={nextWeekGoal}
             onChange={(e) => setNextWeekGoal(e.target.value)}
             rows={2}
             isRequired
+            disabled={isSubmitting}
           />
 
           <Textarea
-            label="4. Any blockers / problems?"
-            placeholder="e.g. Hardware GPU access..."
+            label="4. Blockers & Problems (blockers)"
+            placeholder="e.g. Hardware GPU access, hardware latency (or 'None')..."
             value={blockers}
             onChange={(e) => setBlockers(e.target.value)}
             rows={2}
+            disabled={isSubmitting}
           />
 
           <Input
-            label="GitHub / Demo Link (Optional)"
+            label="GitHub / Demo URL (github_url - Optional)"
             placeholder="https://github.com/..."
             value={githubUrl}
             onChange={(e) => setGithubUrl(e.target.value)}
+            disabled={isSubmitting}
           />
         </div>
       </Dialog>
@@ -307,7 +424,7 @@ export default function StudentReviewsPage() {
       <Dialog
         isOpen={!!viewingProgress}
         onClose={() => setViewingProgress(null)}
-        title={`Review #${viewingProgress?.reviewNumber} Progress Record`}
+        title={`${getReviewTypeLabel(viewingProgress?.reviewType)} #${viewingProgress?.reviewNumber} Progress Record`}
         variant="information"
         confirmLabel="Close"
         onConfirm={() => setViewingProgress(null)}
@@ -315,17 +432,17 @@ export default function StudentReviewsPage() {
         {viewingProgress?.progress && (
           <div className="space-y-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
-              <span className="text-[10px] font-bold uppercase text-emerald-800 block">Completed</span>
+              <span className="text-[10px] font-bold uppercase text-emerald-800 block">Completed This Week</span>
               <p className="text-xs text-slate-900 font-medium">{viewingProgress.progress.completedThisWeek}</p>
             </div>
 
             <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
-              <span className="text-[10px] font-bold uppercase text-blue-800 block">Working On</span>
+              <span className="text-[10px] font-bold uppercase text-blue-800 block">Currently Working On</span>
               <p className="text-xs text-slate-900 font-medium">{viewingProgress.progress.currentlyWorkingOn}</p>
             </div>
 
             <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
-              <span className="text-[10px] font-bold uppercase text-purple-800 block">Next Goal</span>
+              <span className="text-[10px] font-bold uppercase text-purple-800 block">Next Week Goal</span>
               <p className="text-xs text-slate-900 font-medium">{viewingProgress.progress.nextWeekGoal}</p>
             </div>
 
@@ -333,8 +450,67 @@ export default function StudentReviewsPage() {
               <span className="text-[10px] font-bold uppercase text-amber-800 block">Blockers</span>
               <p className="text-xs text-slate-900 font-medium">{viewingProgress.progress.blockers}</p>
             </div>
+
+            {viewingProgress.progress.githubUrl && (
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase text-slate-500">Repository Link</span>
+                <a
+                  href={viewingProgress.progress.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-purple-700 hover:underline flex items-center gap-1"
+                >
+                  <span>{viewingProgress.progress.githubUrl}</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            )}
           </div>
         )}
+      </Dialog>
+
+      {/* QR Check-in Modal */}
+      <Dialog
+        isOpen={!!checkInReview}
+        onClose={() => setCheckInReview(null)}
+        title={`QR Attendance Check-in: Session #${checkInReview?.reviewNumber}`}
+        variant="information"
+        confirmLabel={isCheckingIn ? 'Verifying...' : 'Verify & Check In'}
+        onConfirm={() => handleConfirmCheckIn()}
+        cancelLabel="Cancel"
+      >
+        <div className="space-y-3 text-xs">
+          <p className="text-slate-600">
+            Enter the active session QR token displayed by HOD to register your attendance.
+          </p>
+
+          {checkInError && (
+            <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{checkInError}</span>
+            </div>
+          )}
+
+          <Input
+            label="QR Token"
+            placeholder="QR-REV-..."
+            value={qrTokenInput}
+            onChange={(e) => setQrTokenInput(e.target.value)}
+            isRequired
+            disabled={isCheckingIn}
+          />
+
+          <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500 space-y-1">
+            <div>
+              <span className="font-semibold text-slate-700">Student: </span>
+              {user?.name || 'Meena C'} ({user?.registerNumber || '714023104088'})
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Session ID: </span>
+              {checkInReview?.id}
+            </div>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

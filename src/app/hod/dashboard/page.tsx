@@ -37,7 +37,7 @@ export default function HodDashboardPage() {
   } = useData();
   const { showToast } = useToast();
 
-  const hodName = user?.name || 'Dr. Priya Kumar';
+  const hodName = user?.name || 'Head of Department';
 
   // Pending counts
   const pendingProjects = activities.filter(

@@ -3,11 +3,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Activity,
-  ActivityType,
   ActivityStatus,
   ODApplication,
   ODStatus,
   ReviewSession,
+  ReviewType,
   WeeklyProgress,
   AttendanceItem,
   Notification,
@@ -18,8 +18,21 @@ import {
   mockReviewSessions,
   mockODApplications,
   mockNotifications,
-  mockUsers,
 } from '@/data/mock';
+import {
+  reviewsApi,
+  GenerateQRResponse,
+  CheckInQRResponse,
+  FinalizeReviewResponse,
+  recordsApi,
+  reportsApi,
+  notificationsApi,
+  StudentRecordQuery,
+  StudentRecordListResponse,
+  StudentSummaryResponse,
+  AccreditationReportContract,
+  ReportsSummaryContract,
+} from '@/lib/api';
 
 export interface DataContextType {
   activities: Activity[];
@@ -49,8 +62,14 @@ export interface DataContextType {
       blockers: string;
       githubUrl?: string;
     }
-  ) => WeeklyProgress;
-  markAttendanceViaQR: (reviewSessionId: string, studentId: string) => boolean;
+  ) => Promise<WeeklyProgress>;
+  markAttendanceViaQR: (reviewSessionId: string, studentId: string, token?: string) => Promise<boolean>;
+  checkInReviewQR: (
+    reviewSessionId: string,
+    token: string,
+    studentId?: string,
+    studentRegNo?: string
+  ) => Promise<CheckInQRResponse>;
 
   // HOD Actions
   approveActivity: (id: string, remarks?: string) => void;
@@ -69,14 +88,28 @@ export interface DataContextType {
     venue: string;
     count: number;
     intervalWeeks?: number;
-  }) => ReviewSession[];
+    reviewType?: ReviewType;
+  }) => Promise<ReviewSession[]>;
   updateReviewSession: (id: string, updates: Partial<ReviewSession>) => void;
-  cancelReviewSession: (id: string) => void;
-  recordReviewAttendance: (reviewSessionId: string, attendance: AttendanceItem[]) => void;
-  saveMeetingNotes: (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string) => void;
+  cancelReviewSession: (id: string) => Promise<void>;
+  generateReviewQR: (reviewSessionId: string) => Promise<GenerateQRResponse>;
+  recordReviewAttendance: (reviewSessionId: string, attendance: AttendanceItem[]) => Promise<void>;
+  saveMeetingNotes: (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string) => Promise<void>;
+  finalizeReviewSession: (
+    reviewSessionId: string,
+    notes?: { meetingNotes?: string; nextWeekGoal?: string }
+  ) => Promise<FinalizeReviewResponse>;
   broadcastReminder: (title: string, message: string, targetType?: 'ALL' | 'STUDENT') => void;
-  markNotificationAsRead: (id: string) => void;
-  clearAllNotifications: () => void;
+  markNotificationAsRead: (id: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
+
+  // Phase 6 Records & Reports Contract APIs
+  fetchStudentRecords: (query?: StudentRecordQuery) => Promise<StudentRecordListResponse>;
+  fetchStudentSummary: (id: string) => Promise<StudentSummaryResponse>;
+  exportStudentRecords: (query?: StudentRecordQuery) => Promise<string>;
+  fetchAccreditationReport: (academicYear?: string) => Promise<AccreditationReportContract>;
+  fetchReportsSummary: (academicYear?: string) => Promise<ReportsSummaryContract>;
+  exportAccreditationReportCSV: (academicYear?: string) => Promise<string>;
 
   // Query Helpers
   getActivityById: (id: string) => Activity | undefined;
@@ -104,15 +137,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return mockActivities;
   });
 
-  const [reviews, setReviews] = useState<ReviewSession[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}reviews`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return mockReviewSessions;
-  });
+  // Reviews are strictly managed via state/API layer, bypassed from localStorage fake DB
+  const [reviews, setReviews] = useState<ReviewSession[]>(mockReviewSessions);
 
   const [odApplications, setODApplications] = useState<ODApplication[]>(() => {
     if (typeof window !== 'undefined') {
@@ -124,25 +150,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return mockODApplications;
   });
 
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}notifs`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return mockNotifications;
-  });
+  // Notifications are strictly managed via state/API layer, bypassed from localStorage fake DB
+  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
 
-  // Sync state to local storage
+  // Sync state to local storage (reviews and notifications excluded per API contract v2.0)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}activities`, JSON.stringify(activities));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}reviews`, JSON.stringify(reviews));
       localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}od`, JSON.stringify(odApplications));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}notifs`, JSON.stringify(notifications));
     }
-  }, [activities, reviews, odApplications, notifications]);
+  }, [activities, odApplications]);
 
   // Filtered views
   const projects = activities.filter((a) => a.type === 'PROJECT');
@@ -279,8 +296,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addODSubmission = addODApplication;
 
-  // Submit Weekly Progress
-  const submitWeeklyProgress = (
+  // Submit Weekly Progress via API Contract Layer
+  const submitWeeklyProgress = async (
     reviewSessionId: string,
     progressData: {
       studentId: string;
@@ -291,19 +308,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       blockers: string;
       githubUrl?: string;
     }
-  ): WeeklyProgress => {
-    const newProgress: WeeklyProgress = {
-      id: `prog-${Date.now()}`,
-      reviewSessionId,
-      studentId: progressData.studentId,
-      studentName: progressData.studentName,
-      completedThisWeek: progressData.completedThisWeek,
-      currentlyWorkingOn: progressData.currentlyWorkingOn,
-      nextWeekGoal: progressData.nextWeekGoal,
+  ): Promise<WeeklyProgress> => {
+    const newProgress = await reviewsApi.submitProgress(reviewSessionId, {
+      completed_this_week: progressData.completedThisWeek,
+      currently_working_on: progressData.currentlyWorkingOn,
+      next_week_goal: progressData.nextWeekGoal,
       blockers: progressData.blockers,
-      githubUrl: progressData.githubUrl,
-      submittedAt: new Date().toISOString(),
-    };
+      github_url: progressData.githubUrl,
+      student_id: progressData.studentId,
+      student_name: progressData.studentName,
+    });
 
     setReviews((prev) =>
       prev.map((r) => (r.id === reviewSessionId ? { ...r, progress: newProgress } : r))
@@ -326,25 +340,41 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return newProgress;
   };
 
-  // Mark Attendance via QR Code
-  const markAttendanceViaQR = (reviewSessionId: string, studentId: string): boolean => {
-    let success = false;
-    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Check In via QR Code (API Contract)
+  const checkInReviewQR = async (
+    reviewSessionId: string,
+    token: string,
+    studentId?: string,
+    studentRegNo?: string
+  ): Promise<CheckInQRResponse> => {
+    const res = await reviewsApi.checkInQR(reviewSessionId, {
+      token,
+      student_id: studentId || 'usr-student-001',
+      student_reg_no: studentRegNo || '714023104088',
+    });
 
-    setReviews((prev) =>
-      prev.map((r) => {
-        if (r.id !== reviewSessionId) return r;
-        const updatedAttendance = r.attendance.map((att) => {
-          if (att.studentId === studentId || att.name.toLowerCase() === studentId.toLowerCase()) {
-            success = true;
-            return { ...att, attended: true, checkInTime: nowTime };
-          }
-          return att;
-        });
-        return { ...r, attendance: updatedAttendance };
-      })
-    );
-    return success;
+    const updated = await reviewsApi.getById(reviewSessionId);
+    if (updated) {
+      setReviews((prev) => prev.map((r) => (r.id === reviewSessionId ? updated : r)));
+    }
+
+    return res;
+  };
+
+  // Mark Attendance via QR Code (Compatible Wrapper)
+  const markAttendanceViaQR = async (
+    reviewSessionId: string,
+    studentId: string,
+    token?: string
+  ): Promise<boolean> => {
+    try {
+      const activeSession = reviews.find((r) => r.id === reviewSessionId);
+      const activeToken = token || activeSession?.qrCodeToken || `QR-${reviewSessionId}`;
+      await checkInReviewQR(reviewSessionId, activeToken, studentId);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   // Approve Activity
@@ -594,8 +624,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     ids.forEach((id) => approveOD(id));
   };
 
-  // Automatic Weekly Review Scheduling
-  const scheduleRecurringReviews = (params: {
+  // Automatic Review Scheduling via API Contract
+  const scheduleRecurringReviews = async (params: {
     projectId: string;
     dayOfWeek?: string;
     time: string;
@@ -603,58 +633,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     venue: string;
     count: number;
     intervalWeeks?: number;
-  }): ReviewSession[] => {
+    reviewType?: ReviewType;
+  }): Promise<ReviewSession[]> => {
     const project = activities.find((a) => a.id === params.projectId);
     if (!project) return [];
 
-    const generated: ReviewSession[] = [];
-    const baseDate = new Date(params.startDate);
-    const stepWeeks = params.intervalWeeks || 1;
+    const defaultType: ReviewType =
+      params.reviewType ||
+      (project.type === 'HACKATHON'
+        ? 'HACKATHON_POST'
+        : project.type === 'INTERNSHIP'
+        ? 'INTERNSHIP_MID'
+        : 'PROJECT_WEEKLY');
 
-    const teamRoster: TeamMember[] =
-      project.teamMembers.length > 0
-        ? project.teamMembers
-        : [{ name: project.studentName, regNo: project.studentRegNo, email: 'student@siet.ac.in', role: 'Lead' }];
-
-    for (let i = 1; i <= params.count; i++) {
-      const reviewDate = new Date(baseDate);
-      reviewDate.setDate(baseDate.getDate() + (i - 1) * 7 * stepWeeks);
-
-      const rawDateStr = reviewDate.toISOString().split('T')[0];
-      const formattedDate = reviewDate.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-
-      const initialAttendance: AttendanceItem[] = teamRoster.map((m, idx) => ({
-        studentId: `usr-team-${idx + 1}`,
-        name: m.name,
-        regNo: m.regNo,
-        attended: false,
-      }));
-
-      const session: ReviewSession = {
-        id: `REV-${project.id.replace('PRJ-', '')}-${String(i).padStart(3, '0')}`,
-        activityId: project.id,
-        activityTitle: project.title,
-        activityType: 'PROJECT',
-        reviewNumber: i,
-        date: formattedDate,
-        rawDate: rawDateStr,
+    const generated = await reviewsApi.schedule(
+      {
+        activity_id: project.id,
+        activity_title: project.title,
+        review_type: defaultType,
+        scheduled_date: params.startDate,
         time: params.time,
         venue: params.venue,
-        status: 'SCHEDULED',
-        studentTeam: teamRoster,
-        attendance: initialAttendance,
-        qrCodeToken: `QR-${project.id}-REV${i}-${rawDateStr}`,
-        createdAt: new Date().toISOString(),
-      };
+        total_reviews: params.count,
+        interval_weeks: params.intervalWeeks,
+      },
+      project.teamMembers
+    );
 
-      generated.push(session);
-    }
-
-    // Append to reviews
+    // Append to reviews in state
     setReviews((prev) => [...generated, ...prev]);
 
     // Update project timeline
@@ -671,7 +677,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               id: `t-${Date.now()}`,
               date: todayStr,
               title: 'Review Schedule Created',
-              description: `${params.count} ${stepWeeks === 2 ? 'bi-weekly' : 'weekly'} review sessions generated for ${params.time} in ${params.venue}.`,
+              description: `${params.count} review sessions generated for ${params.time} in ${params.venue}.`,
               status: 'COMPLETED' as const,
             },
           ],
@@ -683,8 +689,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const notif: Notification = {
       id: `notif-${Date.now()}`,
       userId: project.studentId,
-      title: `Weekly Review Schedule Created: ${project.title}`,
-      message: `${params.count} weekly review sessions scheduled starting ${generated[0].date} at ${params.time} (${params.venue}).`,
+      title: `Review Schedule Created: ${project.title}`,
+      message: `${params.count} review sessions scheduled starting ${generated[0]?.date || params.startDate} at ${params.time} (${params.venue}).`,
       type: 'REVIEW_REMINDER',
       isRead: false,
       createdAt: new Date().toISOString(),
@@ -700,27 +706,82 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
   };
 
-  // Cancel Review Session
-  const cancelReviewSession = (id: string) => {
+  // Cancel Review Session via API
+  const cancelReviewSession = async (id: string) => {
+    await reviewsApi.cancelReview(id);
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'CANCELLED' } : r)));
   };
 
-  // Record Attendance
-  const recordReviewAttendance = (reviewSessionId: string, attendance: AttendanceItem[]) => {
-    setReviews((prev) =>
-      prev.map((r) => (r.id === reviewSessionId ? { ...r, attendance, status: 'COMPLETED' } : r))
-    );
-  };
-
-  // Save Meeting Notes
-  const saveMeetingNotes = (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string) => {
+  // Generate Review QR Code
+  const generateReviewQR = async (reviewSessionId: string): Promise<GenerateQRResponse> => {
+    const res = await reviewsApi.generateQR(reviewSessionId);
     setReviews((prev) =>
       prev.map((r) =>
         r.id === reviewSessionId
-          ? { ...r, meetingNotes, nextWeekGoal: nextWeekGoal || r.nextWeekGoal, status: 'COMPLETED' }
+          ? {
+              ...r,
+              qrCodeToken: res.token,
+              qrExpiresAt: res.expires_at,
+              qrValidSeconds: res.valid_seconds,
+            }
           : r
       )
     );
+    return res;
+  };
+
+  // Record Attendance via API
+  const recordReviewAttendance = async (reviewSessionId: string, attendance: AttendanceItem[]) => {
+    await reviewsApi.recordAttendance(reviewSessionId, attendance);
+    setReviews((prev) =>
+      prev.map((r) => (r.id === reviewSessionId ? { ...r, attendance } : r))
+    );
+  };
+
+  // Save Meeting Notes via API
+  const saveMeetingNotes = async (
+    reviewSessionId: string,
+    meetingNotes: string,
+    nextWeekGoal?: string
+  ) => {
+    await reviewsApi.saveMeetingNotes(reviewSessionId, {
+      meeting_notes: meetingNotes,
+      next_week_goal: nextWeekGoal,
+    });
+    setReviews((prev) =>
+      prev.map((r) =>
+        r.id === reviewSessionId
+          ? { ...r, meetingNotes, nextWeekGoal: nextWeekGoal || r.nextWeekGoal }
+          : r
+      )
+    );
+  };
+
+  // Finalize Review Session via API
+  const finalizeReviewSession = async (
+    reviewSessionId: string,
+    notes?: { meetingNotes?: string; nextWeekGoal?: string }
+  ): Promise<FinalizeReviewResponse> => {
+    const res = await reviewsApi.finalizeReview(reviewSessionId, {
+      meeting_notes: notes?.meetingNotes,
+      next_week_goal: notes?.nextWeekGoal,
+    });
+
+    setReviews((prev) =>
+      prev.map((r) =>
+        r.id === reviewSessionId
+          ? {
+              ...r,
+              status: 'COMPLETED',
+              finalizedAt: res.finalized_at,
+              meetingNotes: res.meeting_notes || r.meetingNotes,
+              nextWeekGoal: res.next_week_goal || r.nextWeekGoal,
+            }
+          : r
+      )
+    );
+
+    return res;
   };
 
   // Broadcast Reminder
@@ -737,12 +798,47 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setNotifications((prev) => [newNotif, ...prev]);
   };
 
-  const markNotificationAsRead = (id: string) => {
+  const markNotificationAsRead = async (id: string): Promise<void> => {
+    try {
+      await notificationsApi.markAsRead(id);
+    } catch (e) {
+      console.error(e);
+    }
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async (): Promise<void> => {
+    try {
+      await notificationsApi.markAllAsRead();
+    } catch (e) {
+      console.error(e);
+    }
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  // Phase 6 Records & Reports API Handlers
+  const fetchStudentRecords = async (query?: StudentRecordQuery): Promise<StudentRecordListResponse> => {
+    return recordsApi.getStudents(query);
+  };
+
+  const fetchStudentSummary = async (id: string): Promise<StudentSummaryResponse> => {
+    return recordsApi.getStudentSummary(id);
+  };
+
+  const exportStudentRecords = async (query?: StudentRecordQuery): Promise<string> => {
+    return recordsApi.exportRecords(query);
+  };
+
+  const fetchAccreditationReport = async (academicYear?: string): Promise<AccreditationReportContract> => {
+    return reportsApi.getAccreditationReport(academicYear);
+  };
+
+  const fetchReportsSummary = async (academicYear?: string): Promise<ReportsSummaryContract> => {
+    return reportsApi.getReportsSummary(academicYear);
+  };
+
+  const exportAccreditationReportCSV = async (academicYear?: string): Promise<string> => {
+    return reportsApi.exportReportCSV(academicYear);
   };
 
   // Query Helpers
@@ -805,6 +901,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         addODSubmission,
         submitWeeklyProgress,
         markAttendanceViaQR,
+        checkInReviewQR,
+        generateReviewQR,
+        finalizeReviewSession,
         approveActivity,
         rejectActivity,
         requestRevisionActivity,
@@ -821,6 +920,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         broadcastReminder,
         markNotificationAsRead,
         clearAllNotifications,
+        fetchStudentRecords,
+        fetchStudentSummary,
+        exportStudentRecords,
+        fetchAccreditationReport,
+        fetchReportsSummary,
+        exportAccreditationReportCSV,
         getActivityById,
         getReviewById,
         getODById,
