@@ -198,11 +198,11 @@ export const recordsApi = {
 
     let filtered = [...studentRecordsStore];
 
-    if (query?.year && query.year !== 'ALL') {
+    if (query?.year && (query.year as string) !== 'ALL') {
       filtered = filtered.filter((s) => s.year === query.year);
     }
 
-    if (query?.section && query.section !== 'ALL') {
+    if (query?.section && (query.section as string) !== 'ALL') {
       filtered = filtered.filter((s) => s.section === query.section);
     }
 

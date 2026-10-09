@@ -16,13 +16,7 @@ export type ReviewSessionStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
 export type ReviewSessionStatusContract = ReviewSessionStatus;
 
-export interface RFC7807Error {
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, string>;
-  };
-}
+
 
 // -------------------------------------------------------------
 // Review Progress Contract (Snake Case at API Boundary)
@@ -59,6 +53,7 @@ export interface ScheduleReviewContractPayload {
   scheduled_date: string; // YYYY-MM-DD
   time: string;
   venue: string;
+  faculty_reviewer?: string;
   total_reviews?: number;
   interval_weeks?: number;
 }
@@ -110,6 +105,7 @@ export interface FinalizeReviewResponse {
 // -------------------------------------------------------------
 export interface ReviewSessionContract {
   id: string;
+  code?: string;
   activity_id: string;
   activity_title: string;
   activity_type: string;
@@ -119,6 +115,7 @@ export interface ReviewSessionContract {
   raw_date?: string;
   time: string;
   venue: string;
+  faculty_reviewer?: string;
   status: ReviewSessionStatus;
   student_team: Array<{
     name: string;
@@ -241,7 +238,7 @@ export function mapReviewSessionToContract(
     activity_title: s.activityTitle,
     activity_type: s.activityType,
     review_number: s.reviewNumber,
-    review_type: s.reviewType || 'PROJECT_WEEKLY',
+    review_type: (s.reviewType as ReviewType) || 'PROJECT_WEEKLY',
     date: s.date,
     raw_date: s.rawDate,
     time: s.time,

@@ -3,10 +3,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/context/SessionContext';
 import { useToast } from '@/components/ui/Toast';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, ArrowRightLeft } from 'lucide-react';
 
 export const UserMenu: React.FC = () => {
-  const { user, role, logout } = useSession();
+  const { user, role, logout, loginAsStudent, loginAsHod } = useSession();
   const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -46,6 +46,17 @@ export const UserMenu: React.FC = () => {
   const handlePlaceholder = (feature: string) => {
     setIsOpen(false);
     showToast(`${feature} is a placeholder for this prototype.`, undefined, 'info');
+  };
+
+  const handleSwitchPortal = () => {
+    setIsOpen(false);
+    if (isHod) {
+      loginAsStudent();
+      showToast('Switched to Student Portal', undefined, 'info');
+    } else {
+      loginAsHod();
+      showToast('Switched to HOD Portal', undefined, 'info');
+    }
   };
 
   const isHod = role === 'HOD';
@@ -135,6 +146,16 @@ export const UserMenu: React.FC = () => {
           </div>
 
           <div className="border-t border-slate-100 dark:border-slate-800/80 py-1">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleSwitchPortal}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors text-left font-medium"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Switch to {isHod ? 'Student Portal' : 'HOD Portal'}</span>
+            </button>
+
             <button
               type="button"
               role="menuitem"

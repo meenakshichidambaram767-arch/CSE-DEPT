@@ -182,8 +182,6 @@ export interface AttendanceItem {
 
 export * from './contract';
 
-export type ReviewType = ApiReviewType;
-
 export interface ReviewSession {
   id: string;
   code?: string;

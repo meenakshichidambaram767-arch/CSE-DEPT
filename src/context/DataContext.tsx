@@ -8,6 +8,7 @@ import {
   ODStatus,
   ODEvent,
   ReviewSession,
+  ReviewType,
   WeeklyProgress,
   AttendanceItem,
   Notification,
@@ -151,6 +152,7 @@ export interface DataContextType {
     venue: string;
     count: number;
     intervalWeeks?: number;
+    reviewType?: ReviewType;
   }) => ReviewSession[];
   updateReviewSession: (id: string, updates: Partial<ReviewSession>) => void;
   cancelReviewSession: (id: string) => void;
@@ -896,6 +898,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     venue: string;
     count: number;
     intervalWeeks?: number;
+    reviewType?: ReviewType;
   }): ReviewSession[] => {
     try {
       reviewsApi.scheduleReviews({
@@ -904,7 +907,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         time: params.time,
         venue: params.venue,
         count: params.count,
-        review_type: 'PROJECT_WEEKLY',
+        review_type: params.reviewType || 'PROJECT_WEEKLY',
       });
 
       const project = activities.find((a) => a.id === params.projectId);

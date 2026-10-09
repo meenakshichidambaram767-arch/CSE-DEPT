@@ -188,7 +188,7 @@ export default function StudentDashboardPage() {
                 OD applications are optional and independently approved from your projects. Known project details are automatically populated!
               </p>
             </div>
-            <Link href="/student/od-requests/new" className="shrink-0">
+            <Link href="/student/apply-od" className="shrink-0">
               <Button variant="primary" size="sm" className="bg-indigo-700 hover:bg-indigo-800 text-white">
                 Apply for OD
               </Button>

@@ -27,6 +27,7 @@ import { mockReviewSessions } from '@/data/mock';
 import { ApiError, assertNoLiveNetwork } from './client';
 import {
   ReviewType,
+  ReviewTypeContract,
   ReviewSessionStatus,
   ReviewProgressContract,
   ScheduleReviewContractPayload,
@@ -59,9 +60,14 @@ export interface ReviewSessionsQueryParams {
   page_size?: number;
 }
 
-export interface ReviewCheckInResult extends ReviewCheckInResponse {
+export interface ReviewCheckInResult {
+  success: boolean;
+  session_id?: string;
+  student_id?: string;
+  checked_in_at?: string;
+  check_in_time?: string;
+  register_number?: string;
   message?: string;
-  success?: boolean;
 }
 
 export const reviewsApi = {
@@ -243,7 +249,7 @@ export const reviewsApi = {
         id: `rev-${payload.activity_id}-${i}-${Date.now().toString(36)}`,
         code: `REV-${sessionReviewType === 'PROJECT_WEEKLY' ? 'PRJ' : sessionReviewType.slice(0, 3)}-${100 + i}`,
         activity_id: payload.activity_id,
-        activity_title: payload.activity_title,
+        activity_title: payload.activity_title || 'Review Activity',
         activity_type: payload.review_type === 'PROJECT_WEEKLY' ? 'PROJECT' : payload.review_type === 'HACKATHON_POST' ? 'HACKATHON' : 'INTERNSHIP',
         review_number: i,
         review_type: sessionReviewType,
@@ -327,7 +333,7 @@ export const reviewsApi = {
     const progress = mapContractToProgress(contractReq, sessionId);
     sessionStore[sessionIndex] = {
       ...sessionStore[sessionIndex],
-      progress,
+      progress: contractReq,
     };
 
     return Object.assign(progress, {
@@ -388,6 +394,7 @@ export const reviewsApi = {
       token,
       expires_at: expiresAt,
       valid_seconds: expiresInSeconds,
+      generated_at: new Date(now).toISOString(),
     };
   },
 

@@ -5,6 +5,7 @@ import { UserRole } from '@/types';
 import { UserMenu } from './UserMenu';
 import { Breadcrumbs, BreadcrumbItem } from './Breadcrumbs';
 import { useData } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
 import {
   Menu,
   Bell,
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   breadcrumbs,
   className = '',
 }) => {
+  const { user, loginAsStudent, loginAsHod } = useSession();
   const { notifications, markNotificationAsRead, clearAllNotifications } = useData();
   const [showNotifs, setShowNotifs] = useState(false);
   const [markingId, setMarkingId] = useState<string | null>(null);
@@ -109,14 +111,21 @@ export const Header: React.FC<HeaderProps> = ({
         </span>
 
         {/* Quick Role Switcher */}
-        <Link
-          href={role === 'HOD' ? '/student/od-requests' : '/hod/dashboard'}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-[#586658] hover:text-[#0a5c36] hover:bg-[#f2f9f1] border border-[#dfe6dc] transition-colors"
+        <button
+          type="button"
+          onClick={() => {
+            if (role === 'HOD') {
+              loginAsStudent();
+            } else {
+              loginAsHod();
+            }
+          }}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-[#586658] hover:text-[#0a5c36] hover:bg-[#f2f9f1] border border-[#dfe6dc] transition-colors cursor-pointer"
           title={`Switch view to ${role === 'HOD' ? 'Student' : 'HOD'}`}
         >
           <ArrowRightLeft className="w-3 h-3 text-[#889688]" />
           <span className="hidden sm:inline">Switch to {role === 'HOD' ? 'Student' : 'HOD'}</span>
-        </Link>
+        </button>
 
         {/* Notifications Popover */}
         <div className="relative" ref={notifRef}>

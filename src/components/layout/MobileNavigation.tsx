@@ -7,13 +7,22 @@ import { UserRole } from '@/types';
 import { SietLogo } from '@/components/common/SietLogo';
 import { useSession } from '@/context/SessionContext';
 import {
-  Home,
-  Inbox,
+  LayoutDashboard,
+  Layers,
+  FolderKanban,
+  BriefcaseBusiness,
+  Trophy,
+  ClipboardCheck,
+  FileCheck,
+  GraduationCap,
+  BadgeCheck,
+  FileText,
   Calendar as CalendarIcon,
   Sparkles,
   FileSpreadsheet,
   PlusCircle,
   X,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 export interface MobileNavigationProps {
@@ -28,7 +37,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
   role,
 }) => {
   const pathname = usePathname();
-  const { user } = useSession();
+  const { user, loginAsStudent, loginAsHod } = useSession();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -51,22 +60,43 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
   if (!isOpen) return null;
 
   const studentNav = [
-    { label: 'Home', href: '/student/od-requests', icon: Home },
-    { label: 'Apply for OD', href: '/student/apply-od', icon: PlusCircle },
+    { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
+    { label: 'My Activities', href: '/student/activities', icon: Layers },
+    { label: 'Projects', href: '/student/projects', icon: FolderKanban },
+    { label: 'Internships', href: '/student/internships', icon: BriefcaseBusiness },
+    { label: 'Hackathons', href: '/student/hackathons', icon: Trophy },
+    { label: 'Reviews', href: '/student/reviews', icon: ClipboardCheck },
+    { label: 'Apply OD', href: '/student/apply-od', icon: PlusCircle },
+    { label: 'My OD Requests', href: '/student/od-requests', icon: FileCheck },
     { label: 'Calendar', href: '/student/calendar', icon: CalendarIcon },
     { label: 'Events', href: '/student/events', icon: Sparkles },
     { label: 'Reports', href: '/student/reports', icon: FileSpreadsheet },
   ];
 
   const hodNav = [
-    { label: 'Home', href: '/hod/dashboard', icon: Home },
-    { label: 'Requests', href: '/hod/requests', icon: Inbox },
+    { label: 'Dashboard', href: '/hod/dashboard', icon: LayoutDashboard },
+    { label: 'Approvals', href: '/hod/approvals', icon: BadgeCheck },
+    { label: 'OD Requests', href: '/hod/requests', icon: FileCheck },
+    { label: 'Student Records', href: '/hod/records', icon: GraduationCap },
+    { label: 'Projects', href: '/hod/projects', icon: FolderKanban },
+    { label: 'Internships', href: '/hod/internships', icon: BriefcaseBusiness },
+    { label: 'Hackathons', href: '/hod/hackathons', icon: Trophy },
+    { label: 'Reviews', href: '/hod/reviews', icon: ClipboardCheck },
+    { label: 'NAAC / NBA Reports', href: '/hod/reports', icon: FileText },
     { label: 'Calendar', href: '/hod/calendar', icon: CalendarIcon },
     { label: 'Events', href: '/hod/events', icon: Sparkles },
-    { label: 'Records', href: '/hod/records', icon: FileSpreadsheet },
   ];
 
   const navItems = role === 'STUDENT' ? studentNav : hodNav;
+
+  const handleRoleSwitch = () => {
+    onClose();
+    if (role === 'HOD') {
+      loginAsStudent();
+    } else {
+      loginAsHod();
+    }
+  };
 
   return (
     <div className="lg:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
@@ -130,16 +160,27 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-[#0a5c36]/60 bg-[#042f1a]/60">
-          <div className="text-xs font-semibold text-white">
-            {user?.name ?? (role === 'STUDENT' ? 'Student' : 'HOD')}
+        {/* Footer with Role Switcher */}
+        <div className="p-4 border-t border-[#0a5c36]/60 bg-[#042f1a]/60 space-y-3">
+          <div>
+            <div className="text-xs font-semibold text-white">
+              {user?.name ?? (role === 'STUDENT' ? 'Student' : 'HOD')}
+            </div>
+            <div className="text-[10px] text-emerald-200">
+              {role === 'STUDENT'
+                ? [user?.department, user?.registerNumber].filter(Boolean).join(' · ') || 'Student portal'
+                : user?.designation ?? 'Head of Department · CSE'}
+            </div>
           </div>
-          <div className="text-[10px] text-emerald-200">
-            {role === 'STUDENT'
-              ? [user?.department, user?.registerNumber].filter(Boolean).join(' · ') || 'Student portal'
-              : user?.designation ?? 'Head of Department · CSE'}
-          </div>
+
+          <button
+            type="button"
+            onClick={handleRoleSwitch}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-semibold bg-[#0a5c36] text-white hover:bg-[#084c2c] transition-colors border border-[#0e7545]"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5 text-[#fed403]" />
+            <span>Switch to {role === 'HOD' ? 'Student Portal' : 'HOD Portal'}</span>
+          </button>
         </div>
       </div>
     </div>

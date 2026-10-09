@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { ReviewSession, ReviewType } from '@/types';
 
-function getReviewTypeLabel(type?: ReviewType): string {
+function getReviewTypeLabel(type?: ReviewType | string): string {
   switch (type) {
     case 'HACKATHON_POST':
       return 'Post-Hackathon Review';
