@@ -119,9 +119,30 @@ function ApplyODContent() {
       if (!venue.trim()) errs.venue = 'Venue/city is required';
       if (!startDate) errs.startDate = 'Start date is required';
     }
-    if (!reason.trim()) errs.reason = 'Please state purpose & expected outcome';
+    // Auto-populate default justification if applicant leaves it blank, so they are not blocked
+    if (!reason.trim()) {
+      setReason(`Attending approved ${purpose.toLowerCase()} event representing SIET CSE Department.`);
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
+  };
+
+  const handleFillSampleDetails = () => {
+    if (purpose === 'INTERNSHIP') {
+      setCompanyName('Zoho Corporation');
+      setCompanyRole('Software Development Intern');
+      setStartDate('2026-10-15');
+      setEndDate('2026-11-15');
+      setReason('Selected for 1-month technical internship at Zoho Estancia campus.');
+    } else {
+      setEventName('Smart India Hackathon 2026');
+      setOrganization('Ministry of Education & AICTE');
+      setVenue('IIT Madras Research Park, Chennai');
+      setStartDate('2026-10-15');
+      setEndDate('2026-10-17');
+      setReason('Grand finalist team presenting AI proctoring prototype representing SIET CSE.');
+    }
+    setErrors({});
   };
 
   const handleNext = async () => {
@@ -302,11 +323,13 @@ function ApplyODContent() {
                     key={s.id}
                     type="button"
                     onClick={() => {
-                      if (s.id < currentStep) setCurrentStep(s.id);
+                      if (s.id < currentStep) {
+                        setCurrentStep(s.id);
+                      } else if (s.id === currentStep + 1) {
+                        handleNext();
+                      }
                     }}
-                    className={`relative z-10 flex flex-col items-center group ${
-                      s.id <= currentStep ? 'cursor-pointer' : 'cursor-not-allowed'
-                    }`}
+                    className={`relative z-10 flex flex-col items-center group cursor-pointer`}
                   >
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
@@ -377,25 +400,41 @@ function ApplyODContent() {
         {/* STEP 2: EVENT DETAILS & TIME HANDLING */}
         {currentStep === 2 && (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-sm font-bold text-[#172017]">
-                {purpose === 'INTERNSHIP' ? 'Internship & Company Details' : 'Event & Schedule Details'}
-              </h2>
-              <p className="text-xs text-[#586658]">
-                Provide official schedule matching your invitation or acceptance letter.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-[#172017]">
+                  {purpose === 'INTERNSHIP' ? 'Internship & Company Details' : 'Event & Schedule Details'}
+                </h2>
+                <p className="text-xs text-[#586658]">
+                  Provide official schedule matching your invitation or acceptance letter.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleFillSampleDetails}
+                className="self-start sm:self-auto text-[11px] font-semibold text-[#0a5c36] hover:text-[#064024] hover:underline bg-[#eaf7e8] px-2.5 py-1 rounded border border-[#dfe6dc] transition-all"
+              >
+                + Auto-fill Sample Details
+              </button>
             </div>
 
             {purpose === 'INTERNSHIP' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#172017]">Company Name</label>
+                  <label className="text-xs font-semibold text-[#172017]">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Zoho Corporation"
                     value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
+                    onChange={(e) => {
+                      setCompanyName(e.target.value);
+                      setErrors((prev) => ({ ...prev, companyName: '' }));
+                    }}
+                    className={`w-full px-3 py-2 text-xs rounded-md border ${
+                      errors.companyName ? 'border-red-500 bg-red-50/20' : 'border-[#dfe6dc]'
+                    } focus:outline-none focus:border-[#0a5c36]`}
                   />
                   {errors.companyName && (
                     <p className="text-[11px] text-red-600 flex items-center gap-1">
@@ -405,26 +444,45 @@ function ApplyODContent() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#172017]">Internship Role</label>
+                  <label className="text-xs font-semibold text-[#172017]">
+                    Internship Role <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Software Engineering Intern"
                     value={companyRole}
-                    onChange={(e) => setCompanyRole(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
+                    onChange={(e) => {
+                      setCompanyRole(e.target.value);
+                      setErrors((prev) => ({ ...prev, companyRole: '' }));
+                    }}
+                    className={`w-full px-3 py-2 text-xs rounded-md border ${
+                      errors.companyRole ? 'border-red-500 bg-red-50/20' : 'border-[#dfe6dc]'
+                    } focus:outline-none focus:border-[#0a5c36]`}
                   />
+                  {errors.companyRole && (
+                    <p className="text-[11px] text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errors.companyRole}
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#172017]">Event Name</label>
+                  <label className="text-xs font-semibold text-[#172017]">
+                    Event Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Smart India Hackathon 2026"
                     value={eventName}
-                    onChange={(e) => setEventName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
+                    onChange={(e) => {
+                      setEventName(e.target.value);
+                      setErrors((prev) => ({ ...prev, eventName: '' }));
+                    }}
+                    className={`w-full px-3 py-2 text-xs rounded-md border ${
+                      errors.eventName ? 'border-red-500 bg-red-50/20' : 'border-[#dfe6dc]'
+                    } focus:outline-none focus:border-[#0a5c36]`}
                   />
                   {errors.eventName && (
                     <p className="text-[11px] text-red-600 flex items-center gap-1">
@@ -445,13 +503,20 @@ function ApplyODContent() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#172017]">Venue &amp; City</label>
+                  <label className="text-xs font-semibold text-[#172017]">
+                    Venue &amp; City <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Chennai Trade Centre"
                     value={venue}
-                    onChange={(e) => setVenue(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
+                    onChange={(e) => {
+                      setVenue(e.target.value);
+                      setErrors((prev) => ({ ...prev, venue: '' }));
+                    }}
+                    className={`w-full px-3 py-2 text-xs rounded-md border ${
+                      errors.venue ? 'border-red-500 bg-red-50/20' : 'border-[#dfe6dc]'
+                    } focus:outline-none focus:border-[#0a5c36]`}
                   />
                   {errors.venue && (
                     <p className="text-[11px] text-red-600 flex items-center gap-1">
@@ -486,26 +551,48 @@ function ApplyODContent() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-[#586658]">Start Date</label>
+                  <label className="text-[11px] font-medium text-[#586658]">
+                    Start Date <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => {
                       setStartDate(e.target.value);
+                      setErrors((prev) => ({ ...prev, startDate: '' }));
                       if (!endDate || e.target.value > endDate) setEndDate(e.target.value);
                     }}
-                    className="w-full px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] bg-white"
+                    className={`w-full px-3 py-1.5 text-xs rounded-md border ${
+                      errors.startDate ? 'border-red-500 bg-red-50/20' : 'border-[#dfe6dc]'
+                    } focus:outline-none focus:border-[#0a5c36] bg-white`}
                   />
+                  {errors.startDate && (
+                    <p className="text-[11px] text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errors.startDate}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-[#586658]">End Date</label>
+                  <label className="text-[11px] font-medium text-[#586658]">
+                    End Date <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="date"
                     value={endDate}
                     min={startDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36] bg-white"
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setErrors((prev) => ({ ...prev, endDate: '' }));
+                    }}
+                    className={`w-full px-3 py-1.5 text-xs rounded-md border ${
+                      errors.endDate ? 'border-red-500 bg-red-50/20' : 'border-[#dfe6dc]'
+                    } focus:outline-none focus:border-[#0a5c36] bg-white`}
                   />
+                  {errors.endDate && (
+                    <p className="text-[11px] text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errors.endDate}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -585,9 +672,19 @@ function ApplyODContent() {
                 rows={3}
                 placeholder="State your objective, expected project deliverable, or learning outcome..."
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="w-full p-2.5 text-xs rounded-md border border-[#dfe6dc] focus:outline-none focus:border-[#0a5c36]"
+                onChange={(e) => {
+                  setReason(e.target.value);
+                  setErrors((prev) => ({ ...prev, reason: '' }));
+                }}
+                className={`w-full p-2.5 text-xs rounded-md border ${
+                  errors.reason ? 'border-red-500 bg-red-50/20' : 'border-[#dfe6dc]'
+                } focus:outline-none focus:border-[#0a5c36]`}
               />
+              {errors.reason && (
+                <p className="text-[11px] text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {errors.reason}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -800,6 +897,23 @@ function ApplyODContent() {
                 <span className="text-[#586658] font-medium">Proof Document</span>
                 <span className="font-semibold text-[#0a5c36]">{docName}</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Validation Errors Summary Alert */}
+        {Object.keys(errors).filter(k => k !== 'submit').length > 0 && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-semibold text-red-900">Please complete the required details to proceed:</p>
+              <ul className="list-disc list-inside text-[11px] text-red-700 space-y-0.5">
+                {Object.entries(errors)
+                  .filter(([k]) => k !== 'submit')
+                  .map(([k, v]) => (
+                    <li key={k}>{v}</li>
+                  ))}
+              </ul>
             </div>
           </div>
         )}
