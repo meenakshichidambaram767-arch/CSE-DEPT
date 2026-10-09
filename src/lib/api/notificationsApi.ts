@@ -1,15 +1,22 @@
 /**
  * Notifications API Module (Phase 6)
  * API Contract v2.0 compliant
- * Offline mock resolver - guaranteed zero live backend network egress
+ * Offline mock resolver & Central API Client support
  */
 
-import { assertNoLiveNetwork, ApiError } from './client';
+import { assertNoLiveNetwork, ApiError, apiClient } from './client';
 import {
   NotificationContract,
   NotificationListResponse,
   MarkNotificationReadResponse,
 } from './contractTypes';
+import {
+  ApiNotification,
+  NotificationReadResponse,
+} from '@/types/contract';
+import { fixtureApiNotifications } from '@/data/fixtures/notificationsFixtures';
+
+export { ApiError };
 
 // Initial contract-compatible notification dataset
 let notificationsStore: NotificationContract[] = [
@@ -82,7 +89,7 @@ export const notificationsApi = {
   getAll: async (params?: {
     user_id?: string;
     unread_only?: boolean;
-  }): Promise<NotificationListResponse> => {
+  }): Promise<NotificationListResponse & { data: any }> => {
     assertNoLiveNetwork();
 
     let filtered = [...notificationsStore];
@@ -101,14 +108,22 @@ export const notificationsApi = {
 
     return {
       notifications: filtered,
+      data: filtered,
       unread_count: unreadCount,
     };
   },
 
   /**
+   * Alias for getAll / getNotifications
+   */
+  async getNotifications(): Promise<{ data: any[]; notifications: any[]; unread_count: number }> {
+    return notificationsApi.getAll();
+  },
+
+  /**
    * PATCH /api/v1/notifications/{id}/read
    */
-  markAsRead: async (id: string): Promise<MarkNotificationReadResponse> => {
+  markAsRead: async (id: string): Promise<MarkNotificationReadResponse & { data: any }> => {
     assertNoLiveNetwork();
 
     const notifIndex = notificationsStore.findIndex((n) => n.id === id);
@@ -123,17 +138,22 @@ export const notificationsApi = {
       is_read: true,
     };
 
-    return {
+    const res = {
       id,
       is_read: true,
       updated_at: new Date().toISOString(),
+    };
+
+    return {
+      ...res,
+      data: { success: true, id },
     };
   },
 
   /**
    * POST /api/v1/notifications/mark-all-read
    */
-  markAllAsRead: async (userId?: string): Promise<void> => {
+  markAllAsRead: async (userId?: string): Promise<{ data: any }> => {
     assertNoLiveNetwork();
 
     notificationsStore = notificationsStore.map((n) => {
@@ -142,6 +162,10 @@ export const notificationsApi = {
       }
       return n;
     });
+
+    return {
+      data: { success: true, readCount: notificationsStore.length },
+    };
   },
 
   /**
@@ -153,3 +177,5 @@ export const notificationsApi = {
     }
   },
 };
+
+export default notificationsApi;

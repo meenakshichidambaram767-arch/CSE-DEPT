@@ -5,19 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/context/SessionContext';
 import { useToast } from '@/components/ui/Toast';
 import { SietLogo } from '@/components/common/SietLogo';
-import {
-  Eye,
-  EyeOff,
-  UserCheck,
-  ShieldCheck,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  FolderKanban,
-  Trophy,
-  BriefcaseBusiness,
-  CalendarCheck2,
-} from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,7 +18,6 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // If user is already logged in, route to appropriate dashboard
   useEffect(() => {
     if (user && role) {
       if (role === 'STUDENT') {
@@ -46,7 +33,7 @@ export default function LoginPage() {
     setError('');
 
     if (!username.trim()) {
-      setError('Please enter your username or register number.');
+      setError('Please enter your register number or faculty ID.');
       return;
     }
 
@@ -60,230 +47,212 @@ export default function LoginPage() {
     setTimeout(() => {
       setIsSubmitting(false);
       const lower = username.toLowerCase();
-      if (lower.includes('hod') || lower.includes('priya') || lower.includes('kumar') || lower.includes('fac')) {
+      if (lower.includes('hod') || lower.includes('priya') || lower.includes('faculty')) {
         loginAsHod();
-        showToast('Welcome back, Dr. Priya Kumar (HOD CSE)', 'success');
+        showToast('Welcome, Dr. Priya Kumar (HOD CSE)', 'success');
       } else {
         loginAsStudent();
-        showToast('Welcome back, Meena C (CSE)', 'success');
+        showToast('Welcome, Meena C (CSE)', 'success');
       }
-    }, 500);
+    }, 350);
   };
 
   const handleDemoStudent = () => {
     loginAsStudent();
-    showToast('Signed in as Student (Meena C - 714023104088)', 'success');
+    showToast('Signed in as Student (Meena C)', 'success');
   };
 
   const handleDemoHod = () => {
     loginAsHod();
-    showToast('Signed in as HOD (Dr. Priya Kumar - HOD CSE)', 'success');
+    showToast('Signed in as HOD (Dr. Priya Kumar)', 'success');
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row font-sans">
-      {/* LEFT HALF: SIET Deep Forest Green Academic Panel */}
-      <div className="w-full lg:w-7/12 bg-[#064e3b] text-white p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden">
-        {/* Subtle decorative background pattern */}
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fbbf24_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
+    <div className="min-h-screen flex flex-col font-sans">
+      {/* ========================================================================= */}
+      {/* TOP SECTION: Deep SIET Green (#064024) with Bold SIET Yellow (#fed403) Text */}
+      {/* Directly adhering to the uploaded SIET-LMS Welcome banner design         */}
+      {/* ========================================================================= */}
+      <div className="bg-[#064024] text-[#fed403] px-6 py-10 sm:py-14 flex flex-col items-center justify-center text-center relative border-b-4 border-[#fed403]">
+        <div className="max-w-3xl mx-auto space-y-6">
+          {/* Main Title matching SIET-LMS banner */}
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#fed403] drop-shadow-xs">
+            Welcome to SIET-LMS
+          </h1>
 
-        <div className="relative z-10 space-y-6 max-w-2xl">
-          {/* Institution Header */}
-          <div className="flex items-center gap-3">
-            <SietLogo size="md" />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#facc15]">
-                Department of Computer Science &amp; Engineering
-              </p>
-              <h2 className="text-sm font-medium text-emerald-200">
-                Sri Shakthi Institute of Engineering and Technology (Autonomous)
-              </h2>
-            </div>
-          </div>
+          {/* Intro Description */}
+          <p className="text-xs sm:text-sm text-[#fed403] font-medium leading-relaxed max-w-2xl mx-auto">
+            The <strong className="font-bold underline decoration-[#fed403]/60">Sri Shakthi Institute of Engineering and Technology Learning Management &amp; On-Duty Portal (SIET-LMS)</strong> is your dedicated online platform designed to elevate your technical skills, hackathon tracking, and academic journey. SIET-LMS offers a comprehensive, user-friendly environment tailored to support your growth.
+          </p>
 
-          {/* Main Heading */}
-          <div className="pt-2 space-y-2">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#facc15] tracking-tight font-serif drop-shadow-sm">
-              SIET CSE Portal
-            </h1>
-            <h2 className="text-base sm:text-lg font-bold text-amber-200">
-              Hackathon, Project &amp; Internship Tracking Platform
+          {/* Subheading */}
+          <div className="pt-2">
+            <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-[#fed403]">
+              SIET - OD Portal Provides
             </h2>
           </div>
 
-          {/* Introductory Text */}
-          <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-            Centralized academic portal designed to streamline student projects, hackathons, corporate internships, on-duty requests, and weekly reviews.
-          </p>
-
-          {/* Section Subtitle */}
-          <div className="pt-2">
-            <h3 className="text-base sm:text-lg font-bold text-[#facc15] tracking-wide">
-              SIET CSE Platform Provides:
-            </h3>
-
-            <ul className="mt-3 space-y-2 text-xs sm:text-sm text-emerald-50">
-              <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
-                <span>
-                  <strong className="text-white">Unified Activity Submissions:</strong> Projects, Hackathons &amp; Internships
-                </span>
+          {/* Bulleted Points in SIET Yellow */}
+          <div className="text-left max-w-xl mx-auto">
+            <ul className="space-y-2.5 text-xs sm:text-sm text-[#fed403] font-medium list-disc list-inside">
+              <li>
+                <span>A streamlined multi-category OD workflow for Hackathons, Internships, Projects, and Workshops.</span>
               </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
-                <span>
-                  <strong className="text-white">HOD Approvals:</strong> 1-click clearances &amp; automated review schedules
-                </span>
+              <li>
+                <span>Real-time conflict detection and instant NAAC-compliant department attendance clearance.</span>
               </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
-                <span>
-                  <strong className="text-white">On-Duty (OD) Tracking:</strong> Seamless OD requests &amp; attendance credits
-                </span>
+              <li>
+                <span>Department master records with 4-year progressive directory and automated section filtering.</span>
               </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
-                <span>
-                  <strong className="text-white">Weekly Progress Logs:</strong> Simple 4-question updates &amp; attendance tracking
-                </span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-[#facc15] font-bold text-base leading-none">•</span>
-                <span>
-                  <strong className="text-white">Automated Timelines:</strong> Real-time notifications without paper notices
-                </span>
+              <li>
+                <span>Accreditation-ready evidence locker with verified digital document submissions.</span>
               </li>
             </ul>
           </div>
         </div>
-
-        {/* Left Footer Note */}
-        <div className="relative z-10 pt-8 mt-auto border-t border-emerald-800/80 text-[11px] text-emerald-300/80 flex items-center justify-between">
-          <span>Accredited with NAAC 'A' Grade • NBA Tier-1 • Anna University Affiliated</span>
-          <span>Academic Portal 2026-27</span>
-        </div>
       </div>
 
-      {/* RIGHT HALF: SIET Rich Golden Yellow Accent Panel with Clean White Login Card */}
-      <div className="w-full lg:w-5/12 bg-[#f3b72b] flex items-center justify-center p-6 sm:p-10 lg:p-12">
-        {/* Card matching the rounded light card from screenshot */}
-        <div className="w-full max-w-md bg-[#eefaf3] rounded-3xl p-6 sm:p-8 shadow-2xl border border-emerald-100/80 space-y-6">
-          
-          {/* Centered Crest Logo */}
+      {/* ========================================================================= */}
+      {/* LOWER SECTION: Vibrant SIET Yellow (#fed403) Background with Mint Card    */}
+      {/* Matching the bottom half of the uploaded SIET LMS website                 */}
+      {/* ========================================================================= */}
+      <div className="bg-[#fed403] flex-1 flex flex-col items-center justify-center px-4 py-10 sm:py-16">
+        {/* Mint-Green Rounded Authentication Card (as seen in LMS screenshot) */}
+        <div className="w-full max-w-[420px] bg-[#e6f8ee] rounded-3xl border border-[#c4e6ce] p-6 sm:p-8 shadow-xl space-y-6">
+          {/* Official SIET Crest Badge centered at top of card */}
           <div className="flex flex-col items-center text-center space-y-2">
-            <div className="w-20 h-20 rounded-full bg-white shadow-md p-1.5 flex items-center justify-center border-2 border-emerald-700">
-              <SietLogo size="lg" />
-            </div>
+            <SietLogo size="xl" />
             <div>
-              <h2 className="text-lg font-black text-[#064e3b] uppercase tracking-wide">
-                SIET Portal Sign In
-              </h2>
-              <p className="text-[11px] font-medium text-emerald-800">
-                Department of Computer Science and Engineering
-              </p>
+              <div className="text-xs font-black tracking-wider text-[#064024] uppercase">
+                Sri Shakthi Institute
+              </div>
+              <div className="text-[11px] font-bold text-[#0a5c36] uppercase tracking-wide">
+                CSE Department · OD Portal
+              </div>
             </div>
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
               {error}
             </div>
           )}
 
-          {/* Form */}
+          {/* Login Form */}
           <form onSubmit={handleManualLogin} className="space-y-4">
-            <div className="space-y-1">
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-xs font-bold text-[#064024] mb-1.5"
+              >
+                Username / Register Number
+              </label>
               <input
+                id="username"
                 type="text"
-                placeholder="Username (Register No. / Faculty ID)"
+                placeholder="e.g. 714023104088 or hod.cse"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition-colors shadow-2xs"
-                required
+                className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-[#c4e6ce] text-xs text-[#172017] placeholder:text-[#889688] focus:outline-none focus:border-[#064024] focus:ring-1 focus:ring-[#064024] transition-all shadow-2xs"
               />
             </div>
 
-            <div className="space-y-1">
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-xs font-bold text-[#064024] mb-1.5"
+              >
+                Password
+              </label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition-colors shadow-2xs pr-11"
-                  required
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-white rounded-xl border border-[#c4e6ce] text-xs text-[#172017] placeholder:text-[#889688] focus:outline-none focus:border-[#064024] focus:ring-1 focus:ring-[#064024] transition-all shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#586658] hover:text-[#064024]"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-
-              <div className="text-right pt-1">
-                <button
-                  type="button"
-                  onClick={() => showToast('Password reset assistance: Please contact CSE System Administrator (sysadmin@siet.ac.in)', 'info')}
-                  className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
-                >
-                  Forgot Password?
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* Emerald Green Login Button from screenshot */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 px-4 rounded-xl bg-[#2e9e5b] hover:bg-[#25854c] text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              className="w-full py-2.5 px-4 bg-[#064024] hover:bg-[#042f1a] text-[#fed403] text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
             >
-              {isSubmitting ? 'Signing in...' : 'Login'}
-              {!isSubmitting && <ArrowRight className="w-4 h-4" />}
+              {isSubmitting ? (
+                'Signing in...'
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
           </form>
 
-          {/* Quick Demo Access (For Evaluators & Testers) */}
-          <div className="pt-2 border-t border-emerald-200/80 space-y-2.5">
-            <div className="text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                Instant Demo Access
-              </span>
+          {/* Quick Demo Access Switchers */}
+          <div className="pt-2 border-t border-[#c4e6ce] space-y-2.5">
+            <div className="text-[11px] font-bold text-[#064024] text-center uppercase tracking-wider">
+              Quick Institutional Sign In
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={handleDemoStudent}
-                className="p-2.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 transition-all text-left group shadow-2xs cursor-pointer"
+                className="p-2.5 bg-white hover:bg-[#f2f9f1] border border-[#c4e6ce] rounded-xl text-left transition-all shadow-2xs group flex items-center gap-2"
               >
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#064e3b] mb-0.5">
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Student Demo</span>
+                <div className="w-7 h-7 rounded-full bg-[#064024] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                  <UserCheck className="w-3.5 h-3.5 text-[#fed403]" />
                 </div>
-                <p className="text-[10px] text-slate-500 line-clamp-1 font-medium">
-                  Meena C (II Year CSE)
-                </p>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-[#064024] truncate">
+                    Student
+                  </div>
+                  <div className="text-[10px] text-[#586658] truncate">
+                    Meena C (II Year)
+                  </div>
+                </div>
               </button>
 
               <button
                 type="button"
                 onClick={handleDemoHod}
-                className="p-2.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 transition-all text-left group shadow-2xs cursor-pointer"
+                className="p-2.5 bg-white hover:bg-[#f2f9f1] border border-[#c4e6ce] rounded-xl text-left transition-all shadow-2xs group flex items-center gap-2"
               >
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#064e3b] mb-0.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" />
-                  <span>HOD Demo</span>
+                <div className="w-7 h-7 rounded-full bg-[#064024] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#fed403]" />
                 </div>
-                <p className="text-[10px] text-slate-500 line-clamp-1 font-medium">
-                  Dr. Priya Kumar (HOD)
-                </p>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-[#064024] truncate">
+                    HOD / Faculty
+                  </div>
+                  <div className="text-[10px] text-[#586658] truncate">
+                    Dr. Priya Kumar
+                  </div>
+                </div>
               </button>
             </div>
           </div>
+        </div>
 
+        {/* Footer info */}
+        <div className="mt-8 text-center text-xs font-semibold text-[#064024]">
+          Sri Shakthi Institute of Engineering and Technology (Autonomous) · Accredited by NAAC &lsquo;A&rsquo; Grade
         </div>
       </div>
     </div>

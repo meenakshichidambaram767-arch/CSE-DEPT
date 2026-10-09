@@ -1,6 +1,6 @@
 'use client';
 
-import React, { forwardRef, InputHTMLAttributes } from 'react';
+import React from 'react';
 
 export interface RadioOption {
   value: string;

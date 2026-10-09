@@ -1,11 +1,23 @@
+import { activitiesApi } from './activitiesApi';
 import { Activity } from '@/types';
-import { mockActivities } from '@/data/mock';
 
 export const projectsApi = {
   getAll: async (): Promise<Activity[]> => {
-    return mockActivities.filter((a) => a.type === 'PROJECT');
+    try {
+      const res = await activitiesApi.getActivities({ type: 'PROJECT' });
+      return res.data;
+    } catch {
+      return activitiesApi.getFallbackActivities('PROJECT');
+    }
   },
   getById: async (id: string): Promise<Activity | undefined> => {
-    return mockActivities.find((a) => a.id === id);
+    try {
+      const res = await activitiesApi.getActivityById(id);
+      return res.data;
+    } catch {
+      return activitiesApi.getFallbackById(id);
+    }
   },
 };
+
+export default projectsApi;

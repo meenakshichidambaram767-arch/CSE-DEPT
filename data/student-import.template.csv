@@ -1,0 +1,3 @@
+register_number,name,email,department,year,section
+EXAMPLE-0001,Example Student One,student.one@example.invalid,CSE,1,A
+EXAMPLE-0002,Example Student Two,student.two@example.invalid,CSE,4,B

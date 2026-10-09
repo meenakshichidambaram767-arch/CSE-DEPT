@@ -1,32 +1,92 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Tabs';
 import { EmptyState } from '@/components/common/EmptyState';
-import { useData } from '@/context/DataContext';
+import { activitiesApi } from '@/lib/api/activitiesApi';
+import { ApiError } from '@/lib/api/odApi';
+import { Activity } from '@/types';
 import {
   FolderKanban,
-  Trophy,
-  BriefcaseBusiness,
   Plus,
   Sparkles,
-  Calendar,
-  Clock,
   ArrowRight,
   AlertTriangle,
-  CheckCircle2,
-  FileCheck,
-  ExternalLink,
+  RefreshCw,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-import { ActivityType, ActivityStatus } from '@/types';
 
 export default function StudentActivitiesPage() {
-  const { activities } = useData();
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [backendNotice, setBackendNotice] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchActivitiesData = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setIsRefreshing(true);
+    else setIsLoading(true);
+
+    setErrorMsg(null);
+    setBackendNotice(null);
+
+    try {
+      const res = await activitiesApi.getActivities();
+      if (res.data) {
+        setActivities(res.data);
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+        setBackendNotice('Backend endpoint GET /api/v1/activities returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
+        setActivities(activitiesApi.getFallbackActivities());
+      } else if (err instanceof ApiError) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg('Failed to load activity records from server.');
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    activitiesApi
+      .getActivities()
+      .then((res) => {
+        if (isMounted && res.data) {
+          setActivities(res.data);
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setBackendNotice('Backend endpoint GET /api/v1/activities returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
+            setActivities(activitiesApi.getFallbackActivities());
+          } else {
+            setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load activities.');
+          }
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filtered = activities.filter((a) => {
     if (activeTab === 'PROJECT' && a.type !== 'PROJECT') return false;
@@ -41,7 +101,7 @@ export default function StudentActivitiesPage() {
       return (
         a.title.toLowerCase().includes(q) ||
         a.id.toLowerCase().includes(q) ||
-        a.technologies.some((t) => t.toLowerCase().includes(q))
+        (a.technologies || []).some((t) => t.toLowerCase().includes(q))
       );
     }
     return true;
@@ -73,13 +133,55 @@ export default function StudentActivitiesPage() {
           </span>
         }
         primaryAction={
-          <Link href="/student/activities/new">
-            <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
-              Submit New Activity
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fetchActivitiesData(true)}
+              disabled={isRefreshing || isLoading}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl shadow-2xs transition-colors disabled:opacity-50"
+              title="Refresh activities list"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <Link href="/student/activities/new">
+              <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
+                Submit New Activity
+              </Button>
+            </Link>
+          </div>
         }
       />
+
+      {/* Backend Notice Banner */}
+      {backendNotice && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{backendNotice}</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded border border-amber-300">
+            Nattu Client Mode
+          </span>
+        </div>
+      )}
+
+      {/* Error Card */}
+      {errorMsg && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchActivitiesData()}
+            className="px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold rounded"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Tabs & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -95,8 +197,13 @@ export default function StudentActivitiesPage() {
         </div>
       </div>
 
-      {/* Activities Grid */}
-      {filtered.length === 0 ? (
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs space-y-3">
+          <Loader2 className="w-6 h-6 text-emerald-800 animate-spin mx-auto" />
+          <p className="text-xs text-slate-600 font-semibold">Loading server-driven activities list...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs">
           <EmptyState
             title="No activities found"
@@ -148,7 +255,7 @@ export default function StudentActivitiesPage() {
                   {act.description}
                 </p>
 
-                {/* Explicit Rejection Reason (Section 5) */}
+                {/* Explicit Rejection Reason */}
                 {act.status === 'REJECTED' && act.rejectionReason && (
                   <div className="p-3 rounded-xl bg-red-50 border border-red-200 space-y-1">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-red-800">
@@ -166,7 +273,7 @@ export default function StudentActivitiesPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Team Roster:</span>
                     <strong className="text-slate-800">
-                      {act.teamMembers.map((m) => m.name.split(' ')[0]).join(', ')} ({act.teamMembers.length} Members)
+                      {(act.teamMembers || []).map((m) => m.name.split(' ')[0]).join(', ')} ({(act.teamMembers || []).length} Members)
                     </strong>
                   </div>
                   <div className="flex items-center justify-between">
@@ -183,7 +290,7 @@ export default function StudentActivitiesPage() {
 
                 {/* Tech Badges */}
                 <div className="flex flex-wrap gap-1.5">
-                  {act.technologies.map((t, idx) => (
+                  {(act.technologies || []).map((t, idx) => (
                     <span
                       key={idx}
                       className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-100"
@@ -211,7 +318,7 @@ export default function StudentActivitiesPage() {
 
                   <Link href={`/student/projects/${act.id}`}>
                     <Button size="sm" variant="primary" rightIcon={<ArrowRight className="w-3 h-3" />}>
-                      View Project Page
+                      View Activity Detail
                     </Button>
                   </Link>
                 </div>

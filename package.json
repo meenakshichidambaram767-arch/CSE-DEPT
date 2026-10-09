@@ -8,11 +8,20 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npx tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts",
-    "test:phase5": "npx tsx scripts/test-phase5-reviews-ui-compatibility.ts",
-    "test:phase6": "npx tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts"
+    "check:env": "node scripts/check-supabase-env.mjs",
+    "student-import": "node scripts/student-import.mjs",
+    "test:student-import": "node scripts/test-student-import.mjs",
+    "test:compatibility": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts",
+    "test:phase1": "npx -y tsx scripts/test-frontend-compatibility.ts",
+    "test:phase2": "npx -y tsx scripts/test-phase2-state-compatibility.ts",
+    "test:phase3": "npx -y tsx scripts/test-phase3-od-ui-compatibility.ts",
+    "test:phase5": "npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts",
+    "test:phase6": "npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts",
+    "test": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts && npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.117.2",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "lucide-react": "^1.47.0",

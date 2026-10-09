@@ -81,9 +81,9 @@ export default function DedicatedHodApprovalScreen() {
   const isPending = status === 'SUBMITTED' || status === 'UNDER_REVIEW' || status === 'PENDING';
   const stats = getStudentStats(data.studentRegNo);
 
-  const handleConfirmApprove = () => {
+  const handleConfirmApprove = async () => {
     setIsApproving(true);
-    setTimeout(() => {
+    try {
       if (isActivity) {
         approveActivity(activity!.id, approvalRemarks || 'Approved by HOD.');
         showToast(`Approved ${activity!.title}`, 'Status updated to ACTIVE.', 'success');
@@ -91,47 +91,61 @@ export default function DedicatedHodApprovalScreen() {
         approveOD(odItem!.id, approvalRemarks || 'Approved by HOD.');
         showToast(`Approved OD for ${odItem!.studentName}`, 'Attendance granted.', 'success');
       }
+    } catch (err) {
+      console.error('Error approving item:', err);
+      showToast('Approval Error', err instanceof Error ? err.message : 'Failed to approve submission.', 'error');
+    } finally {
       setIsApproving(false);
       router.push('/hod/approvals');
-    }, 400);
+    }
   };
 
-  const handleConfirmRevision = () => {
+  const handleConfirmRevision = async () => {
     if (!revisionNotes.trim()) {
       showToast('Revision instructions required.', 'warning');
       return;
     }
     setIsRequestingRevision(true);
-    setTimeout(() => {
+    try {
       if (isActivity) {
         requestRevisionActivity(activity!.id, revisionNotes);
+        showToast(`Revision Requested for ${data.id}`, 'Student notified.', 'info');
       } else {
         requestRevisionOD(odItem!.id, revisionNotes);
+        showToast(`Revision Requested for ${data.id}`, 'Student notified.', 'info');
       }
-      showToast(`Revision Requested for ${data.id}`, 'Student notified.', 'info');
+    } catch (err) {
+      console.error('Error requesting revision:', err);
+      showToast('Revision Error', err instanceof Error ? err.message : 'Failed to request revision.', 'error');
+    } finally {
       setIsRequestingRevision(false);
       setIsRevisionModalOpen(false);
       router.push('/hod/approvals');
-    }, 400);
+    }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectionReason.trim()) {
       showToast('Rejection reason required.', 'warning');
       return;
     }
     setIsRejecting(true);
-    setTimeout(() => {
+    try {
       if (isActivity) {
         rejectActivity(activity!.id, rejectionReason);
+        showToast(`Rejected ${data.id}`, 'Decision recorded.', 'info');
       } else {
         rejectOD(odItem!.id, rejectionReason);
+        showToast(`Rejected ${data.id}`, 'Decision recorded.', 'info');
       }
-      showToast(`Rejected ${data.id}`, 'Decision recorded.', 'info');
+    } catch (err) {
+      console.error('Error rejecting item:', err);
+      showToast('Rejection Error', err instanceof Error ? err.message : 'Failed to record rejection.', 'error');
+    } finally {
       setIsRejecting(false);
       setIsRejectOpen(false);
       router.push('/hod/approvals');
-    }, 400);
+    }
   };
 
   return (

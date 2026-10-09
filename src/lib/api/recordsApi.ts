@@ -1,19 +1,45 @@
 /**
- * HOD Student Records API Module (Phase 6)
+ * HOD Student Records & Departmental Directory API Module (Phase 6)
  * API Contract v2.0 compliant
- * Offline mock resolver - guaranteed zero live backend network egress
+ * Offline mock resolver & Central API Client support
  */
 
-import { assertNoLiveNetwork, ApiError } from './client';
+import { assertNoLiveNetwork, ApiError, apiClient, buildQueryString } from './client';
 import {
   StudentRecordContract,
   StudentRecordListResponse,
   StudentRecordQuery,
   StudentSummaryResponse,
 } from './contractTypes';
+import {
+  ApiStudentRecord,
+  ApiStudentSummary,
+  PaginatedResponse,
+} from '@/types/contract';
+import {
+  fixtureApiStudents,
+  fixtureStudentSummary,
+} from '@/data/fixtures/recordsFixtures';
+
+export { ApiError };
+
+export interface RecordsQueryParams {
+  year?: string;
+  section?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface RecordsExportParams {
+  year?: string;
+  section?: string;
+  type?: 'OD' | 'ACTIVITIES' | 'ALL';
+  search?: string;
+}
 
 // Initial contract-compatible student records dataset
-const studentRecordsStore: StudentRecordContract[] = [
+export const studentRecordsStore: StudentRecordContract[] = [
   {
     id: 'usr-student-001',
     name: 'Meena C',
@@ -163,17 +189,20 @@ const studentRecordsStore: StudentRecordContract[] = [
 export const recordsApi = {
   /**
    * GET /api/v1/records/students
+   * Paginated student directory with instant year/section/search filtering
    */
-  getStudents: async (query?: StudentRecordQuery): Promise<StudentRecordListResponse> => {
+  getStudents: async (
+    query?: StudentRecordQuery & RecordsQueryParams
+  ): Promise<StudentRecordListResponse & PaginatedResponse<any>> => {
     assertNoLiveNetwork();
 
     let filtered = [...studentRecordsStore];
 
-    if (query?.year) {
+    if (query?.year && query.year !== 'ALL') {
       filtered = filtered.filter((s) => s.year === query.year);
     }
 
-    if (query?.section) {
+    if (query?.section && query.section !== 'ALL') {
       filtered = filtered.filter((s) => s.section === query.section);
     }
 
@@ -197,17 +226,24 @@ export const recordsApi = {
 
     return {
       students: paginated,
+      data: paginated,
       total,
       page,
       page_size: pageSize,
       total_pages: totalPages,
+      meta: {
+        page,
+        page_size: pageSize,
+        total,
+      },
     };
   },
 
   /**
    * GET /api/v1/records/students/{id}/summary
+   * Populates the HOD slide-over inspection drawer: full OD clearances, activities, and review history
    */
-  getStudentSummary: async (id: string): Promise<StudentSummaryResponse> => {
+  getStudentSummary: async (id: string): Promise<StudentSummaryResponse & { data: any }> => {
     assertNoLiveNetwork();
 
     const student = studentRecordsStore.find((s) => s.id === id || s.register_number === id);
@@ -217,8 +253,7 @@ export const recordsApi = {
       });
     }
 
-    // Return contract-shaped summaries
-    return {
+    const summaryResult: StudentSummaryResponse = {
       student: {
         id: student.id,
         name: student.name,
@@ -277,21 +312,35 @@ export const recordsApi = {
         },
       ],
     };
+
+    return {
+      ...summaryResult,
+      data: summaryResult,
+    };
+  },
+
+  /**
+   * Returns a ready-to-use URL for the RFC 4180 CSV export endpoint
+   */
+  getExportUrl(params?: RecordsExportParams | StudentRecordQuery): string {
+    const query = buildQueryString(params as Record<string, string>);
+    return `/api/v1/records/export${query}`;
   },
 
   /**
    * GET /api/v1/records/export
+   * RFC 4180 CSV generation & export
    */
-  exportRecords: async (query?: StudentRecordQuery): Promise<string> => {
+  exportRecords: async (query?: StudentRecordQuery | RecordsExportParams): Promise<string> => {
     assertNoLiveNetwork();
 
     let filtered = [...studentRecordsStore];
 
-    if (query?.year) {
+    if (query?.year && query.year !== 'ALL') {
       filtered = filtered.filter((s) => s.year === query.year);
     }
 
-    if (query?.section) {
+    if (query?.section && query.section !== 'ALL') {
       filtered = filtered.filter((s) => s.section === query.section);
     }
 
@@ -306,7 +355,18 @@ export const recordsApi = {
     }
 
     // RFC 4180 CSV generation
-    const header = ['Student ID', 'Register Number', 'Name', 'Email', 'Department', 'Year', 'Section', 'Approved OD Clearances', 'Activities', 'Reviews'];
+    const header = [
+      'Student ID',
+      'Register Number',
+      'Name',
+      'Email',
+      'Department',
+      'Year',
+      'Section',
+      'Approved OD Clearances',
+      'Activities',
+      'Reviews',
+    ];
     const rows = filtered.map((s) => [
       s.id,
       s.register_number,
@@ -322,4 +382,13 @@ export const recordsApi = {
 
     return [header.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
   },
+
+  /**
+   * Direct fetcher for RFC 4180 CSV export content
+   */
+  async downloadExport(params?: RecordsExportParams): Promise<string> {
+    return recordsApi.exportRecords(params);
+  },
 };
+
+export default recordsApi;

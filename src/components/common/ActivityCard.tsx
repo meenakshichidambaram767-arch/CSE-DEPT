@@ -5,7 +5,7 @@ import { Card } from '../ui/Card';
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from '../ui/Progress';
 import { ActivityType, ActivityStatus } from '@/types';
-import { FolderGit2, Briefcase, Trophy, Calendar, User, ArrowRight } from 'lucide-react';
+import { FolderGit2, Briefcase, Trophy, User, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export interface ActivityCardProps {
@@ -43,7 +43,6 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   subtitle,
   studentName,
   guideOrCompany,
-  dateRange,
   tags = [],
   onAction,
   actionLabel = 'View Details',

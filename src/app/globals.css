@@ -1,51 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* SIET Brand Colors */
+  --siet-green: #0a5c36;
+  --siet-green-dark: #064024;
+  --siet-green-hover: #084c2c;
+  --siet-green-light: #eaf7e8;
+  --siet-green-surface: #f2f9f1;
+
+  --siet-yellow: #fed403;
+  --siet-yellow-hover: #e5be02;
+  --siet-yellow-soft: #fffbeb;
+
+  /* Surfaces & Canvas */
+  --background: #f7f9f5;
   --surface: #ffffff;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --border: #e2e8f0;
-  --border-subtle: #f1f5f9;
-  
-  --primary: #047857;
-  --primary-hover: #065f46;
-  --primary-light: #ecfdf5;
-  --primary-foreground: #ffffff;
+  --surface-subtle: #fbfdfa;
 
-  --secondary: #0f172a;
-  --secondary-hover: #1e293b;
-  --secondary-light: #f1f5f9;
-  --secondary-foreground: #ffffff;
+  /* Typography */
+  --foreground: #172017;
+  --foreground-muted: #586658;
+  --foreground-subtle: #889688;
 
-  --muted: #64748b;
-  --muted-light: #94a3b8;
-  --muted-background: #f1f5f9;
+  /* Dividers & Borders */
+  --border: #dfe6dc;
+  --border-subtle: #edf2ea;
 
-  --success: #059669;
-  --success-light: #ecfdf5;
-  --success-border: #a7f3d0;
-  --success-foreground: #065f46;
+  /* Feedback */
+  --warn: #d97706;
+  --warn-light: #fef3c7;
+  --error: #dc2626;
+  --error-light: #fee2e2;
 
-  --warning: #d97706;
-  --warning-light: #fffbeb;
-  --warning-border: #fde68a;
-  --warning-foreground: #92400e;
-
-  --danger: #dc2626;
-  --danger-light: #fef2f2;
-  --danger-border: #fecaca;
-  --danger-foreground: #991b1b;
-
-  --info: #0284c7;
-  --info-light: #f0f9ff;
-  --info-border: #bae6fd;
-  --info-foreground: #0369a1;
-
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -60,12 +50,13 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
 }
 
-/* Custom scrollbar for clean dashboard view */
+/* Subtle, unobtrusive scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -73,10 +64,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #dfe6dc;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #cbd5c8;
 }

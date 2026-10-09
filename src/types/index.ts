@@ -1,31 +1,37 @@
 /**
  * Core Domain TypeScript Types
- * Student Hackathon, Project & Internship Tracking Platform
+ * SIET CSE Department Platform - API Contract v2.0 & PRD v2.0
  */
 
-export type UserRole = 'STUDENT' | 'HOD';
+export * from './student';
+export * from './contract';
+import {
+  ApiUserRole,
+  ApiActivityType,
+  ApiActivityStatus,
+  ApiODStatus,
+  ApiReviewSessionStatus,
+  ApiReviewType,
+  ApiTimeSlotType,
+} from './contract';
 
-export type ActivityType = 'PROJECT' | 'INTERNSHIP' | 'HACKATHON';
+export type UserRole = ApiUserRole;
+export type ActivityType = ApiActivityType;
+export type ReviewType = 'PROJECT_WEEKLY' | 'HACKATHON_POST' | 'INTERNSHIP_MID' | 'INTERNSHIP_FINAL';
+export type ReviewSessionStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
 export type ActivityStatus =
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'UNDER_REVIEW'
-  | 'PENDING_APPROVAL'
-  | 'REVISION_REQUESTED'
+  | ApiActivityStatus
   | 'APPROVED'
-  | 'REJECTED'
-  | 'ACTIVE'
+  | 'UNDER_REVIEW'
+  | 'DRAFT'
   | 'IN_PROGRESS'
   | 'REVIEW_DUE'
   | 'REVIEW_COMPLETED'
-  | 'COMPLETED';
+  | 'PENDING_APPROVAL';
 
 export type ODStatus =
-  | 'PENDING'
-  | 'APPROVED'
-  | 'REVISION_REQUESTED'
-  | 'REJECTED'
+  | ApiODStatus
   | 'SUBMITTED'
   | 'UNDER_REVIEW'
   | 'PENDING_SUBMISSION'
@@ -33,7 +39,7 @@ export type ODStatus =
 
 export type AllStatus = ActivityStatus | ODStatus;
 
-export type ReviewSessionStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+export type EventStatus = 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CLOSED';
 
 export interface SelectOption {
   value: string;
@@ -48,9 +54,29 @@ export interface User {
   registerNumber?: string;
   department: string;
   year?: string;
+  section?: string;
   role: UserRole;
   avatar?: string;
   designation?: string;
+}
+
+export interface StudentProfile {
+  id: string;
+  userId: string;
+  registerNumber: string;
+  name: string;
+  department: string;
+  year: 'I' | 'II' | 'III' | 'IV';
+  section: 'A' | 'B' | 'C' | 'D' | 'E';
+  email: string;
+}
+
+export interface HodProfile {
+  id: string;
+  userId: string;
+  name: string;
+  designation: string;
+  department: string;
 }
 
 export interface TeamMember {
@@ -82,6 +108,7 @@ export type TimelineStep = TimelineEvent;
 
 export interface Activity {
   id: string;
+  code?: string;
   studentId: string;
   studentName: string;
   studentRegNo: string;
@@ -112,6 +139,7 @@ export interface Activity {
   proofUrl?: string;
   proofDocName?: string;
   documents?: DocumentItem[];
+  documentIds?: string[];
   additionalNotes?: string;
   teamMembers: TeamMember[];
   status: ActivityStatus;
@@ -127,7 +155,6 @@ export interface Activity {
   updatedAt?: string;
 }
 
-// Backward-compatibility aliases
 export type Project = Activity;
 export type Internship = Activity;
 export type Hackathon = Activity;
@@ -153,21 +180,20 @@ export interface AttendanceItem {
   checkInTime?: string;
 }
 
-export type ReviewType =
-  | 'PROJECT_WEEKLY'
-  | 'HACKATHON_POST'
-  | 'INTERNSHIP_MID'
-  | 'INTERNSHIP_FINAL';
+export * from './contract';
+
+export type ReviewType = ApiReviewType;
 
 export interface ReviewSession {
   id: string;
+  code?: string;
   activityId: string;
   activityTitle: string;
   activityType: ActivityType;
   studentName?: string;
   studentRegNo?: string;
   reviewNumber: number;
-  reviewType: ReviewType;
+  reviewType?: ReviewType | string;
   date: string;
   rawDate?: string; // YYYY-MM-DD
   time: string;
@@ -179,6 +205,7 @@ export interface ReviewSession {
   attendance: AttendanceItem[];
   meetingNotes?: string;
   nextWeekGoal?: string;
+  feedback?: string;
   qrCodeToken?: string;
   qrExpiresAt?: string;
   qrValidSeconds?: number;
@@ -189,28 +216,103 @@ export interface ReviewSession {
 
 export type Review = ReviewSession;
 
+export type ODPurpose =
+  | 'HACKATHON'
+  | 'PROJECT'
+  | 'INTERNSHIP'
+  | 'WORKSHOP'
+  | 'COMPETITION'
+  | 'CONFERENCE'
+  | 'OTHER';
+
+export interface AuditLog {
+  id: string;
+  date: string;
+  time: string;
+  actorName: string;
+  actorRole: UserRole;
+  actionTitle: string;
+  details: string;
+  targetId?: string;
+}
+
+export interface ODConflict {
+  hasConflict: boolean;
+  conflictingEventName?: string;
+  conflictingDate?: string;
+  conflictingTime?: string;
+  conflictingStudentRegNo?: string;
+  conflictingStudentName?: string;
+}
+
+export interface ODEvent {
+  id: string;
+  title: string;
+  purpose: ODPurpose;
+  date: string;
+  formattedDate: string;
+  endDate?: string;
+  venue: string;
+  city?: string;
+  studentCount: number;
+  approvedCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+  status: EventStatus;
+  documents: DocumentItem[];
+  odRequestIds: string[];
+}
+
 export interface ODApplication {
   id: string;
+  code?: string;
   studentId: string;
   studentName: string;
   studentRegNo: string;
   department: string;
   year: string;
+  section?: string;
+  eventId?: string;
+  purpose: ODPurpose;
   activityId?: string;
   activityTitle?: string;
   activityType?: ActivityType;
   reason: string;
   eventName: string;
+  organization?: string;
   date?: string;
   startDate?: string;
   endDate?: string;
   fromTime?: string;
   toTime?: string;
+  slotType?: ApiTimeSlotType;
   totalDays?: number;
   venue?: string;
+  documentIds?: string[];
+
+  // Hackathon specific fields
+  hackathonName?: string;
+  registrationId?: string;
+  teamMembers?: TeamMember[];
+
+  // Project specific fields
+  projectName?: string;
+  projectType?: string;
+
+  // Internship specific fields
+  companyName?: string;
+  role?: string;
+  location?: string;
+  internshipStartDate?: string;
+  internshipEndDate?: string;
+
+  // Document management
   proofUrl?: string;
   proofDocName?: string;
   documents?: DocumentItem[];
+  postEventDocsSubmitted?: boolean;
+  postEventCertUrl?: string;
+
   additionalNotes?: string;
   status: ODStatus;
   rejectionReason?: string;
@@ -218,6 +320,9 @@ export interface ODApplication {
   submittedDate: string;
   approvedDate?: string;
   remarks?: string;
+  timeline?: TimelineEvent[];
+  auditTrail?: AuditLog[];
+  conflict?: ODConflict;
 }
 
 export type ODSubmission = ODApplication;
@@ -227,6 +332,7 @@ export interface StudentStats {
   approvedActivities: number;
   totalODs: number;
   approvedODs: number;
+  totalODDays: number;
   attendanceRate: string;
   standing: string;
   recentActivityTitles: string[];
@@ -250,4 +356,29 @@ export interface MetricItem {
   changeType?: 'positive' | 'negative' | 'neutral';
   description?: string;
   icon?: string;
+}
+
+/**
+ * Standard RFC 7807 Error Envelope & Pagination Types (API Contract v2.0)
+ */
+export interface ApiErrorEnvelope {
+  error: {
+    code: string;
+    message: string;
+    details?: {
+      field?: string;
+      [key: string]: unknown;
+    };
+  };
+}
+
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
 }
