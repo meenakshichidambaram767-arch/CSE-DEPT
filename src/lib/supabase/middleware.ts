@@ -26,15 +26,22 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Get current user session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Get current user session from Supabase auth
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Non-blocking for offline or institutional session
+  }
 
   const pathname = request.nextUrl.pathname;
+  const roleCookie = request.cookies.get('siet_cse_user_role')?.value;
+  const sessionCookie = request.cookies.get('siet_cse_user_session')?.value;
+  const hasAuth = !!(user || roleCookie || sessionCookie);
 
   // Protect /student and /hod routes if user is not authenticated
-  if (!user && (pathname.startsWith('/student') || pathname.startsWith('/hod'))) {
+  if (!hasAuth && (pathname.startsWith('/student') || pathname.startsWith('/hod'))) {
     const hasConfiguredSupabase =
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder-project.supabase.co';
@@ -44,6 +51,19 @@ export async function updateSession(request: NextRequest) {
       url.pathname = '/login';
       return NextResponse.redirect(url);
     }
+  }
+
+  // Enforce role isolation if institutional role cookie is present
+  if (roleCookie === 'STUDENT' && pathname.startsWith('/hod')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/student/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  if (roleCookie === 'HOD' && pathname.startsWith('/student')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/hod/dashboard';
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;

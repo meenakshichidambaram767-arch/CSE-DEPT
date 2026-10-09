@@ -81,6 +81,8 @@ export function loginAsStudent(): User {
   };
   if (typeof window !== 'undefined') {
     localStorage.setItem('siet_cse_user_session', JSON.stringify(session));
+    document.cookie = 'siet_cse_user_role=STUDENT; path=/; max-age=86400; SameSite=Lax';
+    document.cookie = `siet_cse_user_session=${encodeURIComponent(JSON.stringify(session))}; path=/; max-age=86400; SameSite=Lax`;
   }
   return studentUser;
 }
@@ -93,6 +95,8 @@ export function loginAsHod(): User {
   };
   if (typeof window !== 'undefined') {
     localStorage.setItem('siet_cse_user_session', JSON.stringify(session));
+    document.cookie = 'siet_cse_user_role=HOD; path=/; max-age=86400; SameSite=Lax';
+    document.cookie = `siet_cse_user_session=${encodeURIComponent(JSON.stringify(session))}; path=/; max-age=86400; SameSite=Lax`;
   }
   return hodUser;
 }
@@ -107,6 +111,8 @@ export async function logoutSupabase(): Promise<void> {
   } finally {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('siet_cse_user_session');
+      document.cookie = 'siet_cse_user_role=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'siet_cse_user_session=; path=/; max-age=0; SameSite=Lax';
     }
   }
 }
@@ -114,5 +120,8 @@ export async function logoutSupabase(): Promise<void> {
 export function logout(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('siet_cse_user_session');
+    document.cookie = 'siet_cse_user_role=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'siet_cse_user_session=; path=/; max-age=0; SameSite=Lax';
   }
 }
+

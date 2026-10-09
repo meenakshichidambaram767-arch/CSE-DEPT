@@ -50,9 +50,11 @@ export default function LoginPage() {
       if (lower.includes('hod') || lower.includes('priya') || lower.includes('faculty')) {
         loginAsHod();
         showToast('Welcome, Dr. Priya Kumar (HOD CSE)', 'success');
+        router.push('/hod/dashboard');
       } else {
         loginAsStudent();
         showToast('Welcome, Meena C (CSE)', 'success');
+        router.push('/student/dashboard');
       }
     }, 350);
   };
@@ -60,11 +62,13 @@ export default function LoginPage() {
   const handleDemoStudent = () => {
     loginAsStudent();
     showToast('Signed in as Student (Meena C)', 'success');
+    router.push('/student/dashboard');
   };
 
   const handleDemoHod = () => {
     loginAsHod();
     showToast('Signed in as HOD (Dr. Priya Kumar)', 'success');
+    router.push('/hod/dashboard');
   };
 
   return (
