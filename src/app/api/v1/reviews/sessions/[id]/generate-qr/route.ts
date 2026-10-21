@@ -53,11 +53,13 @@ export async function POST(
     }
 
     return apiSuccess({
-      sessionId: updatedSession.id,
-      sessionCode: updatedSession.code,
-      qrToken: updatedSession.qr_token,
-      qrExpiresAt: updatedSession.qr_expires_at,
-      expiresInSeconds: 900,
+      token: updatedSession.qr_token,
+      qr_token: updatedSession.qr_token,
+      expires_at: updatedSession.qr_expires_at,
+      qr_expires_at: updatedSession.qr_expires_at,
+      session_id: updatedSession.id,
+      session_code: updatedSession.code,
+      expires_in_seconds: 900,
     });
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {

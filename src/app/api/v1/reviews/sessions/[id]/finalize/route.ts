@@ -62,7 +62,15 @@ export async function POST(
       return apiError('DATABASE_ERROR', rpcError.message, 500);
     }
 
-    return apiSuccess(rpcResult);
+    const formattedResult = {
+      id: rpcResult.id,
+      code: rpcResult.code,
+      status: rpcResult.status,
+      meeting_notes: rpcResult.meeting_notes || rpcResult.meetingNotes || null,
+      next_week_goal: rpcResult.next_week_goal || rpcResult.nextWeekGoal || null,
+    };
+
+    return apiSuccess(formattedResult);
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

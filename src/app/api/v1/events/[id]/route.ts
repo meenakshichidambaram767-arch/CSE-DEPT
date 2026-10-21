@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeEvent } from '@/lib/api/serializers';
 
 // GET /api/v1/events/[id] - Single Event Detail
 export async function GET(
@@ -29,25 +30,11 @@ export async function GET(
       .select('id, code, student_id, event_name, status, start_date, end_date')
       .eq('event_id', event.id);
 
-    return apiSuccess({
-      id: event.id,
-      code: event.code,
-      title: event.title,
-      purpose: event.purpose,
-      date: event.date,
-      endDate: event.end_date || event.date,
-      venue: event.venue,
-      city: event.city || '',
-      status: event.status,
-      createdAt: event.created_at,
-      attachedODs: (odRequests || []).map((od: Record<string, unknown>) => ({
-        id: od.id,
-        code: od.code,
-        status: od.status,
-        startDate: od.start_date,
-        endDate: od.end_date,
-      })),
-    });
+    return apiSuccess(
+      serializeEvent(event, {
+        attached_ods: odRequests || [],
+      })
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
@@ -109,17 +96,7 @@ export async function PUT(
       return apiError('DATABASE_ERROR', updateErr.message, 500);
     }
 
-    return apiSuccess({
-      id: updatedEvent.id,
-      code: updatedEvent.code,
-      title: updatedEvent.title,
-      purpose: updatedEvent.purpose,
-      date: updatedEvent.date,
-      endDate: updatedEvent.end_date,
-      venue: updatedEvent.venue,
-      city: updatedEvent.city,
-      status: updatedEvent.status,
-    });
+    return apiSuccess(serializeEvent(updatedEvent));
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

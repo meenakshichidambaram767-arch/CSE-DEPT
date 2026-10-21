@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeDocument } from '@/lib/api/serializers';
 
 // POST /api/v1/documents/upload - Create Document Metadata
 export async function POST(request: NextRequest) {
@@ -47,17 +48,7 @@ export async function POST(request: NextRequest) {
       return apiError('DATABASE_ERROR', insertErr.message, 500);
     }
 
-    return apiSuccess({
-      id: newDoc.id,
-      fileName: newDoc.file_name,
-      documentType: newDoc.document_type,
-      storagePath: newDoc.storage_path,
-      size: newDoc.size,
-      owner: newDoc.owner,
-      ownerId: newDoc.owner_id,
-      uploadedBy: newDoc.uploaded_by,
-      createdAt: newDoc.created_at,
-    }, 201);
+    return apiSuccess(serializeDocument(newDoc), 201);
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

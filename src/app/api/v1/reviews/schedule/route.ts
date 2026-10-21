@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeReviewSession } from '@/lib/api/serializers';
 
 // POST /api/v1/reviews/schedule - HOD Review Session Generator
 // Derives schedules automatically based on activity type (PROJECT, HACKATHON, INTERNSHIP)
@@ -142,20 +143,15 @@ export async function POST(request: NextRequest) {
     });
 
     return apiSuccess({
-      activityId: activity.id,
-      activityCode: activity.code,
-      activityType: activity.type,
-      sessionCount: createdSessions.length,
-      sessions: (createdSessions || []).map((s: Record<string, unknown>) => ({
-        id: s.id as string,
-        code: s.code as string,
-        reviewNumber: s.review_number as number,
-        reviewType: s.review_type as string,
-        date: s.date as string,
-        time: s.time as string,
-        venue: s.venue as string,
-        status: s.status as string,
-      })),
+      activity_id: activity.id,
+      activity_code: activity.code,
+      activity_type: activity.type,
+      session_count: createdSessions.length,
+      sessions: (createdSessions || []).map((s: Record<string, unknown>) =>
+        serializeReviewSession(s, {
+          team_members: activity.activity_team_members || [],
+        })
+      ),
     }, 201);
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {

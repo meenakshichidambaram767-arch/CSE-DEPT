@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeActivity } from '@/lib/api/serializers';
 
 // PUT /api/v1/activities/[id]/resubmit - Resubmit Activity Proposal
 export async function PUT(
@@ -123,15 +124,12 @@ export async function PUT(
       });
     }
 
-    return apiSuccess({
-      id: updatedAct.id,
-      code: updatedAct.code,
-      studentId: updatedAct.student_id,
-      type: updatedAct.type,
-      title: updatedAct.title,
-      status: updatedAct.status,
-      updatedAt: updatedAct.updated_at,
-    });
+    return apiSuccess(
+      serializeActivity({
+        ...updatedAct,
+        student_name: studentRecord?.name || authUser.name,
+      })
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

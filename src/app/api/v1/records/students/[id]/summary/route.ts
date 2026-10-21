@@ -2,6 +2,12 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import {
+  serializeStudentRecord,
+  serializeODRequest,
+  serializeActivity,
+  serializeReviewSession,
+} from '@/lib/api/serializers';
 
 // GET /api/v1/records/students/[id]/summary - Detailed Student Summary for HOD Inspection
 export async function GET(
@@ -52,51 +58,52 @@ export async function GET(
 
     const totalApprovedDays = approvedODs.reduce((sum, od) => sum + (od.total_days || 1), 0);
 
-    const formattedODs = allODs.map((od) => ({
-      id: od.id,
-      code: od.code,
-      purpose: od.purpose,
-      eventName: od.event_name,
-      startDate: od.start_date,
-      endDate: od.end_date,
-      totalDays: od.total_days,
-      status: od.status,
-      submittedDate: od.submitted_date,
-    }));
+    // Query student's review sessions via activities
+    const activityIds = (activities || []).map((a) => a.id);
+    let reviewSessions: any[] = [];
+    if (activityIds.length > 0) {
+      const { data: revs } = await supabase
+        .from('review_sessions')
+        .select('*, activities(title, type)')
+        .in('activity_id', activityIds)
+        .order('date', { ascending: false });
+      reviewSessions = revs || [];
+    }
 
-    const formattedActivities = (activities || []).map((act) => ({
-      id: act.id,
-      code: act.code,
-      type: act.type,
-      title: act.title,
-      status: act.status,
-      startDate: act.start_date,
-      endDate: act.end_date,
-    }));
+    // Query attendance for attendance_rate
+    const { data: attendanceData } = await supabase
+      .from('review_attendance')
+      .select('attended')
+      .eq('student_id', student.id);
+
+    const totalAttendanceMarked = (attendanceData || []).length;
+    const attendedCount = (attendanceData || []).filter((a) => a.attended).length;
+    const attendanceRate = totalAttendanceMarked > 0 ? Math.round((attendedCount / totalAttendanceMarked) * 100) : 100;
+
+    const serializedODs = allODs.map((od) => serializeODRequest(od));
+    const serializedActivities = (activities || []).map((act) => serializeActivity(act));
+    const serializedReviews = reviewSessions.map((rev) => serializeReviewSession(rev));
 
     const payload = {
-      student: {
-        id: student.id,
-        userId: student.user_id,
-        registerNumber: student.register_number,
-        regNo: student.register_number,
-        name: student.name,
-        department: student.department || 'CSE',
-        year: student.year,
-        section: student.section,
-        email: student.email || student.users?.email || '',
-      },
+      student: serializeStudentRecord(student),
       stats: {
-        totalRequests: allODs.length,
-        approvedRequests: approvedODs.length,
-        pendingRequests: pendingODs.length,
-        rejectedRequests: rejectedODs.length,
-        revisionRequests: revisionODs.length,
-        totalApprovedDays,
-        totalActivities: (activities || []).length,
+        total_ods: allODs.length,
+        approved_ods: approvedODs.length,
+        pending_ods: pendingODs.length,
+        rejected_ods: rejectedODs.length,
+        revision_ods: revisionODs.length,
+        total_approved_days: totalApprovedDays,
+        total_activities: (activities || []).length,
+        active_activities: (activities || []).filter(
+          (a) => a.status === 'ACTIVE' || a.status === 'APPROVED'
+        ).length,
+        total_reviews: reviewSessions.length,
+        attendance_rate: attendanceRate,
       },
-      odRequests: formattedODs,
-      activities: formattedActivities,
+      recent_ods: serializedODs,
+      od_clearances: serializedODs,
+      activities: serializedActivities,
+      reviews: serializedReviews,
     };
 
     return apiSuccess(payload);

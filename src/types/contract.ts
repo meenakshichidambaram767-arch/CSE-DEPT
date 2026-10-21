@@ -405,15 +405,18 @@ export interface ApiReviewSession {
 
 export interface ApiStudentRecord {
   id: string;
-  userId: string;
-  registerNumber: string;
-  regNo: string;
+  user_id: string;
+  register_number: string;
   name: string;
   department: string;
   year: string;
   section: string;
   email: string;
-  createdAt: string;
+  created_at: string;
+  userId?: string;
+  registerNumber?: string;
+  regNo?: string;
+  createdAt?: string;
 }
 
 export interface ApiStudentSummaryStats {
@@ -488,40 +491,58 @@ export interface DocumentUploadPayload {
 
 export interface DocumentUploadResponse {
   id: string;
-  fileName: string;
-  documentType: string;
-  storagePath: string;
+  file_name: string;
+  document_type: string;
+  storage_path: string;
   size: number;
   owner: ApiDocumentOwner;
-  ownerId: string;
-  uploadedBy: string;
-  createdAt: string;
+  owner_id: string;
+  uploaded_by: string;
+  created_at: string;
+  fileName?: string;
+  documentType?: string;
+  storagePath?: string;
+  ownerId?: string;
+  uploadedBy?: string;
+  createdAt?: string;
 }
 
 export interface DocumentSignedUrlResponse {
   id: string;
-  fileName: string;
-  documentType: string;
-  storagePath: string;
+  file_name: string;
+  document_type: string;
+  storage_path: string;
   size: number;
-  signedUrl: string;
-  expiresInSeconds: number;
-  createdAt: string;
+  signed_url: string;
+  expires_in_seconds: number;
+  created_at: string;
+  fileName?: string;
+  documentType?: string;
+  storagePath?: string;
+  signedUrl?: string;
+  expiresInSeconds?: number;
+  createdAt?: string;
 }
 
 export interface ApiNotification {
   id: string;
-  userId: string;
+  user_id: string;
   title: string;
   message: string;
   type: ApiNotificationType;
-  isRead: boolean;
-  createdAt: string;
+  is_read: boolean;
+  created_at: string;
+  link_url?: string;
+  userId?: string;
+  isRead?: boolean;
+  createdAt?: string;
   linkUrl?: string;
 }
 
 export interface NotificationReadResponse {
   success: boolean;
   id?: string;
+  read_count?: number;
   readCount?: number;
 }
+

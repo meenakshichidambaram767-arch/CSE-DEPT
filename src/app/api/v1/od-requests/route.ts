@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
 
+import { serializeODRequest } from '@/lib/api/serializers';
+
 // GET /api/v1/od-requests - Paginated & Filtered List
 export async function GET(request: NextRequest) {
   try {
@@ -74,39 +76,10 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    // Format data to match API contract
-    const formattedData = (rawData || []).map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      code: row.code as string,
-      studentId: row.student_id as string,
-      studentName: (row.students as Record<string, unknown>)?.name as string || 'Student',
-      studentRegNo: (row.students as Record<string, unknown>)?.register_number as string || '',
-      department: (row.students as Record<string, unknown>)?.department as string || 'CSE',
-      year: (row.students as Record<string, unknown>)?.year as string || 'II',
-      section: (row.students as Record<string, unknown>)?.section as string || 'A',
-      eventId: row.event_id as string | null,
-      activityId: row.activity_id as string | null,
-      purpose: row.purpose as string,
-      eventName: row.event_name as string,
-      organization: row.organization as string | null,
-      reason: row.reason as string,
-      startDate: row.start_date as string,
-      endDate: row.end_date as string,
-      date: row.start_date as string,
-      fromTime: row.from_time as string | null,
-      toTime: row.to_time as string | null,
-      slotType: row.slot_type as string | null,
-      totalDays: row.total_days as number,
-      venue: row.venue as string,
-      registrationId: row.registration_id as string | null,
-      additionalNotes: row.additional_notes as string | null,
-      status: row.status as string,
-      remarks: row.remarks as string | null,
-      rejectionReason: row.rejection_reason as string | null,
-      revisionNotes: row.revision_notes as string | null,
-      submittedDate: row.submitted_date as string,
-      approvedDate: row.approved_date as string | null,
-    }));
+    // Format data to match API contract in strict snake_case
+    const formattedData = (rawData || []).map((row: Record<string, unknown>) =>
+      serializeODRequest(row)
+    );
 
     return apiSuccess(formattedData, 200, {
       page,
@@ -262,20 +235,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return apiSuccess({
-      id: newOD.id,
-      code: newOD.code,
-      studentId: newOD.student_id,
-      studentName: studentRecord?.name || authUser.name,
-      studentRegNo: studentRecord?.register_number || '',
-      purpose: newOD.purpose,
-      eventName: newOD.event_name,
-      reason: newOD.reason,
-      startDate: newOD.start_date,
-      endDate: newOD.end_date,
-      status: newOD.status,
-      submittedDate: newOD.submitted_date,
-    }, 201);
+    return apiSuccess(
+      serializeODRequest({
+        ...newOD,
+        student_name: studentRecord?.name || authUser.name,
+        student_reg_no: studentRecord?.register_number || '',
+        department: studentRecord?.department || 'CSE',
+        year: studentRecord?.year || 'II',
+        section: studentRecord?.section || 'A',
+      }, {
+        team_members: Array.isArray(team_members) ? team_members : [],
+      }),
+      201
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

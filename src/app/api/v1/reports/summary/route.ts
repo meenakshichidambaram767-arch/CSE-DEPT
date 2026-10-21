@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeReportSummary } from '@/lib/api/serializers';
 
 // GET /api/v1/reports/summary - Department Dashboard & Summary Analytics (HOD Only)
 export async function GET(request: NextRequest) {
@@ -118,19 +119,54 @@ export async function GET(request: NextRequest) {
       completed: allEvents.filter((e) => e.status === 'COMPLETED').length,
     };
 
-    return apiSuccess({
-      department: 'Computer Science and Engineering',
-      academicYear: '2026-2027',
-      students: {
-        total: totalStudents,
-        byYear: studentsByYear,
-        bySection: studentsBySection,
-      },
-      odRequests: odSummary,
-      activities: activitySummary,
-      reviews: reviewSummary,
-      events: eventSummary,
-    });
+    return apiSuccess(
+      serializeReportSummary({
+        department: 'Computer Science and Engineering',
+        academic_year: '2026-2027',
+        total_students: totalStudents,
+        active_ods: odSummary.pending + odSummary.approved,
+        total_activities: activitySummary.total,
+        upcoming_reviews: reviewSummary.scheduled,
+        students: {
+          total: totalStudents,
+          by_year: studentsByYear,
+          by_section: studentsBySection,
+        },
+        od_requests: {
+          total: odSummary.total,
+          pending: odSummary.pending,
+          approved: odSummary.approved,
+          rejected: odSummary.rejected,
+          revision_requested: odSummary.revisionRequested,
+          total_approved_days: odSummary.totalApprovedDays,
+        },
+        activities: {
+          total: activitySummary.total,
+          projects: activitySummary.projects,
+          hackathons: activitySummary.hackathons,
+          internships: activitySummary.internships,
+          status_breakdown: {
+            submitted: activitySummary.statusBreakdown.submitted,
+            active: activitySummary.statusBreakdown.active,
+            rejected: activitySummary.statusBreakdown.rejected,
+            revision_requested: activitySummary.statusBreakdown.revisionRequested,
+            completed: activitySummary.statusBreakdown.completed,
+          },
+        },
+        reviews: {
+          total: reviewSummary.total,
+          scheduled: reviewSummary.scheduled,
+          completed: reviewSummary.completed,
+          total_attended_count: reviewSummary.totalAttendedCount,
+        },
+        events: {
+          total: eventSummary.total,
+          upcoming: eventSummary.upcoming,
+          ongoing: eventSummary.ongoing,
+          completed: eventSummary.completed,
+        },
+      })
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

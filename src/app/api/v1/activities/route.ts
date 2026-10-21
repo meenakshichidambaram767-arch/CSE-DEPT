@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeActivity } from '@/lib/api/serializers';
 
 // GET /api/v1/activities - List Activities (Projects, Hackathons, Internships)
 export async function GET(request: NextRequest) {
@@ -71,33 +72,10 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedData = (rawData || []).map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      code: row.code as string,
-      studentId: row.student_id as string,
-      studentName: (row.students as Record<string, unknown>)?.name as string || '',
-      studentRegNo: (row.students as Record<string, unknown>)?.register_number as string || '',
-      department: (row.students as Record<string, unknown>)?.department as string || 'CSE',
-      year: (row.students as Record<string, unknown>)?.year as string || 'II',
-      section: (row.students as Record<string, unknown>)?.section as string || 'A',
-      type: row.type as string,
-      title: row.title as string,
-      description: row.description as string,
-      technologies: row.technologies || [],
-      startDate: row.start_date,
-      endDate: row.end_date,
-      organization: row.organization,
-      companyName: row.company_name,
-      githubUrl: row.github_url,
-      demoUrl: row.demo_url,
-      status: row.status,
-      rejectionReason: row.rejection_reason,
-      revisionNotes: row.revision_notes,
-      odStatus: row.od_status,
-      reviewCount: row.review_count || 0,
-      guideName: row.guide_name,
-      createdAt: row.created_at,
-    }));
+    // Format data to match API contract in strict snake_case
+    const formattedData = (rawData || []).map((row: Record<string, unknown>) =>
+      serializeActivity(row)
+    );
 
     return apiSuccess(formattedData, 200, {
       page,
@@ -284,15 +262,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return apiSuccess({
-      id: newActivity.id,
-      code: newActivity.code,
-      studentId: newActivity.student_id,
-      type: newActivity.type,
-      title: newActivity.title,
-      status: newActivity.status,
-      createdAt: newActivity.created_at,
-    }, 201);
+    return apiSuccess(
+      serializeActivity({
+        ...newActivity,
+        student_name: studentRecord?.name || authUser.name,
+        student_reg_no: studentRecord?.register_number || '',
+        department: studentRecord?.department || 'CSE',
+        year: studentRecord?.year || 'II',
+        section: studentRecord?.section || 'A',
+      }, {
+        team_members: Array.isArray(team_members) ? team_members : [],
+      }),
+      201
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

@@ -95,7 +95,21 @@ export async function POST(
       return apiError('DATABASE_ERROR', rpcError.message, 500);
     }
 
-    return apiSuccess(rpcResult);
+    const formattedResult = {
+      id: rpcResult.id,
+      code: rpcResult.code,
+      student_id: rpcResult.student_id || rpcResult.studentId,
+      student_name: rpcResult.student_name || rpcResult.studentName,
+      type: rpcResult.type,
+      title: rpcResult.title,
+      status: rpcResult.status,
+      remarks: rpcResult.remarks || null,
+      rejection_reason: rpcResult.rejection_reason || rpcResult.rejectionReason || null,
+      revision_notes: rpcResult.revision_notes || rpcResult.revisionNotes || null,
+      updated_at: rpcResult.updated_at || rpcResult.updatedAt || new Date().toISOString(),
+    };
+
+    return apiSuccess(formattedResult);
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

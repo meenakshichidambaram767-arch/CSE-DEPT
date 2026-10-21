@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeReviewSession } from '@/lib/api/serializers';
 
 // GET /api/v1/reviews/sessions - Filtered Review Sessions Directory
 export async function GET(request: NextRequest) {
@@ -60,35 +61,9 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedSessions = (rawSessions || []).map((s: Record<string, unknown>) => {
-      // Derive non-evaluative review title
-      let title = `Weekly Review #${s.review_number}`;
-      if (s.review_type === 'HACKATHON_POST') {
-        title = 'Post-Hackathon Review';
-      } else if (s.review_type === 'INTERNSHIP_MID') {
-        title = 'Mid Internship Review';
-      } else if (s.review_type === 'INTERNSHIP_FINAL') {
-        title = 'Final Internship Review';
-      }
-
-      return {
-        id: s.id as string,
-        code: s.code as string,
-        activityId: s.activity_id as string,
-        activityTitle: (s.activities as Record<string, unknown>)?.title as string || '',
-        activityType: (s.activities as Record<string, unknown>)?.type as string || 'PROJECT',
-        reviewNumber: s.review_number as number,
-        reviewType: (s.review_type as string) || 'PROJECT_WEEKLY',
-        title,
-        date: s.date as string,
-        time: s.time as string,
-        venue: s.venue as string,
-        status: s.status as string,
-        meetingNotes: s.meeting_notes as string | null,
-        nextWeekGoal: s.next_week_goal as string | null,
-        createdAt: s.created_at as string,
-      };
-    });
+    const formattedSessions = (rawSessions || []).map((s: Record<string, unknown>) =>
+      serializeReviewSession(s)
+    );
 
     return apiSuccess(formattedSessions, 200, {
       page,

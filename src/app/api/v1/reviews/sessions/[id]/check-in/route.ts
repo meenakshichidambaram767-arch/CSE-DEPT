@@ -77,11 +77,13 @@ export async function POST(
     }
 
     return apiSuccess({
-      sessionId: session.id,
-      studentId,
-      studentName: studentRecord?.name || authUser.name,
+      success: true,
+      session_id: session.id,
+      student_id: studentId,
+      student_name: studentRecord?.name || authUser.name,
+      register_number: studentRecord?.register_number || '',
       attended: attRecord.attended,
-      checkInTime: attRecord.check_in_time,
+      check_in_time: attRecord.check_in_time,
       message: 'Attendance check-in verified successfully.',
     });
   } catch (err: unknown) {

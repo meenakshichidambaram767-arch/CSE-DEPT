@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeODRequest } from '@/lib/api/serializers';
 
 export async function PUT(
   request: NextRequest,
@@ -122,14 +123,12 @@ export async function PUT(
       });
     }
 
-    return apiSuccess({
-      id: updatedOD.id,
-      code: updatedOD.code,
-      studentId: updatedOD.student_id,
-      eventName: updatedOD.event_name,
-      status: updatedOD.status,
-      updatedAt: updatedOD.updated_at,
-    });
+    return apiSuccess(
+      serializeODRequest({
+        ...updatedOD,
+        student_name: studentRecord?.name || authUser.name,
+      })
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

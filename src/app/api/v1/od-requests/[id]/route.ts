@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeODRequest } from '@/lib/api/serializers';
 
 export async function GET(
   request: NextRequest,
@@ -102,66 +103,21 @@ export async function GET(
         conflicts.push({
           id: other.id,
           code: other.code,
-          eventName: other.event_name,
+          event_name: other.event_name,
           purpose: other.purpose,
-          startDate: other.start_date,
-          endDate: other.end_date,
+          start_date: other.start_date,
+          end_date: other.end_date,
           status: other.status,
         });
       }
     });
 
-    const responsePayload = {
-      id: od.id,
-      code: od.code,
-      studentId: od.student_id,
-      studentName: od.students?.name || '',
-      studentRegNo: od.students?.register_number || '',
-      department: od.students?.department || 'CSE',
-      year: od.students?.year || 'II',
-      section: od.students?.section || 'A',
-      eventId: od.event_id,
-      activityId: od.activity_id,
-      purpose: od.purpose,
-      eventName: od.event_name,
-      organization: od.organization,
-      reason: od.reason,
-      startDate: od.start_date,
-      endDate: od.end_date,
-      date: od.start_date,
-      fromTime: od.from_time,
-      toTime: od.to_time,
-      slotType: od.slot_type,
-      totalDays: od.total_days,
-      venue: od.venue,
-      registrationId: od.registration_id,
-      additionalNotes: od.additional_notes,
-      status: od.status,
-      remarks: od.remarks,
-      rejectionReason: od.rejection_reason,
-      revisionNotes: od.revision_notes,
-      submittedDate: od.submitted_date,
-      approvedDate: od.approved_date,
-      hasConflict: conflicts.length > 0,
-      conflictCount: conflicts.length,
-      conflictingRequests: conflicts,
-      teamMembers: (teamMembers || []).map((m: Record<string, unknown>) => ({
-        id: m.id as string,
-        name: m.name as string,
-        regNo: m.register_number as string,
-        email: m.email as string,
-        role: m.role as string,
-      })),
-      documents: (docs || []).map((d: Record<string, unknown>) => ({
-        id: d.id as string,
-        name: d.file_name as string,
-        type: d.document_type as string,
-        size: `${Math.round((d.size as number) / 1024)} KB`,
-        uploadDate: d.created_at as string,
-        path: d.storage_path as string,
-      })),
-      statusHistory: formattedHistory,
-    };
+    const responsePayload = serializeODRequest(od, {
+      team_members: teamMembers || [],
+      documents: docs || [],
+      status_history: history || [],
+      conflicts,
+    });
 
     return apiSuccess(responsePayload);
   } catch (err: unknown) {
