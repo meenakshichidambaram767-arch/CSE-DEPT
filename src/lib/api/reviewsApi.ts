@@ -39,15 +39,20 @@ export { ApiError };
 // In-memory contract mock store initialized for isolated dev & unit test fallbacks
 const defaultInitialStore: ReviewSessionContract[] = [
   {
-    id: 'rev-001',
-    activity_id: 'act-001',
+    id: 'rev-sess-001',
+    activity_id: 'act-exam-monitor-01',
     activity_title: 'AI-Based Examination Monitoring System',
+    activity_type: 'PROJECT',
+    review_number: 1,
     review_type: 'PROJECT_WEEKLY',
-    sequence_number: 1,
-    scheduled_date: '2026-10-02',
-    scheduled_time: '14:00',
+    date: '2026-09-25',
+    raw_date: '2026-09-25',
+    time: '14:00',
     venue: 'CSE Lab 2',
     status: 'SCHEDULED',
+    student_team: [
+      { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+    ],
     attendance: [
       {
         student_id: 'usr-student-001',
@@ -56,20 +61,49 @@ const defaultInitialStore: ReviewSessionContract[] = [
         attended: false,
       },
     ],
-    rubric_scores: {},
-    total_score: 0,
+    created_at: '2026-09-20T10:00:00Z',
+  },
+  {
+    id: 'rev-sess-002',
+    activity_id: 'act-exam-monitor-01',
+    activity_title: 'AI-Based Examination Monitoring System',
+    activity_type: 'PROJECT',
+    review_number: 2,
+    review_type: 'PROJECT_WEEKLY',
+    date: '2026-10-02',
+    raw_date: '2026-10-02',
+    time: '14:00',
+    venue: 'CSE Lab 2',
+    status: 'SCHEDULED',
+    qr_code_token: 'HMAC_DYNAMIC_QR_TOKEN_002',
+    student_team: [
+      { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+    ],
+    attendance: [
+      {
+        student_id: 'usr-student-001',
+        name: 'Meena C',
+        reg_no: '714023104088',
+        attended: false,
+      },
+    ],
     created_at: '2026-09-20T10:00:00Z',
   },
   {
     id: 'rev-002',
     activity_id: 'act-001',
     activity_title: 'AI-Based Examination Monitoring System',
+    activity_type: 'PROJECT',
+    review_number: 2,
     review_type: 'PROJECT_WEEKLY',
-    sequence_number: 2,
-    scheduled_date: '2026-10-09',
-    scheduled_time: '14:00',
+    date: '2026-10-09',
+    raw_date: '2026-10-09',
+    time: '14:00',
     venue: 'CSE Lab 2',
     status: 'SCHEDULED',
+    student_team: [
+      { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+    ],
     attendance: [
       {
         student_id: 'usr-student-001',
@@ -78,20 +112,23 @@ const defaultInitialStore: ReviewSessionContract[] = [
         attended: false,
       },
     ],
-    rubric_scores: {},
-    total_score: 0,
     created_at: '2026-09-20T10:00:00Z',
   },
   {
     id: 'rev-003',
     activity_id: 'act-002',
     activity_title: 'Smart Water Management IoT',
+    activity_type: 'PROJECT',
+    review_number: 1,
     review_type: 'PROJECT_WEEKLY',
-    sequence_number: 1,
-    scheduled_date: '2026-09-25',
-    scheduled_time: '10:00',
+    date: '2026-09-25',
+    raw_date: '2026-09-25',
+    time: '10:00',
     venue: 'IoT Lab',
     status: 'COMPLETED',
+    student_team: [
+      { name: 'Nakshatra S V', reg_no: '714022104153', email: 'nakshatra.22cse@siet.ac.in', role: 'Team Lead' },
+    ],
     attendance: [
       {
         student_id: 'usr-student-002',
@@ -103,8 +140,6 @@ const defaultInitialStore: ReviewSessionContract[] = [
     ],
     meeting_notes: 'Initial sensor calibration completed successfully.',
     next_week_goal: 'Integrate telemetry dashboard with Cloud MQTT broker.',
-    rubric_scores: {},
-    total_score: 0,
     finalized_at: '2026-09-25T11:00:00Z',
     created_at: '2026-09-18T10:00:00Z',
   },
@@ -278,13 +313,14 @@ export const reviewsApi = {
       });
     }
 
-    if (!payload.scheduled_date) {
+    const scheduledDate = payload.scheduled_date || payload.start_date;
+    if (!scheduledDate) {
       throw new ApiError(400, 'VALIDATION_ERROR', 'scheduled_date is required', {
         scheduled_date: 'Must be a valid date YYYY-MM-DD',
       });
     }
 
-    const count = payload.total_reviews || (payload.review_type === 'HACKATHON_POST' ? 1 : payload.review_type.startsWith('INTERNSHIP') ? 2 : 8);
+    const count = payload.total_reviews || payload.count || (payload.review_type === 'HACKATHON_POST' ? 1 : payload.review_type.startsWith('INTERNSHIP') ? 2 : 8);
 
     if (payload.review_type === 'HACKATHON_POST' && count !== 1) {
       throw new ApiError(
@@ -297,7 +333,7 @@ export const reviewsApi = {
     const res = await apiClient.post<ApiReviewSession[]>('/api/v1/reviews/schedule', payload, {
       fallback: () => {
         const createdContracts: ReviewSessionContract[] = [];
-        const baseDate = new Date(payload.scheduled_date);
+        const baseDate = new Date(scheduledDate);
 
         for (let i = 1; i <= count; i++) {
           const sessionDate = new Date(baseDate);
@@ -322,16 +358,24 @@ export const reviewsApi = {
           const contract: ReviewSessionContract = {
             id: newId,
             activity_id: payload.activity_id,
-            activity_title: payload.activity_title,
+            activity_title: payload.activity_title || 'Review Session',
+            activity_type: payload.review_type.startsWith('PROJECT') ? 'PROJECT' : payload.review_type.startsWith('HACKATHON') ? 'HACKATHON' : 'INTERNSHIP',
+            review_number: i,
             review_type: sessionType,
-            sequence_number: i,
-            scheduled_date: dateStr,
-            scheduled_time: payload.time || '10:00 AM',
+            date: dateStr,
+            raw_date: dateStr,
+            time: payload.time || '10:00 AM',
             venue: payload.venue || 'CSE Department',
             status: 'SCHEDULED',
+            student_team: (teamRoster || [
+              { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+            ]).map((t) => ({
+              name: t.name,
+              reg_no: t.reg_no || t.regNo || '',
+              email: t.email,
+              role: t.role,
+            })),
             attendance: initialAttendance,
-            rubric_scores: {},
-            total_score: 0,
             created_at: new Date().toISOString(),
           };
 
@@ -345,6 +389,16 @@ export const reviewsApi = {
 
     const list = Array.isArray(res) ? res : ((res as any).data || []);
     return list.map(mapApiReviewToReviewSession);
+  },
+
+  /**
+   * Alias for schedule
+   */
+  async scheduleReviews(
+    payload: ScheduleReviewContractPayload,
+    teamRoster?: Array<{ name: string; reg_no?: string; regNo?: string; email: string; role?: string }>
+  ): Promise<ReviewSession[]> {
+    return this.schedule(payload, teamRoster);
   },
 
   /**

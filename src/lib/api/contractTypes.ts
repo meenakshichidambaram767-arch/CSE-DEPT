@@ -50,11 +50,13 @@ export interface ScheduleReviewContractPayload {
   activity_id: string;
   activity_title?: string;
   review_type: ReviewType;
-  scheduled_date: string; // YYYY-MM-DD
+  scheduled_date?: string; // YYYY-MM-DD
+  start_date?: string;
   time: string;
   venue: string;
   faculty_reviewer?: string;
   total_reviews?: number;
+  count?: number;
   interval_weeks?: number;
 }
 
