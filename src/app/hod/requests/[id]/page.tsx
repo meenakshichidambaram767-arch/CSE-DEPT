@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { odApi } from '@/lib/api/odApi';
+import { areDevMocksEnabled } from '@/lib/api/devMocks';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import {
   ArrowLeft,
@@ -64,6 +65,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
 
   const [requestData, setRequestData] = useState<ODDetailRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Decision Modal States
   const [showConfirmApprove, setShowConfirmApprove] = useState(false);
@@ -82,14 +84,8 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     async function fetchDetail() {
       setIsLoading(true);
+      setFetchError(null);
       try {
-        const contextReq = getODById(resolvedParams.id);
-        if (contextReq) {
-          setRequestData(contextReq as unknown as ODDetailRecord);
-          setIsLoading(false);
-          return;
-        }
-
         const res = await odApi.getODRequestById(resolvedParams.id);
         if (res && res.data) {
           setRequestData(res.data as unknown as ODDetailRecord);
@@ -98,11 +94,17 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
         }
       } catch (err) {
         console.error('odApi fetch error:', err);
+        if (areDevMocksEnabled()) {
+          const contextReq = getODById(resolvedParams.id);
+          if (contextReq) {
+            setRequestData(contextReq as unknown as ODDetailRecord);
+            setIsLoading(false);
+            return;
+          }
+        }
+        setFetchError(err instanceof Error ? err.message : 'Failed to load request details from server.');
       }
 
-      // Context Fallback
-      const contextReq = getODById(resolvedParams.id);
-      if (contextReq) setRequestData(contextReq as unknown as ODDetailRecord);
       setIsLoading(false);
     }
 
@@ -111,6 +113,17 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
 
   if (isLoading) {
     return <div className="py-20 text-center text-xs text-[#586658]">Loading request details...</div>;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="py-20 text-center space-y-3">
+        <p className="text-sm text-red-600">{fetchError}</p>
+        <Link href="/hod/requests" className="text-xs font-semibold text-[#0a5c36] underline">
+          ← Back to requests
+        </Link>
+      </div>
+    );
   }
 
   if (!requestData) {

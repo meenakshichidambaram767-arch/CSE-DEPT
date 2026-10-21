@@ -7,7 +7,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { EmptyState } from '@/components/common/EmptyState';
 import { reportsApi, StudentReportSummary } from '@/lib/api/reportsApi';
 import { documentsApi } from '@/lib/api/documentsApi';
-import { ApiError } from '@/lib/api/odApi';
+import { ApiError, areDevMocksEnabled } from '@/lib/api/client';
 import {
   FileSpreadsheet,
   Download,
@@ -45,9 +45,9 @@ export default function StudentReportsPage() {
         setReportData(res.data);
       }
     } catch (err: unknown) {
-      if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+      if (areDevMocksEnabled() && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
         setBackendNotice(
-          'Backend endpoint GET /api/v1/me returned HTTP 404 (Endpoint not deployed). Displaying static reference report (LOCAL / UNPERSISTED PROTOTYPE DATA).'
+          'Displaying static reference report (DEV MOCK DATA).'
         );
         setReportData(reportsApi.getFallbackStudentReport());
       } else if (err instanceof ApiError) {
@@ -75,9 +75,9 @@ export default function StudentReportsPage() {
       })
       .catch((err: unknown) => {
         if (isMounted) {
-          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+          if (areDevMocksEnabled() && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
             setBackendNotice(
-              'Backend endpoint GET /api/v1/me returned HTTP 404 (Endpoint not deployed). Displaying static reference report (LOCAL / UNPERSISTED PROTOTYPE DATA).'
+              'Displaying static reference report (DEV MOCK DATA).'
             );
             setReportData(reportsApi.getFallbackStudentReport());
           } else if (err instanceof ApiError) {

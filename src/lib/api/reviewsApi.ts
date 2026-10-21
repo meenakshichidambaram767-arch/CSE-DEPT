@@ -852,6 +852,32 @@ export const reviewsApi = {
     const found = sessionStore.find((s) => s.id === sessionId);
     return mapContractToReviewSession(found!);
   },
+
+  /**
+   * Aliases for DataContext and component consumers
+   */
+  async cancelSession(sessionId: string, _reason?: string): Promise<ReviewSession> {
+    return this.cancelReview(sessionId);
+  },
+
+  async updateAttendance(sessionId: string, attendance: AttendanceItem[]): Promise<AttendanceItem[]> {
+    return this.recordAttendance(sessionId, attendance);
+  },
+
+  async updateNotes(
+    sessionId: string,
+    notes: { meetingNotes?: string; nextWeekGoal?: string } | { meeting_notes: string; next_week_goal?: string }
+  ): Promise<{ meetingNotes: string; nextWeekGoal?: string }> {
+    return this.saveMeetingNotes(
+      sessionId,
+      'meeting_notes' in notes
+        ? notes
+        : {
+            meeting_notes: notes.meetingNotes || '',
+            next_week_goal: notes.nextWeekGoal,
+          }
+    );
+  },
 };
 
 export default reviewsApi;

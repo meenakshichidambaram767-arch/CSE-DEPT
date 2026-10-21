@@ -4,17 +4,50 @@
  */
 
 import { apiClient, ApiError } from './client';
-import { PaginatedResponse, StudentProfile, User } from '@/types';
-import { mockUsers } from '@/data/mock';
+import { PaginatedResponse, StudentProfile } from '@/types';
 
 export { ApiError };
 
+const DEFAULT_FALLBACK_STUDENTS: StudentProfile[] = [
+  {
+    id: 'std-student-001',
+    userId: 'usr-student-001',
+    registerNumber: '714023104088',
+    name: 'Meena C',
+    department: 'CSE',
+    year: 'III',
+    section: 'B',
+    email: 'meena.23cse@siet.ac.in',
+  },
+  {
+    id: 'std-student-002',
+    userId: 'usr-student-002',
+    registerNumber: '714023104042',
+    name: 'Dharun S',
+    department: 'CSE',
+    year: 'III',
+    section: 'A',
+    email: 'dharun.23cse@siet.ac.in',
+  },
+  {
+    id: 'std-student-003',
+    userId: 'usr-student-003',
+    registerNumber: '714023104099',
+    name: 'Nithish K',
+    department: 'CSE',
+    year: 'III',
+    section: 'B',
+    email: 'nithish.23cse@siet.ac.in',
+  },
+];
+
 export const studentsApi = {
   /**
-   * Synchronous helper for student selection lists in prototype UI
+   * Helper for student directory list via GET /api/v1/students
    */
-  getRealStudents(): User[] {
-    return mockUsers.filter((u) => u.role === 'STUDENT');
+  async getRealStudents(): Promise<StudentProfile[]> {
+    const res = await this.getStudents({ page_size: 100 });
+    return res.data || [];
   },
 
   /**
@@ -30,23 +63,14 @@ export const studentsApi = {
   }): Promise<PaginatedResponse<StudentProfile>> {
     return apiClient.get<PaginatedResponse<StudentProfile>>('/api/v1/students', {
       params: params ? { ...params } : undefined,
-      fallback: () => {
-        const studentUsers = mockUsers.filter((u) => u.role === 'STUDENT');
-        const profiles: StudentProfile[] = studentUsers.map((u) => ({
-          id: u.id,
-          userId: u.id,
-          registerNumber: u.registerNumber || '',
-          name: u.name,
-          department: u.department,
-          year: (u.year as 'I' | 'II' | 'III' | 'IV') || 'III',
-          section: (u.section as 'A' | 'B' | 'C' | 'D' | 'E') || 'A',
-          email: u.email,
-        }));
-        return {
-          data: profiles,
-          meta: { page: params?.page || 1, page_size: params?.page_size || 20, total: profiles.length },
-        };
-      },
+      fallback: () => ({
+        data: DEFAULT_FALLBACK_STUDENTS,
+        meta: {
+          page: params?.page || 1,
+          page_size: params?.page_size || 20,
+          total: DEFAULT_FALLBACK_STUDENTS.length,
+        },
+      }),
     });
   },
 
@@ -59,19 +83,11 @@ export const studentsApi = {
       `/api/v1/students/${encodeURIComponent(id)}`,
       {
         fallback: () => {
-          const u = mockUsers.find((user) => user.id === id || user.registerNumber === id) || mockUsers[0];
-          return {
-            data: {
-              id: u.id,
-              userId: u.id,
-              registerNumber: u.registerNumber || '714023104088',
-              name: u.name,
-              department: u.department,
-              year: (u.year as 'I' | 'II' | 'III' | 'IV') || 'III',
-              section: (u.section as 'A' | 'B' | 'C' | 'D' | 'E') || 'A',
-              email: u.email,
-            },
-          };
+          const found =
+            DEFAULT_FALLBACK_STUDENTS.find(
+              (user) => user.id === id || user.registerNumber === id
+            ) || DEFAULT_FALLBACK_STUDENTS[0];
+          return { data: found };
         },
       }
     );

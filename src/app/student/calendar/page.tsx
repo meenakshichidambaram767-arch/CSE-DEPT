@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/eventsApi';
 import { odApi, ApiError } from '@/lib/api/odApi';
+import { areDevMocksEnabled } from '@/lib/api/devMocks';
 import { ODEvent, ODApplication } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import {
@@ -38,8 +39,12 @@ export default function StudentCalendarPage() {
       }
     } catch (err: unknown) {
       if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        hasBackend404 = true;
-        setEvents(eventsApi.getFallbackEvents());
+        if (areDevMocksEnabled()) {
+          hasBackend404 = true;
+          setEvents(eventsApi.getFallbackEvents());
+        } else {
+          setErrorMsg(err.message || 'Events service is currently unavailable.');
+        }
       } else if (err instanceof ApiError) {
         setErrorMsg(err.message);
       }
@@ -52,58 +57,25 @@ export default function StudentCalendarPage() {
       }
     } catch (err: unknown) {
       if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        hasBackend404 = true;
-        setApprovedODs(odApi.getFallbackODs().filter((od) => od.status === 'APPROVED'));
+        if (areDevMocksEnabled()) {
+          hasBackend404 = true;
+          setApprovedODs(odApi.getFallbackODs().filter((od) => od.status === 'APPROVED'));
+        } else if (!errorMsg) {
+          setErrorMsg(err.message || 'OD service is currently unavailable.');
+        }
       }
     }
 
     if (hasBackend404) {
-      setBackendNotice('Backend endpoint returned 404. Displaying cached schedule and duty leave timeline.');
+      setBackendNotice('Backend endpoint returned 404. Displaying cached schedule and duty leave timeline (DEV MOCK DATA).');
     }
 
     setIsRefreshing(false);
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    Promise.all([
-      eventsApi.getEvents().catch((err) => {
-        if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-          return { data: eventsApi.getFallbackEvents(), is404: true };
-        }
-        throw err;
-      }),
-      odApi.getODRequests({ status: 'APPROVED' }).catch((err) => {
-        if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-          return { data: odApi.getFallbackODs().filter((od) => od.status === 'APPROVED'), is404: true };
-        }
-        throw err;
-      }),
-    ])
-      .then(([eventsResult, odsResult]) => {
-        if (isMounted) {
-          if (eventsResult?.data) setEvents(eventsResult.data);
-          if (odsResult?.data) setApprovedODs(odsResult.data);
-          if ((eventsResult as { is404?: boolean })?.is404 || (odsResult as { is404?: boolean })?.is404) {
-            setBackendNotice('Backend endpoint returned 404. Displaying cached schedule and duty leave timeline.');
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        if (isMounted) {
-          setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load calendar schedule.');
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    handleManualRefresh();
   }, []);
 
   return (

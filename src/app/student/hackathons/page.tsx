@@ -9,18 +9,21 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { activitiesApi } from '@/lib/api/activitiesApi';
 import { ApiError } from '@/lib/api/odApi';
 import { Activity } from '@/types';
-import { Plus, Trophy, Sparkles, Calendar, Users, ArrowRight, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
+import { areDevMocksEnabled } from '@/lib/api/devMocks';
+import { Plus, Trophy, Sparkles, Calendar, Users, ArrowRight, RefreshCw, AlertTriangle, Loader2, AlertCircle } from 'lucide-react';
 
 export default function StudentHackathonsPage() {
   const [hackathons, setHackathons] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
 
   const fetchHackathons = async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     else setIsLoading(true);
+    setErrorMsg(null);
     setBackendNotice(null);
 
     try {
@@ -28,8 +31,14 @@ export default function StudentHackathonsPage() {
       if (res.data) setHackathons(res.data);
     } catch (err: unknown) {
       if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
-        setHackathons(activitiesApi.getFallbackActivities('HACKATHON'));
+        if (areDevMocksEnabled()) {
+          setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (DEV MOCK DATA).');
+          setHackathons(activitiesApi.getFallbackActivities('HACKATHON'));
+        } else {
+          setErrorMsg(err.message || 'Hackathons service is currently unavailable.');
+        }
+      } else {
+        setErrorMsg(err instanceof Error ? err.message : 'Failed to load hackathons.');
       }
     } finally {
       setIsLoading(false);
@@ -38,25 +47,7 @@ export default function StudentHackathonsPage() {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    activitiesApi
-      .getActivities({ type: 'HACKATHON' })
-      .then((res) => {
-        if (isMounted && res.data) setHackathons(res.data);
-      })
-      .catch((err: unknown) => {
-        if (isMounted && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-          setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
-          setHackathons(activitiesApi.getFallbackActivities('HACKATHON'));
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    fetchHackathons();
   }, []);
 
   const filtered = hackathons.filter(
@@ -108,8 +99,15 @@ export default function StudentHackathonsPage() {
             <span>{backendNotice}</span>
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded border border-amber-300">
-            Nattu Client Mode
+            Dev Mock Mode
           </span>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-700 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <div className="flex-1 font-medium">{errorMsg}</div>
         </div>
       )}
 

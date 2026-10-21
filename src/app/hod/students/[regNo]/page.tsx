@@ -1,9 +1,10 @@
 'use client';
 
-import React, { use } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
-import { mockUsers } from '@/data/mock';
+import { recordsApi } from '@/lib/api/recordsApi';
+import { StudentProfile } from '@/types';
 import { ArrowLeft, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 
@@ -12,12 +13,31 @@ export default function StudentProfilePage({ params }: { params: Promise<{ regNo
   const { odApplications, getStudentStats } = useData();
 
   const regNo = resolvedParams.regNo;
-  const student = mockUsers.find((u) => u.registerNumber === regNo) || {
-    name: 'Meena C',
+  const [student, setStudent] = useState<Partial<StudentProfile>>({
+    name: 'Loading...',
     registerNumber: regNo,
-    year: 'II',
+    year: 'III',
     department: 'CSE',
-  };
+  });
+
+  useEffect(() => {
+    recordsApi
+      .getStudentSummary(regNo)
+      .then((res) => {
+        if (res.data) {
+          setStudent({
+            name: res.data.student_name || 'Student',
+            registerNumber: res.data.register_number || regNo,
+            year: (res.data.year as any) || 'III',
+            department: res.data.department || 'CSE',
+            section: (res.data.section as any) || 'A',
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch student record summary:', err);
+      });
+  }, [regNo]);
 
   const studentODs = odApplications.filter((od) => od.studentRegNo === regNo);
   const stats = getStudentStats(regNo);

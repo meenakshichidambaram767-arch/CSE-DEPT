@@ -4,9 +4,10 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { odApi } from '@/lib/api/odApi';
+import { areDevMocksEnabled } from '@/lib/api/devMocks';
 import { ODApplication } from '@/types';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
-import { Search, ArrowRight, Check, X, GraduationCap } from 'lucide-react';
+import { Search, ArrowRight, Check, X, GraduationCap, AlertCircle } from 'lucide-react';
 
 const CATEGORY_TABS = [
   { id: 'ALL', label: 'All Categories' },
@@ -38,12 +39,15 @@ function RequestsContent() {
 
   // API Data State
   const [apiData, setApiData] = useState<ODApplication[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Fetch OD Requests through odApi abstraction
   useEffect(() => {
     async function fetchODs() {
       setIsLoading(true);
+      setErrorMsg(null);
       try {
         const res = await odApi.getODRequests({
           status: activeTab !== 'ALL' ? activeTab : undefined,
@@ -54,20 +58,31 @@ function RequestsContent() {
         });
         if (res && res.data) {
           setApiData(res.data);
+          setHasLoaded(true);
           setIsLoading(false);
           return;
         }
       } catch (err) {
         console.error('Error fetching ODs from odApi:', err);
+        if (areDevMocksEnabled()) {
+          setApiData(contextODs);
+          setHasLoaded(true);
+        } else {
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to fetch OD requests from server.');
+        }
       }
       setIsLoading(false);
     }
 
     fetchODs();
-  }, [activeTab, selectedYear, selectedSection, selectedCategory, searchTerm]);
+  }, [activeTab, selectedYear, selectedSection, selectedCategory, searchTerm, contextODs]);
 
-  // Use API data if available, else context fallback
-  const displayApplications = apiData.length > 0 ? apiData : contextODs;
+  // Use API data once loaded, or dev fallback if mocks enabled
+  const displayApplications = hasLoaded
+    ? apiData
+    : areDevMocksEnabled()
+    ? contextODs
+    : [];
 
   const pendingCount = displayApplications.filter((r) => r.status === 'PENDING').length;
   const approvedCount = displayApplications.filter((r) => r.status === 'APPROVED').length;
@@ -423,6 +438,13 @@ function RequestsContent() {
           </div>
         )}
       </div>
+
+      {errorMsg && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
       {/* 5. REQUEST ROWS */}
       {isLoading ? (

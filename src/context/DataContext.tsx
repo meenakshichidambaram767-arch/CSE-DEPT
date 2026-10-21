@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Activity,
   ActivityStatus,
@@ -18,11 +18,12 @@ import {
 import {
   ApiNotification,
 } from '@/types/contract';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, areDevMocksEnabled } from '@/lib/api/client';
 import { odApi } from '@/lib/api/odApi';
 import { activitiesApi } from '@/lib/api/activitiesApi';
 import { reviewsApi } from '@/lib/api/reviewsApi';
 import { notificationsApi } from '@/lib/api/notificationsApi';
+import { eventsApi } from '@/lib/api/eventsApi';
 import { recordsApi } from '@/lib/api/recordsApi';
 import { reportsApi } from '@/lib/api/reportsApi';
 import {
@@ -74,9 +75,17 @@ export interface DomainState {
 function createDomainState(
   count: number,
   error: ApiError | null = null,
+  isLoading: boolean = false,
   status: DomainStateStatus = 'success'
 ): DomainState {
-  const effectiveStatus = error ? 'error' : count === 0 ? 'empty' : status;
+  let effectiveStatus: DomainStateStatus = status;
+  if (error) {
+    effectiveStatus = 'error';
+  } else if (isLoading) {
+    effectiveStatus = 'loading';
+  } else if (count === 0) {
+    effectiveStatus = 'empty';
+  }
   return {
     status: effectiveStatus,
     error,
@@ -112,14 +121,14 @@ export interface DataContextType {
   clearError: () => void;
 
   // Student Actions (Contract-Aligned)
-  addActivity: (data: Partial<Activity>) => Activity;
-  addProject: (data: Partial<Activity>) => Activity;
-  addInternship: (data: Partial<Activity>) => Activity;
-  addHackathon: (data: Partial<Activity>) => Activity;
-  resubmitActivity: (id: string, notes?: string) => Activity | undefined;
-  addODApplication: (data: Partial<ODApplication>) => ODApplication;
-  addODSubmission: (data: Partial<ODApplication>) => ODApplication; // alias
-  resubmitOD: (id: string, notes?: string) => ODApplication | undefined;
+  addActivity: (data: Partial<Activity>) => Promise<Activity> | Activity;
+  addProject: (data: Partial<Activity>) => Promise<Activity> | Activity;
+  addInternship: (data: Partial<Activity>) => Promise<Activity> | Activity;
+  addHackathon: (data: Partial<Activity>) => Promise<Activity> | Activity;
+  resubmitActivity: (id: string, notes?: string) => Promise<Activity | undefined> | Activity | undefined;
+  addODApplication: (data: Partial<ODApplication>) => Promise<ODApplication> | ODApplication;
+  addODSubmission: (data: Partial<ODApplication>) => Promise<ODApplication> | ODApplication; // alias
+  resubmitOD: (id: string, notes?: string) => Promise<ODApplication | undefined> | ODApplication | undefined;
   addODEvent: (event: ODEvent) => ODEvent;
   submitWeeklyProgress: (
     reviewSessionId: string,
@@ -132,18 +141,18 @@ export interface DataContextType {
       blockers: string;
       githubUrl?: string;
     }
-  ) => WeeklyProgress;
-  markAttendanceViaQR: (reviewSessionId: string, studentId: string) => boolean;
+  ) => Promise<WeeklyProgress> | WeeklyProgress;
+  markAttendanceViaQR: (reviewSessionId: string, studentId: string) => Promise<boolean> | boolean;
 
   // HOD Actions (Contract-Aligned)
-  approveActivity: (id: string, remarks?: string) => void;
-  rejectActivity: (id: string, reason: string) => void;
-  requestRevisionActivity: (id: string, notes: string) => void;
-  bulkApproveActivities: (ids: string[]) => void;
-  approveOD: (id: string, remarks?: string) => void;
-  rejectOD: (id: string, reason: string) => void;
-  requestRevisionOD: (id: string, notes: string) => void;
-  bulkApproveOD: (ids: string[]) => void;
+  approveActivity: (id: string, remarks?: string) => Promise<void> | void;
+  rejectActivity: (id: string, reason: string) => Promise<void> | void;
+  requestRevisionActivity: (id: string, notes: string) => Promise<void> | void;
+  bulkApproveActivities: (ids: string[]) => Promise<void> | void;
+  approveOD: (id: string, remarks?: string) => Promise<void> | void;
+  rejectOD: (id: string, reason: string) => Promise<void> | void;
+  requestRevisionOD: (id: string, notes: string) => Promise<void> | void;
+  bulkApproveOD: (ids: string[]) => Promise<void> | void;
   scheduleRecurringReviews: (params: {
     projectId: string;
     dayOfWeek?: string;
@@ -153,11 +162,11 @@ export interface DataContextType {
     count: number;
     intervalWeeks?: number;
     reviewType?: ReviewType;
-  }) => ReviewSession[];
+  }) => Promise<ReviewSession[]> | ReviewSession[];
   updateReviewSession: (id: string, updates: Partial<ReviewSession>) => void;
-  cancelReviewSession: (id: string) => void;
-  recordReviewAttendance: (reviewSessionId: string, attendance: AttendanceItem[]) => void;
-  saveMeetingNotes: (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string) => void;
+  cancelReviewSession: (id: string) => Promise<void> | void;
+  recordReviewAttendance: (reviewSessionId: string, attendance: AttendanceItem[]) => Promise<void> | void;
+  saveMeetingNotes: (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string) => Promise<void> | void;
   checkInReviewQR: (
     reviewSessionId: string,
     token: string,
@@ -170,8 +179,8 @@ export interface DataContextType {
     notes?: { meetingNotes?: string; nextWeekGoal?: string }
   ) => Promise<FinalizeReviewResponse>;
   broadcastReminder: (title: string, message: string, targetType?: 'ALL' | 'STUDENT') => void;
-  markNotificationAsRead: (id: string) => void;
-  clearAllNotifications: () => void;
+  markNotificationAsRead: (id: string) => Promise<void> | void;
+  clearAllNotifications: () => Promise<void> | void;
 
   // Phase 6 Records & Reports Contract APIs
   fetchStudentRecords: (query?: StudentRecordQuery) => Promise<StudentRecordListResponse>;
@@ -248,11 +257,22 @@ function buildInitialNotifications(): Notification[] {
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   // Domain Entity Collections initialized from Contract Fixtures
-  const [activities, setActivities] = useState<Activity[]>(buildInitialActivities);
-  const [reviews, setReviews] = useState<ReviewSession[]>(buildInitialReviews);
-  const [odApplications, setODApplications] = useState<ODApplication[]>(buildInitialODApplications);
-  const [notifications, setNotifications] = useState<Notification[]>(buildInitialNotifications);
-  const [odEvents, setODEvents] = useState<ODEvent[]>(() => [...mockODEvents]);
+  // Domain Entity Collections initialized conditionally based on areDevMocksEnabled()
+  const [activities, setActivities] = useState<Activity[]>(() =>
+    areDevMocksEnabled() ? buildInitialActivities() : []
+  );
+  const [reviews, setReviews] = useState<ReviewSession[]>(() =>
+    areDevMocksEnabled() ? buildInitialReviews() : []
+  );
+  const [odApplications, setODApplications] = useState<ODApplication[]>(() =>
+    areDevMocksEnabled() ? buildInitialODApplications() : []
+  );
+  const [notifications, setNotifications] = useState<Notification[]>(() =>
+    areDevMocksEnabled() ? buildInitialNotifications() : []
+  );
+  const [odEvents, setODEvents] = useState<ODEvent[]>(() =>
+    areDevMocksEnabled() ? [...mockODEvents] : []
+  );
 
   // Domain Lifecycle State & RFC 7807 Error Tracking
   const [odError, setOdError] = useState<ApiError | null>(null);
@@ -260,6 +280,96 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [reviewsError, setReviewsError] = useState<ApiError | null>(null);
   const [notificationsError, setNotificationsError] = useState<ApiError | null>(null);
   const [lastError, setLastError] = useState<ApiError | null>(null);
+  const [isHydrating, setIsHydrating] = useState<boolean>(() => !areDevMocksEnabled());
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function hydrate() {
+      try {
+        const [odRes, actRes, revRes, notifRes, evtRes] = await Promise.allSettled([
+          odApi.getODRequests(),
+          activitiesApi.getActivities(),
+          reviewsApi.getReviewSessions(),
+          notificationsApi.getNotifications(),
+          eventsApi.getEvents(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (odRes.status === 'fulfilled' && odRes.value?.data) {
+          setODApplications(odRes.value.data);
+          setOdError(null);
+        } else if (odRes.status === 'rejected' && !areDevMocksEnabled()) {
+          setOdError(
+            odRes.reason instanceof ApiError
+              ? odRes.reason
+              : new ApiError('OD_FETCH_FAILED', String(odRes.reason))
+          );
+        }
+
+        if (actRes.status === 'fulfilled' && actRes.value?.data) {
+          setActivities(actRes.value.data);
+          setActivitiesError(null);
+        } else if (actRes.status === 'rejected' && !areDevMocksEnabled()) {
+          setActivitiesError(
+            actRes.reason instanceof ApiError
+              ? actRes.reason
+              : new ApiError('ACTIVITIES_FETCH_FAILED', String(actRes.reason))
+          );
+        }
+
+        if (revRes.status === 'fulfilled' && revRes.value?.data) {
+          setReviews(revRes.value.data);
+          setReviewsError(null);
+        } else if (revRes.status === 'rejected' && !areDevMocksEnabled()) {
+          setReviewsError(
+            revRes.reason instanceof ApiError
+              ? revRes.reason
+              : new ApiError('REVIEWS_FETCH_FAILED', String(revRes.reason))
+          );
+        }
+
+        if (notifRes.status === 'fulfilled' && notifRes.value?.data) {
+          setNotifications(
+            notifRes.value.data.map((n: ApiNotification) => ({
+              id: n.id,
+              userId: n.user_id || n.userId || '',
+              title: n.title,
+              message: n.message,
+              type: n.type,
+              isRead: n.is_read ?? n.isRead ?? false,
+              createdAt: n.created_at || n.createdAt || new Date().toISOString(),
+              linkUrl: n.link_url || n.linkUrl || '',
+            }))
+          );
+          setNotificationsError(null);
+        } else if (notifRes.status === 'rejected' && !areDevMocksEnabled()) {
+          setNotificationsError(
+            notifRes.reason instanceof ApiError
+              ? notifRes.reason
+              : new ApiError('NOTIFICATIONS_FETCH_FAILED', String(notifRes.reason))
+          );
+        }
+
+        if (evtRes.status === 'fulfilled' && evtRes.value?.data) {
+          setODEvents(evtRes.value.data);
+        }
+      } catch (err) {
+        console.error('Error hydrating data context:', err);
+      } finally {
+        if (isMounted) {
+          setIsHydrating(false);
+        }
+      }
+    }
+
+    hydrate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const clearError = () => {
     setOdError(null);
@@ -269,10 +379,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setLastError(null);
   };
 
-  const odState = createDomainState(odApplications.length, odError);
-  const activitiesState = createDomainState(activities.length, activitiesError);
-  const reviewsState = createDomainState(reviews.length, reviewsError);
-  const notificationsState = createDomainState(notifications.length, notificationsError);
+  const odState = createDomainState(odApplications.length, odError, isHydrating);
+  const activitiesState = createDomainState(activities.length, activitiesError, isHydrating);
+  const reviewsState = createDomainState(reviews.length, reviewsError, isHydrating);
+  const notificationsState = createDomainState(notifications.length, notificationsError, isHydrating);
 
   // Filtered views
   const projects = activities.filter((a) => a.type === 'PROJECT');
@@ -283,62 +393,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // ACTIVITIES ACTIONS (API CONTRACT ALIGNED)
   // ==========================================
 
-  const addActivity = (data: Partial<Activity>): Activity => {
+  const addActivity = async (data: Partial<Activity>): Promise<Activity> => {
     try {
       const payload = mapActivityToApiPayload(data);
-      // Route through Phase 1 API abstraction (offline fixture resolver)
-      activitiesApi.createActivity(payload);
-
-      const typePrefix = data.type === 'PROJECT' ? 'PRJ' : data.type === 'HACKATHON' ? 'HCK' : 'INT';
-      const typeCount = activities.filter((a) => a.type === data.type).length + 1;
-      const newId = `${typePrefix}-2026-${String(typeCount).padStart(3, '0')}`;
-      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-      const newActivity: Activity = {
-        id: newId,
-        studentId: data.studentId || 'usr-student-001',
-        studentName: data.studentName || 'Meena C',
-        studentRegNo: data.studentRegNo || '714023104088',
-        department: data.department || 'CSE',
-        year: data.year || 'II',
-        type: payload.type,
-        title: payload.title || 'Untitled Activity',
-        description: payload.description || '',
-        organization: payload.organization || (payload.type === 'HACKATHON' ? 'National Tech Sprint' : 'CSE Department Lab'),
-        eventName: data.eventName,
-        startDate: payload.start_date,
-        endDate: payload.end_date || '2026-12-15',
-        technologies: payload.technologies || ['Python', 'FastAPI'],
-        githubUrl: payload.github_url,
-        demoUrl: payload.demo_url,
-        proofUrl: data.proofUrl || '/docs/submitted-proof.pdf',
-        proofDocName: data.proofDocName || 'Proposal_Document.pdf',
-        additionalNotes: data.additionalNotes,
-        teamMembers: data.teamMembers && data.teamMembers.length > 0 ? data.teamMembers : [
-          { name: data.studentName || 'Meena C', regNo: data.studentRegNo || '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' }
-        ],
-        status: 'SUBMITTED',
-        timeline: [
-          {
-            id: `t-${Date.now()}-1`,
-            date: todayStr,
-            title: `${payload.type === 'PROJECT' ? 'Project' : payload.type === 'HACKATHON' ? 'Hackathon Entry' : 'Internship NOC'} Submitted`,
-            description: `Submitted by ${data.studentName || 'Meena C'} for HOD review.`,
-            status: 'COMPLETED',
-          },
-          {
-            id: `t-${Date.now()}-2`,
-            date: 'Pending',
-            title: 'Under HOD Review',
-            description: 'Awaiting department evaluation and clearance.',
-            status: 'CURRENT',
-          },
-        ],
-        guideName: payload.guide_name || 'Dr. Priya Kumar',
-        category: data.category || 'Computer Science & AI',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      const res = await activitiesApi.createActivity(payload);
+      const newActivity = mapApiActivityToActivity(res.data);
 
       setActivities((prev) => [newActivity, ...prev]);
 
@@ -368,21 +427,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addHackathon = (data: Partial<Activity>) => addActivity({ ...data, type: 'HACKATHON' });
   const addInternship = (data: Partial<Activity>) => addActivity({ ...data, type: 'INTERNSHIP' });
 
-  const resubmitActivity = (id: string, notes?: string): Activity | undefined => {
+  const resubmitActivity = async (id: string, notes?: string): Promise<Activity | undefined> => {
     try {
-      activitiesApi.resubmitActivity(id, { revision_notes: notes });
-      let updatedAct: Activity | undefined;
+      const res = await activitiesApi.resubmitActivity(id, { revision_notes: notes });
+      const updatedAct = mapApiActivityToActivity(res.data);
       setActivities((prev) =>
-        prev.map((a) => {
-          if (a.id !== id) return a;
-          updatedAct = {
-            ...a,
-            status: 'SUBMITTED',
-            revisionNotes: undefined,
-            updatedAt: new Date().toISOString(),
-          };
-          return updatedAct;
-        })
+        prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
       );
       setActivitiesError(null);
       return updatedAct;
@@ -394,48 +444,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const approveActivity = (id: string, remarks?: string) => {
+  const approveActivity = async (id: string, remarks?: string): Promise<void> => {
     try {
-      activitiesApi.executeDecision(id, { decision: 'ACTIVE', remarks });
-      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const res = await activitiesApi.executeDecision(id, { decision: 'ACTIVE', remarks });
+      const updatedAct = mapApiActivityToActivity(res.data);
 
       setActivities((prev) =>
-        prev.map((a) => {
-          if (a.id !== id) return a;
-          const newTimeline = [
-            ...a.timeline.filter((t) => t.status === 'COMPLETED'),
-            {
-              id: `t-${Date.now()}`,
-              date: todayStr,
-              title: 'HOD Approved',
-              description: remarks || 'Endorsed by HOD. Project transitioned to ACTIVE.',
-              status: 'COMPLETED' as const,
-            },
-          ];
-          return {
-            ...a,
-            status: 'ACTIVE' as ActivityStatus,
-            rejectionReason: undefined,
-            timeline: newTimeline,
-            updatedAt: new Date().toISOString(),
-          };
-        })
+        prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
       );
 
-      const act = activities.find((a) => a.id === id);
-      if (act) {
-        const notif: Notification = {
-          id: `notif-${Date.now()}`,
-          userId: act.studentId,
-          title: `Submission Approved: ${act.title}`,
-          message: `Dr. Priya Kumar (HOD) approved your ${act.type.toLowerCase()}. Status is now ACTIVE.`,
-          type: 'SUBMISSION_UPDATE',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          linkUrl: `/student/projects/${act.id}`,
-        };
-        setNotifications((prev) => [notif, ...prev]);
-      }
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: updatedAct.studentId,
+        title: `Submission Approved: ${updatedAct.title}`,
+        message: `Dr. Priya Kumar (HOD) approved your ${updatedAct.type.toLowerCase()}. Status is now ACTIVE.`,
+        type: 'SUBMISSION_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: `/student/projects/${updatedAct.id}`,
+      };
+      setNotifications((prev) => [notif, ...prev]);
       setActivitiesError(null);
     } catch (err: unknown) {
       const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_DECISION_FAILED', String(err));
@@ -445,48 +473,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const rejectActivity = (id: string, reason: string) => {
+  const rejectActivity = async (id: string, reason: string): Promise<void> => {
     try {
-      activitiesApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
-      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const res = await activitiesApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
+      const updatedAct = mapApiActivityToActivity(res.data);
 
       setActivities((prev) =>
-        prev.map((a) => {
-          if (a.id !== id) return a;
-          const newTimeline = [
-            ...a.timeline.filter((t) => t.status === 'COMPLETED'),
-            {
-              id: `t-${Date.now()}`,
-              date: todayStr,
-              title: 'HOD Rejected',
-              description: `Reason: ${reason}`,
-              status: 'COMPLETED' as const,
-            },
-          ];
-          return {
-            ...a,
-            status: 'REJECTED' as ActivityStatus,
-            rejectionReason: reason,
-            timeline: newTimeline,
-            updatedAt: new Date().toISOString(),
-          };
-        })
+        prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
       );
 
-      const act = activities.find((a) => a.id === id);
-      if (act) {
-        const notif: Notification = {
-          id: `notif-${Date.now()}`,
-          userId: act.studentId,
-          title: `Submission Rejected: ${act.title}`,
-          message: `HOD Review note: "${reason}".`,
-          type: 'SUBMISSION_UPDATE',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          linkUrl: `/student/projects/${act.id}`,
-        };
-        setNotifications((prev) => [notif, ...prev]);
-      }
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: updatedAct.studentId,
+        title: `Submission Rejected: ${updatedAct.title}`,
+        message: `HOD Review note: "${reason}".`,
+        type: 'SUBMISSION_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: `/student/projects/${updatedAct.id}`,
+      };
+      setNotifications((prev) => [notif, ...prev]);
       setActivitiesError(null);
     } catch (err: unknown) {
       const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_DECISION_FAILED', String(err));
@@ -496,48 +502,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const requestRevisionActivity = (id: string, notes: string) => {
+  const requestRevisionActivity = async (id: string, notes: string): Promise<void> => {
     try {
-      activitiesApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
-      const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const res = await activitiesApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
+      const updatedAct = mapApiActivityToActivity(res.data);
 
       setActivities((prev) =>
-        prev.map((a) => {
-          if (a.id !== id) return a;
-          const newTimeline = [
-            ...a.timeline.filter((t) => t.status === 'COMPLETED'),
-            {
-              id: `t-${Date.now()}`,
-              date: todayStr,
-              title: 'Clarification & Revision Requested',
-              description: `HOD Directive: "${notes}"`,
-              status: 'CURRENT' as const,
-            },
-          ];
-          return {
-            ...a,
-            status: 'REVISION_REQUESTED' as ActivityStatus,
-            revisionNotes: notes,
-            timeline: newTimeline,
-            updatedAt: new Date().toISOString(),
-          };
-        })
+        prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
       );
 
-      const act = activities.find((a) => a.id === id);
-      if (act) {
-        const notif: Notification = {
-          id: `notif-${Date.now()}`,
-          userId: act.studentId,
-          title: `Action Required: Revision Requested for "${act.title}"`,
-          message: `Dr. Priya Kumar requested updates: "${notes}". Please adjust your submission.`,
-          type: 'SUBMISSION_UPDATE',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          linkUrl: `/student/projects/${act.id}`,
-        };
-        setNotifications((prev) => [notif, ...prev]);
-      }
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: updatedAct.studentId,
+        title: `Action Required: Revision Requested for "${updatedAct.title}"`,
+        message: `Dr. Priya Kumar requested updates: "${notes}". Please adjust your submission.`,
+        type: 'SUBMISSION_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: `/student/projects/${updatedAct.id}`,
+      };
+      setNotifications((prev) => [notif, ...prev]);
       setActivitiesError(null);
     } catch (err: unknown) {
       const apiErr = err instanceof ApiError ? err : new ApiError('ACTIVITY_DECISION_FAILED', String(err));
@@ -547,55 +531,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const bulkApproveActivities = (ids: string[]) => {
-    ids.forEach((id) => approveActivity(id));
+  const bulkApproveActivities = async (ids: string[]): Promise<void> => {
+    await Promise.all(ids.map((id) => approveActivity(id)));
   };
 
   // ==========================================
   // ON-DUTY (OD) ACTIONS (API CONTRACT ALIGNED)
   // ==========================================
 
-  const addODApplication = (data: Partial<ODApplication>): ODApplication => {
+  const addODApplication = async (data: Partial<ODApplication>): Promise<ODApplication> => {
     try {
       const payload = mapODApplicationToApiPayload(data);
-      // Route through Phase 1 API abstraction (offline fixture resolver)
-      odApi.createODRequest(payload);
-
-      const newId = `OD-2026-${String(odApplications.length + 1).padStart(3, '0')}`;
-      const todayStr = formatDateToYYYYMMDD(data.startDate || data.date);
-
-      const newOD: ODApplication = {
-        id: newId,
-        studentId: data.studentId || 'usr-student-001',
-        studentName: data.studentName || 'Meena C',
-        studentRegNo: data.studentRegNo || '714023104088',
-        department: data.department || 'CSE',
-        year: data.year || 'II',
-        purpose: payload.purpose,
-        activityId: data.activityId,
-        activityTitle: data.activityTitle,
-        activityType: data.activityType,
-        reason: payload.reason || 'Attending approved departmental academic milestone / event',
-        eventName: payload.event_name,
-        date: todayStr,
-        startDate: payload.start_date,
-        endDate: payload.end_date,
-        fromTime: payload.from_time,
-        toTime: payload.to_time,
-        slotType: payload.slot_type,
-        totalDays: payload.total_days,
-        venue: payload.venue,
-        registrationId: payload.registration_id,
-        teamMembers: data.teamMembers && data.teamMembers.length > 0 ? data.teamMembers : [
-          { name: data.studentName || 'Meena C', regNo: data.studentRegNo || '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' }
-        ],
-        documentIds: payload.document_ids || [],
-        proofUrl: data.proofUrl || '/docs/od-proof.pdf',
-        proofDocName: data.proofDocName || 'OD_Proof_Document.pdf',
-        additionalNotes: payload.additional_notes,
-        status: 'PENDING',
-        submittedDate: todayStr,
-      };
+      const res = await odApi.createODRequest(payload);
+      const newOD = mapApiODToODApplication(res.data);
 
       setODApplications((prev) => [newOD, ...prev]);
 
@@ -629,20 +577,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addODSubmission = addODApplication;
 
-  const resubmitOD = (id: string, notes?: string): ODApplication | undefined => {
+  const resubmitOD = async (id: string, notes?: string): Promise<ODApplication | undefined> => {
     try {
-      odApi.resubmitODRequest(id, { revision_notes: notes });
-      let updatedOD: ODApplication | undefined;
+      const res = await odApi.resubmitODRequest(id, { revision_notes: notes });
+      const updatedOD = mapApiODToODApplication(res.data);
       setODApplications((prev) =>
-        prev.map((od) => {
-          if (od.id !== id) return od;
-          updatedOD = {
-            ...od,
-            status: 'PENDING',
-            revisionNotes: undefined,
-          };
-          return updatedOD;
-        })
+        prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
       );
       setOdError(null);
       return updatedOD;
@@ -654,45 +594,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const approveOD = (id: string, remarks?: string) => {
+  const approveOD = async (id: string, remarks?: string): Promise<void> => {
     try {
-      odApi.executeDecision(id, { decision: 'APPROVED', remarks });
-      const todayStr = new Date().toISOString().split('T')[0];
+      const res = await odApi.executeDecision(id, { decision: 'APPROVED', remarks });
+      const updatedOD = mapApiODToODApplication(res.data);
 
       setODApplications((prev) =>
-        prev.map((od) => {
-          if (od.id !== id) return od;
-          return {
-            ...od,
-            status: 'APPROVED' as ODStatus,
-            approvedDate: todayStr,
-            remarks: remarks || 'Approved by HOD. Academic attendance granted.',
-            rejectionReason: undefined,
-            revisionNotes: undefined,
-          };
-        })
+        prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
       );
 
-      const od = odApplications.find((o) => o.id === id);
-      if (od) {
-        if (od.activityId) {
-          setActivities((prev) =>
-            prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'APPROVED' } : a))
-          );
-        }
-
-        const notif: Notification = {
-          id: `notif-${Date.now()}`,
-          userId: od.studentId,
-          title: `OD Request Approved: ${od.eventName}`,
-          message: `Your OD for ${od.date} (${od.fromTime} - ${od.toTime}) has been approved by HOD.`,
-          type: 'OD_UPDATE',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          linkUrl: '/student/od-requests',
-        };
-        setNotifications((prev) => [notif, ...prev]);
+      if (updatedOD.activityId) {
+        setActivities((prev) =>
+          prev.map((a) => (a.id === updatedOD.activityId ? { ...a, odStatus: 'APPROVED' } : a))
+        );
       }
+
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: updatedOD.studentId,
+        title: `OD Request Approved: ${updatedOD.eventName}`,
+        message: `Your OD for ${updatedOD.date} (${updatedOD.fromTime} - ${updatedOD.toTime}) has been approved by HOD.`,
+        type: 'OD_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: '/student/od-requests',
+      };
+      setNotifications((prev) => [notif, ...prev]);
       setOdError(null);
     } catch (err: unknown) {
       const apiErr = err instanceof ApiError ? err : new ApiError('OD_DECISION_FAILED', String(err));
@@ -702,40 +629,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const rejectOD = (id: string, reason: string) => {
+  const rejectOD = async (id: string, reason: string): Promise<void> => {
     try {
-      odApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
+      const res = await odApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
+      const updatedOD = mapApiODToODApplication(res.data);
+
       setODApplications((prev) =>
-        prev.map((od) => {
-          if (od.id !== id) return od;
-          return {
-            ...od,
-            status: 'REJECTED' as ODStatus,
-            rejectionReason: reason,
-          };
-        })
+        prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
       );
 
-      const od = odApplications.find((o) => o.id === id);
-      if (od) {
-        if (od.activityId) {
-          setActivities((prev) =>
-            prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'REJECTED' } : a))
-          );
-        }
-
-        const notif: Notification = {
-          id: `notif-${Date.now()}`,
-          userId: od.studentId,
-          title: `OD Request Rejected: ${od.eventName}`,
-          message: `Reason: ${reason}`,
-          type: 'OD_UPDATE',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          linkUrl: '/student/od-requests',
-        };
-        setNotifications((prev) => [notif, ...prev]);
+      if (updatedOD.activityId) {
+        setActivities((prev) =>
+          prev.map((a) => (a.id === updatedOD.activityId ? { ...a, odStatus: 'REJECTED' } : a))
+        );
       }
+
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: updatedOD.studentId,
+        title: `OD Request Rejected: ${updatedOD.eventName}`,
+        message: `Reason: ${reason}`,
+        type: 'OD_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: '/student/od-requests',
+      };
+      setNotifications((prev) => [notif, ...prev]);
       setOdError(null);
     } catch (err: unknown) {
       const apiErr = err instanceof ApiError ? err : new ApiError('OD_DECISION_FAILED', String(err));
@@ -745,40 +664,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const requestRevisionOD = (id: string, notes: string) => {
+  const requestRevisionOD = async (id: string, notes: string): Promise<void> => {
     try {
-      odApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
+      const res = await odApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
+      const updatedOD = mapApiODToODApplication(res.data);
+
       setODApplications((prev) =>
-        prev.map((od) => {
-          if (od.id !== id) return od;
-          return {
-            ...od,
-            status: 'REVISION_REQUESTED' as ODStatus,
-            revisionNotes: notes,
-          };
-        })
+        prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
       );
 
-      const od = odApplications.find((o) => o.id === id);
-      if (od) {
-        if (od.activityId) {
-          setActivities((prev) =>
-            prev.map((a) => (a.id === od.activityId ? { ...a, odStatus: 'REVISION_REQUESTED' } : a))
-          );
-        }
-
-        const notif: Notification = {
-          id: `notif-${Date.now()}`,
-          userId: od.studentId,
-          title: `OD Revision Requested: ${od.eventName}`,
-          message: `HOD requested clarification: "${notes}".`,
-          type: 'OD_UPDATE',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          linkUrl: '/student/od-requests',
-        };
-        setNotifications((prev) => [notif, ...prev]);
+      if (updatedOD.activityId) {
+        setActivities((prev) =>
+          prev.map((a) => (a.id === updatedOD.activityId ? { ...a, odStatus: 'REVISION_REQUESTED' } : a))
+        );
       }
+
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        userId: updatedOD.studentId,
+        title: `OD Revision Requested: ${updatedOD.eventName}`,
+        message: `HOD requested clarification: "${notes}".`,
+        type: 'OD_UPDATE',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        linkUrl: '/student/od-requests',
+      };
+      setNotifications((prev) => [notif, ...prev]);
       setOdError(null);
     } catch (err: unknown) {
       const apiErr = err instanceof ApiError ? err : new ApiError('OD_DECISION_FAILED', String(err));
@@ -788,10 +699,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const bulkApproveOD = (ids: string[]) => {
+  const bulkApproveOD = async (ids: string[]): Promise<void> => {
     try {
-      odApi.executeBulkDecision({ od_ids: ids, decision: 'APPROVED' });
-      ids.forEach((id) => approveOD(id));
+      await odApi.executeBulkDecision({ od_ids: ids, decision: 'APPROVED' });
+      await Promise.all(ids.map((id) => approveOD(id)));
     } catch (err: unknown) {
       const apiErr = err instanceof ApiError ? err : new ApiError('OD_BULK_DECISION_FAILED', String(err));
       setOdError(apiErr);
@@ -1010,18 +921,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
   };
 
-  const cancelReviewSession = (id: string) => {
-    setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'CANCELLED' } : r)));
+  const cancelReviewSession = async (id: string): Promise<void> => {
+    try {
+      await reviewsApi.cancelSession(id);
+      setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'CANCELLED' } : r)));
+      setReviewsError(null);
+    } catch (err: unknown) {
+      const apiErr = err instanceof ApiError ? err : new ApiError('CANCEL_SESSION_FAILED', String(err));
+      setReviewsError(apiErr);
+      setLastError(apiErr);
+      throw apiErr;
+    }
   };
 
-  const recordReviewAttendance = (reviewSessionId: string, attendance: AttendanceItem[]) => {
+  const recordReviewAttendance = async (reviewSessionId: string, attendance: AttendanceItem[]): Promise<void> => {
     try {
-      reviewsApi.finalizeSession(reviewSessionId, {
+      await reviewsApi.updateAttendance(reviewSessionId, {
         attendance: attendance.map((a) => ({ student_id: a.studentId, attended: a.attended })),
-        meeting_notes: 'Attendance recorded',
       });
       setReviews((prev) =>
-        prev.map((r) => (r.id === reviewSessionId ? { ...r, attendance, status: 'COMPLETED' } : r))
+        prev.map((r) => (r.id === reviewSessionId ? { ...r, attendance } : r))
       );
       setReviewsError(null);
     } catch (err: unknown) {
@@ -1032,16 +951,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const saveMeetingNotes = (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string) => {
+  const saveMeetingNotes = async (reviewSessionId: string, meetingNotes: string, nextWeekGoal?: string): Promise<void> => {
     try {
-      reviewsApi.finalizeSession(reviewSessionId, {
+      await reviewsApi.updateNotes(reviewSessionId, {
         meeting_notes: meetingNotes,
         next_week_goal: nextWeekGoal,
       });
       setReviews((prev) =>
         prev.map((r) =>
           r.id === reviewSessionId
-            ? { ...r, meetingNotes, nextWeekGoal: nextWeekGoal || r.nextWeekGoal, status: 'COMPLETED' }
+            ? { ...r, meetingNotes, nextWeekGoal: nextWeekGoal || r.nextWeekGoal }
             : r
         )
       );
@@ -1189,9 +1108,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setNotifications((prev) => [newNotif, ...prev]);
   };
 
-  const markNotificationAsRead = (id: string) => {
+  const markNotificationAsRead = async (id: string): Promise<void> => {
     try {
-      notificationsApi.markAsRead(id);
+      await notificationsApi.markAsRead(id);
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
       setNotificationsError(null);
     } catch (err: unknown) {
@@ -1202,9 +1121,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async (): Promise<void> => {
     try {
-      notificationsApi.markAllAsRead();
+      await notificationsApi.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setNotificationsError(null);
     } catch (err: unknown) {
