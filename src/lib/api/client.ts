@@ -128,14 +128,16 @@ export function formatApiErrorMessage(error: unknown): string {
 }
 
 /**
- * Verified offline guard to guarantee NO network calls to live backends
+ * Development Mock Gate:
+ * Fixtures are strictly permitted ONLY when NODE_ENV !== 'production'
+ * and NEXT_PUBLIC_USE_MOCKS === 'true'.
+ * In production or default development, live API requests are always executed.
  */
-export const IS_OFFLINE_MODE = true;
-
-export function assertNoLiveNetwork(): void {
-  if (!IS_OFFLINE_MODE) {
-    throw new ApiError(500, 'LIVE_NETWORK_FORBIDDEN', 'Live network connections are strictly forbidden in Phase 5.');
-  }
+export function areDevMocksEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+  );
 }
 
 
@@ -292,7 +294,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -316,7 +318,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -340,7 +342,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -364,7 +366,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -387,7 +389,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -411,7 +413,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;

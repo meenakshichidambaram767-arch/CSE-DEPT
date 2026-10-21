@@ -6,7 +6,7 @@
  * summary statistics, RFC 4180 accreditation export, and student report cards.
  */
 
-import { assertNoLiveNetwork, ApiError, apiClient, buildQueryString } from './client';
+import { ApiError, apiClient, buildQueryString, areDevMocksEnabled } from './client';
 import {
   AccreditationReportContract,
   ReportsSummaryContract,
@@ -16,11 +16,6 @@ import {
   ApiReportSummary,
 } from '@/types/contract';
 import { Activity, ODApplication, ReviewSession } from '@/types';
-import {
-  fixtureAccreditationReport,
-  fixtureReportSummary,
-} from '@/data/fixtures/reportsFixtures';
-import { mockActivities, mockODApplications, mockReviewSessions } from '@/data/mock';
 
 export { ApiError };
 
@@ -60,8 +55,6 @@ export const reportsApi = {
   getAccreditationReport: async (
     academicYear: string = '2026-2027'
   ): Promise<AccreditationReportContract & { data: any }> => {
-    assertNoLiveNetwork();
-
     // Validate academic year format YYYY-YYYY
     const yearPattern = /^\d{4}-\d{4}$/;
     if (!yearPattern.test(academicYear.trim())) {
@@ -73,32 +66,60 @@ export const reportsApi = {
       );
     }
 
-    const report: AccreditationReportContract = {
-      academic_year: academicYear,
-      department: 'Computer Science and Engineering',
-      metrics: {
-        criteria_1_3_2: {
-          label: 'Value-Added Projects',
-          count: 48,
-          active_capstones: 32,
-        },
-        criteria_5_3_1: {
-          label: 'Hackathon Entries / Awards',
-          count: 26,
-          unique_students: 64,
-        },
-        criteria_1_3_3: {
-          label: 'Industry Internships (NOC Issued)',
-          count: 39,
-          verified: 37,
-        },
-        total_approved_od_clearances: 312,
-      },
-    };
+    const res = await apiClient.get<AccreditationReportContract & { data: any }>(
+      '/api/v1/reports/accreditation',
+      {
+        params: { academic_year: academicYear },
+        fallback: () => ({
+          academic_year: academicYear,
+          department: 'Computer Science and Engineering',
+          metrics: {
+            criteria_1_3_2: {
+              label: 'Value-Added Projects',
+              count: 48,
+              active_capstones: 32,
+            },
+            criteria_5_3_1: {
+              label: 'Hackathon Entries / Awards',
+              count: 26,
+              unique_students: 64,
+            },
+            criteria_1_3_3: {
+              label: 'Industry Internships (NOC Issued)',
+              count: 39,
+              verified: 37,
+            },
+            total_approved_od_clearances: 312,
+          },
+          data: {
+            academic_year: academicYear,
+            department: 'Computer Science and Engineering',
+            metrics: {
+              criteria_1_3_2: {
+                label: 'Value-Added Projects',
+                count: 48,
+                active_capstones: 32,
+              },
+              criteria_5_3_1: {
+                label: 'Hackathon Entries / Awards',
+                count: 26,
+                unique_students: 64,
+              },
+              criteria_1_3_3: {
+                label: 'Industry Internships (NOC Issued)',
+                count: 39,
+                verified: 37,
+              },
+              total_approved_od_clearances: 312,
+            },
+          },
+        }),
+      }
+    );
 
     return {
-      ...report,
-      data: report,
+      ...res,
+      data: res.data || res,
     };
   },
 
@@ -109,7 +130,7 @@ export const reportsApi = {
     academicYear?: string
   ): Promise<{ data: ApiAccreditationMetrics }> {
     const rep = await reportsApi.getAccreditationReport(academicYear || '2026-2027');
-    return { data: rep as any };
+    return { data: (rep.data || rep) as ApiAccreditationMetrics };
   },
 
   /**
@@ -118,24 +139,40 @@ export const reportsApi = {
   getReportsSummary: async (
     academicYear: string = '2026-2027'
   ): Promise<ReportsSummaryContract & { data: any }> => {
-    assertNoLiveNetwork();
-
-    const summary: ReportsSummaryContract = {
-      academic_year: academicYear,
-      department: 'Computer Science and Engineering',
-      total_activities: 113,
-      total_approved_ods: 312,
-      total_completed_reviews: 142,
-      criteria_breakdown: {
-        criteria_1_3_2: 48,
-        criteria_5_3_1: 26,
-        criteria_1_3_3: 39,
-      },
-    };
+    const res = await apiClient.get<ReportsSummaryContract & { data: any }>(
+      '/api/v1/reports/summary',
+      {
+        params: { academic_year: academicYear },
+        fallback: () => ({
+          academic_year: academicYear,
+          department: 'Computer Science and Engineering',
+          total_activities: 113,
+          total_approved_ods: 312,
+          total_completed_reviews: 142,
+          criteria_breakdown: {
+            criteria_1_3_2: 48,
+            criteria_5_3_1: 26,
+            criteria_1_3_3: 39,
+          },
+          data: {
+            academic_year: academicYear,
+            department: 'Computer Science and Engineering',
+            total_activities: 113,
+            total_approved_ods: 312,
+            total_completed_reviews: 142,
+            criteria_breakdown: {
+              criteria_1_3_2: 48,
+              criteria_5_3_1: 26,
+              criteria_1_3_3: 39,
+            },
+          },
+        }),
+      }
+    );
 
     return {
-      ...summary,
-      data: summary,
+      ...res,
+      data: res.data || res,
     };
   },
 
@@ -143,26 +180,36 @@ export const reportsApi = {
    * High-level departmental count summary alias
    */
   async getSummary(): Promise<{ data: ApiReportSummary }> {
-    return reportsApi.getReportsSummary();
+    const res = await reportsApi.getReportsSummary();
+    return { data: (res.data || res) as ApiReportSummary };
   },
 
   /**
    * GET /api/v1/reports/export?academic_year=YYYY-YYYY
    */
   exportReportCSV: async (academicYear: string = '2026-2027'): Promise<string> => {
-    assertNoLiveNetwork();
-
-    const report = await reportsApi.getAccreditationReport(academicYear);
-
-    const headers = ['NAAC Criteria Code', 'Description', 'Verified Count', 'Sub-Metric Description', 'Sub-Metric Value'];
-    const rows = [
-      ['NAAC Criteria 1.3.2', `"${report.metrics.criteria_1_3_2.label}"`, report.metrics.criteria_1_3_2.count.toString(), 'Active Capstones', (report.metrics.criteria_1_3_2.active_capstones || 0).toString()],
-      ['NAAC Criteria 5.3.1', `"${report.metrics.criteria_5_3_1.label}"`, report.metrics.criteria_5_3_1.count.toString(), 'Unique Students', (report.metrics.criteria_5_3_1.unique_students || 0).toString()],
-      ['NAAC Criteria 1.3.3', `"${report.metrics.criteria_1_3_3.label}"`, report.metrics.criteria_1_3_3.count.toString(), 'Verified NOCs', (report.metrics.criteria_1_3_3.verified || 0).toString()],
-      ['NAAC Criteria 5.3.3', '"Total Approved OD Clearances"', report.metrics.total_approved_od_clearances.toString(), 'Total Clearances', report.metrics.total_approved_od_clearances.toString()],
-    ];
-
-    return [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const queryStr = buildQueryString({ academic_year: academicYear });
+    const url = `/api/v1/reports/export${queryStr}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new ApiError(res.status, 'EXPORT_FAILED', `Failed to export reports CSV (HTTP ${res.status})`);
+      }
+      return await res.text();
+    } catch (err) {
+      if (areDevMocksEnabled()) {
+        const report = await reportsApi.getAccreditationReport(academicYear);
+        const headers = ['NAAC Criteria Code', 'Description', 'Verified Count', 'Sub-Metric Description', 'Sub-Metric Value'];
+        const rows = [
+          ['NAAC Criteria 1.3.2', `"${report.metrics.criteria_1_3_2.label}"`, report.metrics.criteria_1_3_2.count.toString(), 'Active Capstones', (report.metrics.criteria_1_3_2.active_capstones || 0).toString()],
+          ['NAAC Criteria 5.3.1', `"${report.metrics.criteria_5_3_1.label}"`, report.metrics.criteria_5_3_1.count.toString(), 'Unique Students', (report.metrics.criteria_5_3_1.unique_students || 0).toString()],
+          ['NAAC Criteria 1.3.3', `"${report.metrics.criteria_1_3_3.label}"`, report.metrics.criteria_1_3_3.count.toString(), 'Verified NOCs', (report.metrics.criteria_1_3_3.verified || 0).toString()],
+          ['NAAC Criteria 5.3.3', '"Total Approved OD Clearances"', report.metrics.total_approved_od_clearances.toString(), 'Total Clearances', report.metrics.total_approved_od_clearances.toString()],
+        ];
+        return [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+      }
+      throw err;
+    }
   },
 
   /**
@@ -181,16 +228,69 @@ export const reportsApi = {
   },
 
   /**
-   * Consolidated student report card
+   * Consolidated student report card computed from real API endpoints
    */
   async getStudentReportSummary(): Promise<{ data: StudentReportSummary }> {
-    return {
-      data: reportsApi.getFallbackStudentReport(),
-    };
+    try {
+      const meRes = await apiClient.get<{ user: any; student_profile?: any }>('/api/v1/me');
+      const student = {
+        id: meRes.user?.id || 'usr-student-001',
+        name: meRes.user?.name || meRes.student_profile?.name || 'Student',
+        email: meRes.user?.email || '',
+        registerNumber: meRes.student_profile?.register_number || meRes.user?.register_number || '',
+        department: meRes.student_profile?.department || 'Computer Science and Engineering',
+        year: meRes.student_profile?.year || 'IV',
+        section: meRes.student_profile?.section || 'A',
+      };
+
+      const [odsRes, actsRes, revsRes] = await Promise.all([
+        apiClient.get<any>('/api/v1/od-requests').catch(() => ({ data: [] })),
+        apiClient.get<any>('/api/v1/activities').catch(() => ({ data: [] })),
+        apiClient.get<any>('/api/v1/reviews/sessions').catch(() => ({ data: [] })),
+      ]);
+
+      const ods = Array.isArray(odsRes) ? odsRes : odsRes.data || odsRes.od_requests || [];
+      const activities = Array.isArray(actsRes) ? actsRes : actsRes.data || actsRes.activities || [];
+      const reviews = Array.isArray(revsRes) ? revsRes : revsRes.data || revsRes.sessions || [];
+
+      const approvedODs = ods.filter((o: any) => o.status === 'APPROVED');
+      const approvedActs = activities.filter((a: any) => a.status === 'APPROVED' || a.status === 'ACTIVE' || a.status === 'COMPLETED');
+      const completedRevs = reviews.filter((r: any) => r.status === 'COMPLETED');
+
+      const metrics = {
+        totalActivities: activities.length,
+        approvedActivities: approvedActs.length,
+        completedProjects: activities.filter((a: any) => a.type === 'PROJECT' && (a.status === 'APPROVED' || a.status === 'ACTIVE' || a.status === 'COMPLETED')).length,
+        approvedInternships: activities.filter((a: any) => a.type === 'INTERNSHIP' && (a.status === 'APPROVED' || a.status === 'ACTIVE' || a.status === 'COMPLETED')).length,
+        hackathonEntries: activities.filter((a: any) => a.type === 'HACKATHON').length,
+        totalODs: ods.length,
+        approvedODs: approvedODs.length,
+        approvedODDays: approvedODs.reduce((acc: number, curr: any) => acc + (curr.total_days || curr.totalDays || 1), 0),
+        totalODRequests: ods.length,
+        totalODDays: ods.reduce((acc: number, curr: any) => acc + (curr.total_days || curr.totalDays || 1), 0),
+        reviewsAttended: completedRevs.length,
+        reviewAttendanceRate: reviews.length > 0 ? `${Math.round((completedRevs.length / reviews.length) * 100)}%` : '100%',
+      };
+
+      return {
+        data: {
+          student,
+          metrics,
+          activities,
+          odRequests: ods,
+          reviews,
+        },
+      };
+    } catch (err) {
+      if (areDevMocksEnabled()) {
+        return { data: reportsApi.getFallbackStudentReport() };
+      }
+      throw err;
+    }
   },
 
   /**
-   * Fallback student report summary
+   * Fallback student report summary (dev/mock only)
    */
   getFallbackStudentReport: (): StudentReportSummary => ({
     student: {
@@ -203,22 +303,22 @@ export const reportsApi = {
       section: 'B',
     },
     metrics: {
-      totalActivities: mockActivities.length,
-      approvedActivities: mockActivities.filter((a) => a.status === 'APPROVED' || a.status === 'ACTIVE').length,
-      completedProjects: mockActivities.filter((a) => a.type === 'PROJECT' && (a.status === 'APPROVED' || a.status === 'ACTIVE')).length,
-      approvedInternships: mockActivities.filter((a) => a.type === 'INTERNSHIP' && (a.status === 'APPROVED' || a.status === 'ACTIVE')).length,
-      hackathonEntries: mockActivities.filter((a) => a.type === 'HACKATHON').length,
-      totalODs: mockODApplications.length,
-      approvedODs: mockODApplications.filter((o) => o.status === 'APPROVED').length,
-      approvedODDays: mockODApplications.filter((o) => o.status === 'APPROVED').reduce((acc, curr) => acc + (curr.totalDays || 1), 0),
-      totalODRequests: mockODApplications.length,
-      totalODDays: mockODApplications.reduce((acc, curr) => acc + (curr.totalDays || 1), 0),
-      reviewsAttended: mockReviewSessions.filter((r) => r.status === 'COMPLETED').length,
-      reviewAttendanceRate: '100%',
+      totalActivities: 0,
+      approvedActivities: 0,
+      completedProjects: 0,
+      approvedInternships: 0,
+      hackathonEntries: 0,
+      totalODs: 0,
+      approvedODs: 0,
+      approvedODDays: 0,
+      totalODRequests: 0,
+      totalODDays: 0,
+      reviewsAttended: 0,
+      reviewAttendanceRate: '0%',
     },
-    activities: mockActivities,
-    odRequests: mockODApplications,
-    reviews: mockReviewSessions,
+    activities: [],
+    odRequests: [],
+    reviews: [],
   }),
 };
 

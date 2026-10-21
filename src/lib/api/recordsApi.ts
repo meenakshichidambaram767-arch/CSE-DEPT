@@ -4,7 +4,7 @@
  * Offline mock resolver & Central API Client support
  */
 
-import { assertNoLiveNetwork, ApiError, apiClient, buildQueryString } from './client';
+import { ApiError, apiClient, buildQueryString, areDevMocksEnabled } from './client';
 import {
   StudentRecordContract,
   StudentRecordListResponse,
@@ -16,10 +16,6 @@ import {
   ApiStudentSummary,
   PaginatedResponse,
 } from '@/types/contract';
-import {
-  fixtureApiStudents,
-  fixtureStudentSummary,
-} from '@/data/fixtures/recordsFixtures';
 
 export { ApiError };
 
@@ -194,39 +190,64 @@ export const recordsApi = {
   getStudents: async (
     query?: StudentRecordQuery & RecordsQueryParams
   ): Promise<StudentRecordListResponse & PaginatedResponse<any>> => {
-    assertNoLiveNetwork();
+    const res = await apiClient.get<PaginatedResponse<any>>('/api/v1/records/students', {
+      params: {
+        ...(query?.year && query.year !== 'ALL' ? { year: query.year } : {}),
+        ...(query?.section && query.section !== 'ALL' ? { section: query.section } : {}),
+        ...(query?.search ? { search: query.search } : {}),
+        page: query?.page || 1,
+        page_size: query?.page_size || 20,
+      },
+      fallback: () => {
+        let filtered = [...studentRecordsStore];
 
-    let filtered = [...studentRecordsStore];
+        if (query?.year && (query.year as string) !== 'ALL') {
+          filtered = filtered.filter((s) => s.year === query.year);
+        }
 
-    if (query?.year && (query.year as string) !== 'ALL') {
-      filtered = filtered.filter((s) => s.year === query.year);
-    }
+        if (query?.section && (query.section as string) !== 'ALL') {
+          filtered = filtered.filter((s) => s.section === query.section);
+        }
 
-    if (query?.section && (query.section as string) !== 'ALL') {
-      filtered = filtered.filter((s) => s.section === query.section);
-    }
+        if (query?.search && query.search.trim().length > 0) {
+          const q = query.search.toLowerCase().trim();
+          filtered = filtered.filter(
+            (s) =>
+              s.name.toLowerCase().includes(q) ||
+              s.register_number.toLowerCase().includes(q) ||
+              s.email.toLowerCase().includes(q)
+          );
+        }
 
-    if (query?.search && query.search.trim().length > 0) {
-      const q = query.search.toLowerCase().trim();
-      filtered = filtered.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.register_number.toLowerCase().includes(q) ||
-          s.email.toLowerCase().includes(q)
-      );
-    }
+        const page = Math.max(1, query?.page || 1);
+        const pageSize = Math.max(1, query?.page_size || 10);
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / pageSize) || 1;
 
-    const page = Math.max(1, query?.page || 1);
-    const pageSize = Math.max(1, query?.page_size || 10);
-    const total = filtered.length;
-    const totalPages = Math.ceil(total / pageSize) || 1;
+        const startIndex = (page - 1) * pageSize;
+        const paginated = filtered.slice(startIndex, startIndex + pageSize);
 
-    const startIndex = (page - 1) * pageSize;
-    const paginated = filtered.slice(startIndex, startIndex + pageSize);
+        return {
+          data: paginated,
+          meta: {
+            page,
+            page_size: pageSize,
+            total,
+            total_pages: totalPages,
+          },
+        };
+      },
+    });
+
+    const students = res.data || [];
+    const total = res.meta?.total ?? students.length;
+    const page = res.meta?.page ?? (query?.page || 1);
+    const pageSize = res.meta?.page_size ?? (query?.page_size || 20);
+    const totalPages = res.meta?.total_pages ?? (Math.ceil(total / pageSize) || 1);
 
     return {
-      students: paginated,
-      data: paginated,
+      students,
+      data: students,
       total,
       page,
       page_size: pageSize,
@@ -235,6 +256,7 @@ export const recordsApi = {
         page,
         page_size: pageSize,
         total,
+        total_pages: totalPages,
       },
     };
   },
@@ -244,78 +266,88 @@ export const recordsApi = {
    * Populates the HOD slide-over inspection drawer: full OD clearances, activities, and review history
    */
   getStudentSummary: async (id: string): Promise<StudentSummaryResponse & { data: any }> => {
-    assertNoLiveNetwork();
+    const res = await apiClient.get<StudentSummaryResponse & { data: any }>(
+      `/api/v1/records/students/${encodeURIComponent(id)}/summary`,
+      {
+        fallback: () => {
+          const student = studentRecordsStore.find((s) => s.id === id || s.register_number === id);
+          if (!student) {
+            throw new ApiError(404, 'STUDENT_NOT_FOUND', `Student record not found for identifier: ${id}`, {
+              student_id: id,
+            });
+          }
 
-    const student = studentRecordsStore.find((s) => s.id === id || s.register_number === id);
-    if (!student) {
-      throw new ApiError(404, 'STUDENT_NOT_FOUND', `Student record not found for identifier: ${id}`, {
-        student_id: id,
-      });
-    }
+          const summaryResult: StudentSummaryResponse = {
+            student: {
+              id: student.id,
+              name: student.name,
+              register_number: student.register_number,
+              email: student.email,
+              department: student.department,
+              year: student.year,
+              section: student.section,
+            },
+            od_clearances: [
+              {
+                id: `OD-${student.register_number}-01`,
+                event_name: 'National HackSprint 36-Hour Hackathon',
+                date: '2026-10-05',
+                status: 'APPROVED',
+                approved_at: '2026-09-22T10:00:00Z',
+              },
+              {
+                id: `OD-${student.register_number}-02`,
+                event_name: 'AI & Edge Computing Symposium',
+                date: '2026-09-15',
+                status: 'APPROVED',
+                approved_at: '2026-09-12T14:30:00Z',
+              },
+            ],
+            activities: [
+              {
+                id: `PRJ-${student.register_number}`,
+                title: 'AI-Based Examination Monitoring System',
+                type: 'PROJECT',
+                status: 'ACTIVE',
+                role: 'Team Lead',
+              },
+              {
+                id: `HCK-${student.register_number}`,
+                title: 'HackSprint 2026 Accessibility Tool',
+                type: 'HACKATHON',
+                status: 'APPROVED',
+                role: 'Participant',
+              },
+            ],
+            reviews: [
+              {
+                id: `REV-${student.register_number}-01`,
+                review_type: 'PROJECT_WEEKLY',
+                date: '25 September 2026',
+                status: 'COMPLETED',
+                attended: true,
+              },
+              {
+                id: `REV-${student.register_number}-02`,
+                review_type: 'PROJECT_WEEKLY',
+                date: '02 October 2026',
+                status: 'SCHEDULED',
+                attended: false,
+              },
+            ],
+          };
 
-    const summaryResult: StudentSummaryResponse = {
-      student: {
-        id: student.id,
-        name: student.name,
-        register_number: student.register_number,
-        email: student.email,
-        department: student.department,
-        year: student.year,
-        section: student.section,
-      },
-      od_clearances: [
-        {
-          id: `OD-${student.register_number}-01`,
-          event_name: 'National HackSprint 36-Hour Hackathon',
-          date: '2026-10-05',
-          status: 'APPROVED',
-          approved_at: '2026-09-22T10:00:00Z',
+          return {
+            ...summaryResult,
+            data: summaryResult,
+          };
         },
-        {
-          id: `OD-${student.register_number}-02`,
-          event_name: 'AI & Edge Computing Symposium',
-          date: '2026-09-15',
-          status: 'APPROVED',
-          approved_at: '2026-09-12T14:30:00Z',
-        },
-      ],
-      activities: [
-        {
-          id: `PRJ-${student.register_number}`,
-          title: 'AI-Based Examination Monitoring System',
-          type: 'PROJECT',
-          status: 'ACTIVE',
-          role: 'Team Lead',
-        },
-        {
-          id: `HCK-${student.register_number}`,
-          title: 'HackSprint 2026 Accessibility Tool',
-          type: 'HACKATHON',
-          status: 'APPROVED',
-          role: 'Participant',
-        },
-      ],
-      reviews: [
-        {
-          id: `REV-${student.register_number}-01`,
-          review_type: 'PROJECT_WEEKLY',
-          date: '25 September 2026',
-          status: 'COMPLETED',
-          attended: true,
-        },
-        {
-          id: `REV-${student.register_number}-02`,
-          review_type: 'PROJECT_WEEKLY',
-          date: '02 October 2026',
-          status: 'SCHEDULED',
-          attended: false,
-        },
-      ],
-    };
+      }
+    );
 
     return {
-      ...summaryResult,
-      data: summaryResult,
+      ...res,
+      data: res.data || res,
     };
   },
 
@@ -332,55 +364,67 @@ export const recordsApi = {
    * RFC 4180 CSV generation & export
    */
   exportRecords: async (query?: StudentRecordQuery | RecordsExportParams): Promise<string> => {
-    assertNoLiveNetwork();
+    const queryStr = buildQueryString(query as Record<string, string>);
+    const url = `/api/v1/records/export${queryStr}`;
 
-    let filtered = [...studentRecordsStore];
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new ApiError(res.status, 'EXPORT_FAILED', `Failed to export records CSV (HTTP ${res.status})`);
+      }
+      return await res.text();
+    } catch (err) {
+      if (areDevMocksEnabled()) {
+        let filtered = [...studentRecordsStore];
 
-    if (query?.year && query.year !== 'ALL') {
-      filtered = filtered.filter((s) => s.year === query.year);
+        if (query?.year && query.year !== 'ALL') {
+          filtered = filtered.filter((s) => s.year === query.year);
+        }
+
+        if (query?.section && query.section !== 'ALL') {
+          filtered = filtered.filter((s) => s.section === query.section);
+        }
+
+        if (query?.search && query.search.trim().length > 0) {
+          const q = query.search.toLowerCase().trim();
+          filtered = filtered.filter(
+            (s) =>
+              s.name.toLowerCase().includes(q) ||
+              s.register_number.toLowerCase().includes(q) ||
+              s.email.toLowerCase().includes(q)
+          );
+        }
+
+        // RFC 4180 CSV generation
+        const header = [
+          'Student ID',
+          'Register Number',
+          'Name',
+          'Email',
+          'Department',
+          'Year',
+          'Section',
+          'Approved OD Clearances',
+          'Activities',
+          'Reviews',
+        ];
+        const rows = filtered.map((s) => [
+          s.id,
+          s.register_number,
+          `"${s.name.replace(/"/g, '""')}"`,
+          s.email,
+          s.department,
+          s.year,
+          s.section,
+          s.approved_od_count.toString(),
+          s.activity_count.toString(),
+          s.review_count.toString(),
+        ]);
+
+        return [header.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+      }
+      throw err;
     }
-
-    if (query?.section && query.section !== 'ALL') {
-      filtered = filtered.filter((s) => s.section === query.section);
-    }
-
-    if (query?.search && query.search.trim().length > 0) {
-      const q = query.search.toLowerCase().trim();
-      filtered = filtered.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.register_number.toLowerCase().includes(q) ||
-          s.email.toLowerCase().includes(q)
-      );
-    }
-
-    // RFC 4180 CSV generation
-    const header = [
-      'Student ID',
-      'Register Number',
-      'Name',
-      'Email',
-      'Department',
-      'Year',
-      'Section',
-      'Approved OD Clearances',
-      'Activities',
-      'Reviews',
-    ];
-    const rows = filtered.map((s) => [
-      s.id,
-      s.register_number,
-      `"${s.name.replace(/"/g, '""')}"`,
-      s.email,
-      s.department,
-      s.year,
-      s.section,
-      s.approved_od_count.toString(),
-      s.activity_count.toString(),
-      s.review_count.toString(),
-    ]);
-
-    return [header.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
   },
 
   /**
