@@ -63,6 +63,7 @@ export async function PUT(
       venue,
       from_time,
       to_time,
+      document_ids = [],
     } = body;
 
     // 1. Update od_requests back to PENDING
@@ -84,6 +85,17 @@ export async function PUT(
     if (updateError) {
       console.error('Error updating od_request for resubmission:', updateError);
       return apiError('DATABASE_ERROR', updateError.message, 500);
+    }
+
+    // Link uploaded documents if provided on resubmission
+    if (Array.isArray(document_ids) && document_ids.length > 0) {
+      await supabase
+        .from('documents')
+        .update({
+          owner: 'od_request',
+          owner_id: od.id,
+        })
+        .in('id', document_ids);
     }
 
     // 2. Append to od_status_history

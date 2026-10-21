@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
       demo_url,
       guide_name,
       team_members = [],
+      document_ids = [],
     } = body;
 
     // Validation constraints
@@ -232,6 +233,17 @@ export async function POST(request: NextRequest) {
         role: tm.role,
       }));
       await supabase.from('activity_team_members').insert(tmRows);
+    }
+
+    // Link uploaded documents to new Activity
+    if (Array.isArray(document_ids) && document_ids.length > 0) {
+      await supabase
+        .from('documents')
+        .update({
+          owner: 'activity',
+          owner_id: newActivity.id,
+        })
+        .in('id', document_ids);
     }
 
     // Record Status History

@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
       company_location,
       additional_notes,
       team_members = [],
+      document_ids = [],
     } = body;
 
     // Validation constraints
@@ -205,6 +206,17 @@ export async function POST(request: NextRequest) {
         role: tm.role || 'MEMBER',
       }));
       await supabase.from('od_team_members').insert(tmRows);
+    }
+
+    // Link uploaded documents to new OD Request
+    if (Array.isArray(document_ids) && document_ids.length > 0) {
+      await supabase
+        .from('documents')
+        .update({
+          owner: 'od_request',
+          owner_id: newOD.id,
+        })
+        .in('id', document_ids);
     }
 
     // Record Status History

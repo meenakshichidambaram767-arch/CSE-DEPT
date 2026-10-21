@@ -57,21 +57,37 @@ export const documentsApi = {
    */
   async uploadDocument(
     file: File,
-    owner: string = 'od_request',
-    ownerId: string = 'unassigned',
+    owner: string = 'draft',
+    ownerId: string = '',
     documentType: string = 'PROOF'
   ): Promise<DocumentUploadResponse> {
-    const storagePath = `${owner}/${ownerId}/${Date.now()}_${file.name}`;
-    const payload: DocumentUploadPayload = {
-      file_name: file.name,
-      document_type: documentType,
-      storage_path: storagePath,
-      size: file.size,
-      owner: owner as ApiDocumentOwner,
-      owner_id: ownerId,
-    };
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('document_type', documentType);
+    formData.append('owner', owner);
+    if (ownerId && ownerId !== 'unassigned') {
+      formData.append('owner_id', ownerId);
+    }
 
-    const res = await this.registerDocumentMetadata(payload);
+    const res = await apiClient.upload<{ data: DocumentUploadResponse }>(
+      '/api/v1/documents/upload',
+      formData,
+      {
+        fallback: () => ({
+          data: {
+            id: `doc-${Date.now()}`,
+            file_name: file.name,
+            document_type: documentType,
+            storage_path: `documents/${file.name}`,
+            size: file.size,
+            owner: (owner as ApiDocumentOwner) || 'draft',
+            owner_id: ownerId || '',
+            uploaded_by: 'usr-current',
+            created_at: new Date().toISOString(),
+          },
+        }),
+      }
+    );
     return res.data;
   },
 
@@ -110,22 +126,21 @@ export const documentsApi = {
           signed_url: '#',
           expires_in_seconds: 900,
           created_at: new Date().toISOString(),
-          fileName: 'Document_Preview.pdf',
-          documentType: 'PROOF',
-          storagePath: `documents/${id}.pdf`,
-          signedUrl: '#',
-          expiresInSeconds: 900,
-          createdAt: new Date().toISOString(),
         }),
       }
     );
 
-    const signedUrl = res.signed_url || res.signedUrl || '#';
+    const signedUrl = res.signed_url || res.signedUrl;
+    if (!signedUrl || signedUrl === '#') {
+      if (process.env.NODE_ENV === 'production') {
+        throw new ApiError('DOCUMENT_NOT_FOUND', 'Signed preview URL is not available.', 404);
+      }
+    }
     const expiresInSeconds = res.expires_in_seconds || res.expiresInSeconds || 900;
 
     return {
       data: res,
-      signedUrl,
+      signedUrl: signedUrl || '#',
       expiresInSeconds,
     };
   },

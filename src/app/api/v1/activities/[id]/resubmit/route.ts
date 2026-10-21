@@ -64,6 +64,7 @@ export async function PUT(
       technologies,
       github_url,
       demo_url,
+      document_ids = [],
     } = body;
 
     // 1. Update activity back to SUBMITTED
@@ -85,6 +86,17 @@ export async function PUT(
     if (updateError) {
       console.error('Error updating activity for resubmission:', updateError);
       return apiError('DATABASE_ERROR', updateError.message, 500);
+    }
+
+    // Link uploaded documents if provided on resubmission
+    if (Array.isArray(document_ids) && document_ids.length > 0) {
+      await supabase
+        .from('documents')
+        .update({
+          owner: 'activity',
+          owner_id: act.id,
+        })
+        .in('id', document_ids);
     }
 
     // 2. Append to activity_status_history
