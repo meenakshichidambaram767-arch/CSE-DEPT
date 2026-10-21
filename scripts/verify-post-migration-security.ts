@@ -14,12 +14,14 @@ envContent.split('\n').forEach((line) => {
 const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const HOD_EMAIL = 'test-hod@siet.ac.in';
-const HOD_PASSWORD = 'password123';
-const STUDENT1_EMAIL = 'test-student@siet.ac.in';
-const STUDENT1_PASSWORD = 'password123';
-const STUDENT2_EMAIL = 'test-student2@siet.ac.in';
-const STUDENT2_PASSWORD = 'password123';
+const DEFAULT_TEST_PASSWORD = env.TEST_USER_PASSWORD || env.SUPABASE_TEST_PASSWORD || process.env.TEST_USER_PASSWORD || '';
+
+const HOD_EMAIL = env.HOD_EMAIL || 'test-hod@siet.ac.in';
+const HOD_PASSWORD = env.HOD_PASSWORD || DEFAULT_TEST_PASSWORD;
+const STUDENT1_EMAIL = env.STUDENT1_EMAIL || 'test-student@siet.ac.in';
+const STUDENT1_PASSWORD = env.STUDENT1_PASSWORD || DEFAULT_TEST_PASSWORD;
+const STUDENT2_EMAIL = env.STUDENT2_EMAIL || 'test-student2@siet.ac.in';
+const STUDENT2_PASSWORD = env.STUDENT2_PASSWORD || DEFAULT_TEST_PASSWORD;
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

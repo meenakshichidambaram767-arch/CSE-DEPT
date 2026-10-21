@@ -24,11 +24,16 @@ async function runLiveOdLifecycle() {
   const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
+  const testPassword = process.env.TEST_USER_PASSWORD || process.env.SUPABASE_TEST_PASSWORD || '';
+  const s1Email = process.env.STUDENT1_EMAIL || 'test-student@siet.ac.in';
+  const hodEmail = process.env.HOD_EMAIL || 'test-hod@siet.ac.in';
+  const s2Email = process.env.STUDENT2_EMAIL || 'test-student2@siet.ac.in';
+
   // 1. Sign in as Student 1
   console.log('--- STEP 1: AUTHENTICATE STUDENT ---');
   const { data: s1Auth, error: s1AuthErr } = await supabaseAnon.auth.signInWithPassword({
-    email: 'test-student@siet.ac.in',
-    password: 'password123',
+    email: s1Email,
+    password: testPassword,
   });
   if (s1AuthErr || !s1Auth.session) throw new Error('Student sign in failed: ' + s1AuthErr?.message);
   const s1Token = s1Auth.session.access_token;
@@ -92,8 +97,8 @@ async function runLiveOdLifecycle() {
   // 3. Sign in as HOD and view pending request
   console.log('\n--- STEP 3: HOD AUTHENTICATE & INSPECT INBOX ---');
   const { data: hodAuth, error: hodAuthErr } = await supabaseAnon.auth.signInWithPassword({
-    email: 'test-hod@siet.ac.in',
-    password: 'password123',
+    email: hodEmail,
+    password: testPassword,
   });
   if (hodAuthErr || !hodAuth.session) throw new Error('HOD sign in failed: ' + hodAuthErr?.message);
   const hodToken = hodAuth.session.access_token;
@@ -267,8 +272,8 @@ async function runLiveOdLifecycle() {
   // 9. Verify Cross-Student Isolation on OD requests
   console.log('\n--- STEP 9: CROSS-STUDENT DATA ISOLATION VERIFICATION ---');
   const { data: s2Auth } = await supabaseAnon.auth.signInWithPassword({
-    email: 'test-student2@siet.ac.in',
-    password: 'password123',
+    email: s2Email,
+    password: testPassword,
   });
   const student2Client = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: `Bearer ${s2Auth.session?.access_token}` } },

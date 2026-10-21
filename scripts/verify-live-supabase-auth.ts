@@ -24,13 +24,17 @@ async function runLiveVerification() {
   const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
+  const testPassword = process.env.TEST_USER_PASSWORD || process.env.SUPABASE_TEST_PASSWORD || '';
+  const studentEmail = process.env.STUDENT1_EMAIL || 'test-student@siet.ac.in';
+  const hodEmail = process.env.HOD_EMAIL || 'test-hod@siet.ac.in';
+
   // -------------------------------------------------------------------------
   // 1. VERIFY STUDENT SIGN-IN & JWT ISSUANCE
   // -------------------------------------------------------------------------
   console.log('--- TEST 1: STUDENT AUTHENTICATION VIA SUPABASE AUTH ---');
   const { data: studentAuth, error: studentAuthErr } = await supabaseAnon.auth.signInWithPassword({
-    email: 'test-student@siet.ac.in',
-    password: 'password123',
+    email: studentEmail,
+    password: testPassword,
   });
 
   if (studentAuthErr || !studentAuth.session) {
@@ -46,8 +50,8 @@ async function runLiveVerification() {
   // -------------------------------------------------------------------------
   console.log('\n--- TEST 2: HOD AUTHENTICATION VIA SUPABASE AUTH ---');
   const { data: hodAuth, error: hodAuthErr } = await supabaseAnon.auth.signInWithPassword({
-    email: 'test-hod@siet.ac.in',
-    password: 'password123',
+    email: hodEmail,
+    password: testPassword,
   });
 
   if (hodAuthErr || !hodAuth.session) {
