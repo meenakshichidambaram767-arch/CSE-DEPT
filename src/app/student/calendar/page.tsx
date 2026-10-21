@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/eventsApi';
 import { odApi, ApiError } from '@/lib/api/odApi';
-import { areDevMocksEnabled } from '@/lib/api/devMocks';
+import { areDevMocksEnabled } from '@/lib/api/client';
 import { ODEvent, ODApplication } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import {

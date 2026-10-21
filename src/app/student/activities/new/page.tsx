@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -135,7 +135,7 @@ function ActivitySubmissionForm() {
           ...updated[index],
           regNo: matched.registerNumber || val,
           name: matched.name,
-          email: matched.email,
+          email: matched.email || '',
         };
         setTeamMembers(updated);
         return;

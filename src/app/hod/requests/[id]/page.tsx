@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { odApi } from '@/lib/api/odApi';
-import { areDevMocksEnabled } from '@/lib/api/devMocks';
+import { areDevMocksEnabled } from '@/lib/api/client';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import {
   ArrowLeft,

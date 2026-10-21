@@ -397,7 +397,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const payload = mapActivityToApiPayload(data);
       const res = await activitiesApi.createActivity(payload);
-      const newActivity = mapApiActivityToActivity(res.data);
+      const newActivity = res.data;
 
       setActivities((prev) => [newActivity, ...prev]);
 
@@ -430,7 +430,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const resubmitActivity = async (id: string, notes?: string): Promise<Activity | undefined> => {
     try {
       const res = await activitiesApi.resubmitActivity(id, { revision_notes: notes });
-      const updatedAct = mapApiActivityToActivity(res.data);
+      const updatedAct = res.data;
       setActivities((prev) =>
         prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
       );
@@ -447,7 +447,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const approveActivity = async (id: string, remarks?: string): Promise<void> => {
     try {
       const res = await activitiesApi.executeDecision(id, { decision: 'ACTIVE', remarks });
-      const updatedAct = mapApiActivityToActivity(res.data);
+      const updatedAct = res.data;
 
       setActivities((prev) =>
         prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
@@ -476,7 +476,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const rejectActivity = async (id: string, reason: string): Promise<void> => {
     try {
       const res = await activitiesApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
-      const updatedAct = mapApiActivityToActivity(res.data);
+      const updatedAct = res.data;
 
       setActivities((prev) =>
         prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
@@ -505,7 +505,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const requestRevisionActivity = async (id: string, notes: string): Promise<void> => {
     try {
       const res = await activitiesApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
-      const updatedAct = mapApiActivityToActivity(res.data);
+      const updatedAct = res.data;
 
       setActivities((prev) =>
         prev.map((a) => (a.id === id || a.id === updatedAct.id ? updatedAct : a))
@@ -543,7 +543,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const payload = mapODApplicationToApiPayload(data);
       const res = await odApi.createODRequest(payload);
-      const newOD = mapApiODToODApplication(res.data);
+      const newOD = res.data;
 
       setODApplications((prev) => [newOD, ...prev]);
 
@@ -580,7 +580,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const resubmitOD = async (id: string, notes?: string): Promise<ODApplication | undefined> => {
     try {
       const res = await odApi.resubmitODRequest(id, { revision_notes: notes });
-      const updatedOD = mapApiODToODApplication(res.data);
+      const updatedOD = res.data;
       setODApplications((prev) =>
         prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
       );
@@ -597,7 +597,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const approveOD = async (id: string, remarks?: string): Promise<void> => {
     try {
       const res = await odApi.executeDecision(id, { decision: 'APPROVED', remarks });
-      const updatedOD = mapApiODToODApplication(res.data);
+      const updatedOD = res.data;
 
       setODApplications((prev) =>
         prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
@@ -632,7 +632,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const rejectOD = async (id: string, reason: string): Promise<void> => {
     try {
       const res = await odApi.executeDecision(id, { decision: 'REJECTED', rejection_reason: reason });
-      const updatedOD = mapApiODToODApplication(res.data);
+      const updatedOD = res.data;
 
       setODApplications((prev) =>
         prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
@@ -667,7 +667,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const requestRevisionOD = async (id: string, notes: string): Promise<void> => {
     try {
       const res = await odApi.executeDecision(id, { decision: 'REVISION_REQUESTED', revision_notes: notes });
-      const updatedOD = mapApiODToODApplication(res.data);
+      const updatedOD = res.data;
 
       setODApplications((prev) =>
         prev.map((od) => (od.id === id || od.id === updatedOD.id ? updatedOD : od))
@@ -936,9 +936,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const recordReviewAttendance = async (reviewSessionId: string, attendance: AttendanceItem[]): Promise<void> => {
     try {
-      await reviewsApi.updateAttendance(reviewSessionId, {
-        attendance: attendance.map((a) => ({ student_id: a.studentId, attended: a.attended })),
-      });
+      await reviewsApi.recordAttendance(reviewSessionId, attendance);
       setReviews((prev) =>
         prev.map((r) => (r.id === reviewSessionId ? { ...r, attendance } : r))
       );

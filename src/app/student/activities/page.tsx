@@ -8,7 +8,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { EmptyState } from '@/components/common/EmptyState';
 import { activitiesApi } from '@/lib/api/activitiesApi';
 import { ApiError } from '@/lib/api/odApi';
-import { areDevMocksEnabled } from '@/lib/api/devMocks';
+import { areDevMocksEnabled } from '@/lib/api/client';
 import { Activity } from '@/types';
 import {
   FolderKanban,

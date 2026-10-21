@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { activitiesApi } from '@/lib/api/activitiesApi';
 import { ApiError } from '@/lib/api/odApi';
 import { Activity } from '@/types';
-import { areDevMocksEnabled } from '@/lib/api/devMocks';
+import { areDevMocksEnabled } from '@/lib/api/client';
 import { Plus, Trophy, Sparkles, Calendar, Users, ArrowRight, RefreshCw, AlertTriangle, Loader2, AlertCircle } from 'lucide-react';
 
 export default function StudentHackathonsPage() {

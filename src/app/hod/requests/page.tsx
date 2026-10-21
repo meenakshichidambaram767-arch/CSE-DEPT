@@ -4,7 +4,7 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/context/DataContext';
 import { odApi } from '@/lib/api/odApi';
-import { areDevMocksEnabled } from '@/lib/api/devMocks';
+import { areDevMocksEnabled } from '@/lib/api/client';
 import { ODApplication } from '@/types';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { Search, ArrowRight, Check, X, GraduationCap, AlertCircle } from 'lucide-react';

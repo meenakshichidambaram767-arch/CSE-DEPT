@@ -59,7 +59,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ regNo
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#dfe6dc] pb-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-[#0a5c36] text-white font-bold text-base flex items-center justify-center shrink-0 border border-[#064024]">
-              {student.name.charAt(0)}
+              {(student.name || 'S').charAt(0)}
             </div>
             <div className="space-y-0.5">
               <h1 className="text-xl font-bold text-[#172017]">
