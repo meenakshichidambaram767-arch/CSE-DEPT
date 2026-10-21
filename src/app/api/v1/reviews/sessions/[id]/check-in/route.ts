@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/api/auth';
+import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
 
 // POST /api/v1/reviews/sessions/[id]/check-in - Student QR Attendance Check-In
@@ -9,7 +9,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const authUser = await requireRole(['STUDENT']);
     const { id } = await params;
     const body = await request.json();
     const { qr_token } = body;
@@ -27,11 +27,11 @@ export async function POST(
       .eq('user_id', authUser.id)
       .single();
 
-    if (!studentRecord && authUser.role === 'STUDENT') {
-      return apiError('STUDENT_PROFILE_NOT_FOUND', 'Student profile not found.', 400);
+    if (!studentRecord) {
+      return apiError('STUDENT_PROFILE_NOT_FOUND', 'Student profile not found.', 403);
     }
 
-    const studentId = studentRecord ? studentRecord.id : authUser.id;
+    const studentId = studentRecord.id;
 
     // Fetch review session
     const { data: session, error: fetchErr } = await supabase
@@ -87,6 +87,9 @@ export async function POST(
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
+    }
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
+      return apiError('FORBIDDEN', 'Access denied. Student role required.', 403);
     }
     console.error('Error in POST /api/v1/reviews/sessions/[id]/check-in:', err);
     return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);

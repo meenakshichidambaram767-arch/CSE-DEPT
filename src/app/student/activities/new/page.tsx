@@ -50,17 +50,17 @@ function ActivitySubmissionForm() {
   const [description, setDescription] = useState('');
   const [organization, setOrganization] = useState('');
   const [eventName, setEventName] = useState('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState('2026-12-15');
-  const [technologies, setTechnologies] = useState<string[]>(['Python', 'OpenCV', 'PyTorch']);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [technologies, setTechnologies] = useState<string[]>([]);
   const [githubUrl, setGithubUrl] = useState('');
   const [demoUrl, setDemoUrl] = useState('');
-  const [proofDocName, setProofDocName] = useState('Synopsis_Signed_Proof.pdf');
+  const [proofDocName, setProofDocName] = useState('');
   const [attachedDocs, setAttachedDocs] = useState<DocumentItem[]>([]);
   const [additionalNotes, setAdditionalNotes] = useState('');
-  const [guideName, setGuideName] = useState('Dr. Priya Kumar');
-  const [category, setCategory] = useState('Computer Vision & AI');
-  const [internshipRole, setInternshipRole] = useState('Software Engineering Intern');
+  const [guideName, setGuideName] = useState('');
+  const [category, setCategory] = useState('');
+  const [internshipRole, setInternshipRole] = useState('');
   const [agreed, setAgreed] = useState(false);
 
   // Team Members list initialized with authenticated user identity
@@ -125,6 +125,68 @@ function ActivitySubmissionForm() {
     }
     updated[index] = { ...updated[index], [field]: val };
     setTeamMembers(updated);
+  };
+
+  const handleLoadDemoData = () => {
+    if (activityType === 'PROJECT') {
+      setTitle('AI-Based Automated Examination Proctoring & Malpractice Detection');
+      setDescription('Real-time computer vision system for student eye-tracking, head-pose estimation, and multiple-person detection during digital assessments.');
+      setCategory('Computer Vision & AI');
+      setGuideName('Dr. Priya Kumar');
+      setTechnologies(['Python', 'OpenCV', 'PyTorch', 'FastAPI']);
+      setStartDate('2026-10-01');
+      setEndDate('2027-04-15');
+      setGithubUrl('https://github.com/siet-cse/ai-proctor-system');
+      setDemoUrl('https://proctor.siet.ac.in');
+      setProofDocName('Project_Synopsis_Signed_Approval.pdf');
+      setAttachedDocs([
+        {
+          id: 'demo-doc-synopsis-001',
+          name: 'Project_Synopsis_Signed_Approval.pdf',
+          type: 'application/pdf',
+          size: '1.4 MB',
+          uploadDate: new Date().toISOString().split('T')[0],
+        },
+      ]);
+    } else if (activityType === 'HACKATHON') {
+      setTitle('SIH 2026 Grand Finalist Prototype');
+      setEventName('Smart India Hackathon 2026');
+      setOrganization('Ministry of Education & AICTE');
+      setDescription('Autonomous crowd management and queue optimization system for railway stations using edge computer vision.');
+      setTechnologies(['Next.js', 'Python', 'YOLOv8', 'Docker']);
+      setStartDate('2026-10-15');
+      setEndDate('2026-10-18');
+      setProofDocName('SIH_Finalist_Confirmation_Letter.pdf');
+      setAttachedDocs([
+        {
+          id: 'demo-doc-hack-002',
+          name: 'SIH_Finalist_Confirmation_Letter.pdf',
+          type: 'application/pdf',
+          size: '950 KB',
+          uploadDate: new Date().toISOString().split('T')[0],
+        },
+      ]);
+    } else {
+      setTitle('Software Engineering Intern');
+      setOrganization('Zoho Corporation');
+      setInternshipRole('Backend Systems Intern');
+      setDescription('Selected for full-time 6-month product engineering internship at Zoho Estancia campus.');
+      setStartDate('2026-11-01');
+      setEndDate('2027-04-30');
+      setProofDocName('Zoho_Offer_Letter_Signed_Copy.pdf');
+      setAttachedDocs([
+        {
+          id: 'demo-doc-intern-003',
+          name: 'Zoho_Offer_Letter_Signed_Copy.pdf',
+          type: 'application/pdf',
+          size: '2.1 MB',
+          uploadDate: new Date().toISOString().split('T')[0],
+        },
+      ]);
+    }
+    setAgreed(true);
+    setMissingErrors([]);
+    showToast('Loaded Demo Data', 'Sample project details and proof document populated for testing.', 'info');
   };
 
   const validateForm = (): string[] => {
@@ -282,6 +344,18 @@ function ActivitySubmissionForm() {
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             <span>Academic Year 2026-27</span>
           </span>
+        }
+        primaryAction={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleLoadDemoData}
+            leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-600" />}
+            className="border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold shadow-2xs"
+          >
+            Load Demo Data
+          </Button>
         }
       />
 
@@ -640,7 +714,7 @@ function ActivitySubmissionForm() {
             }}
           />
 
-          {proofDocName && (
+          {attachedDocs.length > 0 && proofDocName && (
             <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileCheck className="w-5 h-5 text-emerald-700" />

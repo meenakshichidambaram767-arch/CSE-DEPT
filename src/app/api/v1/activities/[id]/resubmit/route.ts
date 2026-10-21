@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/api/auth';
+import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
 
 // PUT /api/v1/activities/[id]/resubmit - Resubmit Activity Proposal
@@ -9,7 +9,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const authUser = await requireRole(['STUDENT']);
     const { id } = await params;
     const body = await request.json();
 
@@ -22,11 +22,11 @@ export async function PUT(
       .eq('user_id', authUser.id)
       .single();
 
-    if (!studentRecord && authUser.role === 'STUDENT') {
+    if (!studentRecord) {
       return apiError(
         'STUDENT_PROFILE_NOT_FOUND',
         'Student profile not found.',
-        400
+        403
       );
     }
 
@@ -42,7 +42,7 @@ export async function PUT(
     }
 
     // Ownership check
-    if (authUser.role === 'STUDENT' && studentRecord && act.student_id !== studentRecord.id) {
+    if (act.student_id !== studentRecord.id) {
       return apiError('FORBIDDEN', 'You can only resubmit your own activity proposal.', 403);
     }
 
@@ -135,6 +135,9 @@ export async function PUT(
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
+    }
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
+      return apiError('FORBIDDEN', 'Access denied. Student role required.', 403);
     }
     console.error('Error in PUT /api/v1/activities/[id]/resubmit:', err);
     return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);

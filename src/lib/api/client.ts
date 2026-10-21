@@ -30,7 +30,7 @@ export class ApiError extends Error {
     let finalCode: string;
     let finalMessage: string;
     let finalStatus: number;
-    let finalDetails: ApiErrorDetail | undefined = details;
+    const finalDetails: ApiErrorDetail | undefined = details;
 
     if (typeof codeOrStatus === 'number') {
       finalStatus = codeOrStatus;
@@ -292,7 +292,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -316,7 +316,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -340,7 +340,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -364,7 +364,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -387,7 +387,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;

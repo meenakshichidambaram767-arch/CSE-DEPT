@@ -20,16 +20,8 @@ export async function GET() {
       role: authUser.role,
       profile:
         authUser.role === 'STUDENT'
-          ? authUser.studentProfile || {
-              register_number: '714023104088',
-              department: 'CSE',
-              year: 'II',
-              section: 'A',
-            }
-          : authUser.hodProfile || {
-              designation: 'Professor & Head of Department',
-              department: 'CSE',
-            },
+          ? authUser.studentProfile || null
+          : authUser.hodProfile || null,
     };
 
     return apiSuccess(responsePayload);

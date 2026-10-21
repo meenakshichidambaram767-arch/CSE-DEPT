@@ -40,14 +40,9 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUserContext |
       .single();
 
     if (!dbUser) {
-      // Return metadata derived from auth user metadata or fallback
-      const role = (user.user_metadata?.role as UserRole) || 'STUDENT';
-      return {
-        id: user.id,
-        email: user.email || '',
-        role,
-        name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-      };
+      // Deny application access if user record does not exist in public.users.
+      // Roles are never derived from untrusted client-accessible user_metadata.
+      return null;
     }
 
     let studentProfile;

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/context/SessionContext';
 import { useToast } from '@/components/ui/Toast';
 import { SietLogo } from '@/components/common/SietLogo';
+import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 
 export default function LoginPage() {
@@ -28,12 +29,12 @@ export default function LoginPage() {
     }
   }, [user, role, router]);
 
-  const handleManualLogin = (e: React.FormEvent) => {
+  const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!username.trim()) {
-      setError('Please enter your register number or faculty ID.');
+      setError('Please enter your register number or email.');
       return;
     }
 
@@ -44,28 +45,95 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const lower = username.toLowerCase();
-      if (lower.includes('hod') || lower.includes('priya') || lower.includes('faculty')) {
-        loginAsHod();
-        showToast('Welcome, Dr. Priya Kumar (HOD CSE)', 'success');
-        router.push('/hod/dashboard');
-      } else {
-        loginAsStudent();
-        showToast('Welcome, Meena C (CSE)', 'success');
-        router.push('/student/dashboard');
+    try {
+      const supabase = createClient();
+      let email = username.trim();
+      if (!email.includes('@')) {
+        const lower = email.toLowerCase();
+        if (process.env.NODE_ENV !== 'production') {
+          if (lower.includes('hod') || lower.includes('priya')) {
+            email = 'test-hod@siet.ac.in';
+          } else if (email === '714023104088' || lower.includes('meena')) {
+            email = 'test-student@siet.ac.in';
+          } else {
+            email = `${lower}@siet.ac.in`;
+          }
+        } else {
+          // In production, derive institutional email directly without hardcoded test mappings
+          email = `${lower}@siet.ac.in`;
+        }
       }
-    }, 350);
+
+      const { data, error: signInErr } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInErr) {
+        setIsSubmitting(false);
+        setError(signInErr.message || 'Invalid credentials.');
+        return;
+      }
+
+      if (data.session) {
+        const meRes = await fetch('/api/v1/me');
+        if (meRes.ok) {
+          const body = await meRes.json();
+          const p = body.data;
+          if (p?.role === 'HOD') {
+            showToast(`Welcome, ${p.name || 'HOD'} (HOD CSE)`, 'success');
+            router.push('/hod/dashboard');
+          } else {
+            showToast(`Welcome, ${p?.name || 'Student'} (CSE)`, 'success');
+            router.push('/student/dashboard');
+          }
+          return;
+        }
+      }
+      setIsSubmitting(false);
+    } catch (err: unknown) {
+      setIsSubmitting(false);
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+    }
   };
 
-  const handleDemoStudent = () => {
+  const handleDemoStudent = async () => {
+    setIsSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'test-student@siet.ac.in',
+        password: 'password123',
+      });
+      if (!error && data.session) {
+        showToast('Signed in as Student (Meena C)', 'success');
+        router.push('/student/dashboard');
+        return;
+      }
+    } catch {
+      // Fallback in case of network issue
+    }
     loginAsStudent();
     showToast('Signed in as Student (Meena C)', 'success');
     router.push('/student/dashboard');
   };
 
-  const handleDemoHod = () => {
+  const handleDemoHod = async () => {
+    setIsSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'test-hod@siet.ac.in',
+        password: 'password123',
+      });
+      if (!error && data.session) {
+        showToast('Signed in as HOD (Dr. Priya Kumar)', 'success');
+        router.push('/hod/dashboard');
+        return;
+      }
+    } catch {
+      // Fallback in case of network issue
+    }
     loginAsHod();
     showToast('Signed in as HOD (Dr. Priya Kumar)', 'success');
     router.push('/hod/dashboard');
@@ -208,50 +276,52 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Access Switchers */}
-          <div className="pt-2 border-t border-[#c4e6ce] space-y-2.5">
-            <div className="text-[11px] font-bold text-[#064024] text-center uppercase tracking-wider">
-              Quick Institutional Sign In
-            </div>
+          {/* Quick Demo Access Switchers (Development & Staging Only) */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="pt-2 border-t border-[#c4e6ce] space-y-2.5">
+              <div className="text-[11px] font-bold text-[#064024] text-center uppercase tracking-wider">
+                Quick Demo Sign In (Dev Mode)
+              </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={handleDemoStudent}
-                className="p-2.5 bg-white hover:bg-[#f2f9f1] border border-[#c4e6ce] rounded-xl text-left transition-all shadow-2xs group flex items-center gap-2"
-              >
-                <div className="w-7 h-7 rounded-full bg-[#064024] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                  <UserCheck className="w-3.5 h-3.5 text-[#fed403]" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[11px] font-bold text-[#064024] truncate">
-                    Student
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleDemoStudent}
+                  className="p-2.5 bg-white hover:bg-[#f2f9f1] border border-[#c4e6ce] rounded-xl text-left transition-all shadow-2xs group flex items-center gap-2"
+                >
+                  <div className="w-7 h-7 rounded-full bg-[#064024] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                    <UserCheck className="w-3.5 h-3.5 text-[#fed403]" />
                   </div>
-                  <div className="text-[10px] text-[#586658] truncate">
-                    Meena C (II Year)
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-[#064024] truncate">
+                      Student
+                    </div>
+                    <div className="text-[10px] text-[#586658] truncate">
+                      Meena C (II Year)
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
 
-              <button
-                type="button"
-                onClick={handleDemoHod}
-                className="p-2.5 bg-white hover:bg-[#f2f9f1] border border-[#c4e6ce] rounded-xl text-left transition-all shadow-2xs group flex items-center gap-2"
-              >
-                <div className="w-7 h-7 rounded-full bg-[#064024] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#fed403]" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[11px] font-bold text-[#064024] truncate">
-                    HOD / Faculty
+                <button
+                  type="button"
+                  onClick={handleDemoHod}
+                  className="p-2.5 bg-white hover:bg-[#f2f9f1] border border-[#c4e6ce] rounded-xl text-left transition-all shadow-2xs group flex items-center gap-2"
+                >
+                  <div className="w-7 h-7 rounded-full bg-[#064024] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#fed403]" />
                   </div>
-                  <div className="text-[10px] text-[#586658] truncate">
-                    Dr. Priya Kumar
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-[#064024] truncate">
+                      HOD / Faculty
+                    </div>
+                    <div className="text-[10px] text-[#586658] truncate">
+                      Dr. Priya Kumar
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer info */}

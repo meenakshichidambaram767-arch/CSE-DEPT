@@ -1,5 +1,7 @@
 -- Migration: 20260928_atomic_review_finalization.sql
 -- Description: Minimal review_type column addition and atomic stored procedure exec_hod_finalize_review
+-- Enforces caller identity verification, database role checks, row locking, non-evaluative completion state,
+-- and ACID transactional updates across review_sessions, audit_logs, and notifications.
 
 -- 1. Add review_type column if not exists
 ALTER TABLE public.review_sessions
@@ -9,7 +11,7 @@ ALTER TABLE public.review_sessions
 -- 2. Atomic Stored Procedure for Review Finalization
 CREATE OR REPLACE FUNCTION public.exec_hod_finalize_review(
   p_session_id UUID,
-  p_actor_id UUID,
+  p_actor_id UUID DEFAULT NULL,
   p_notes TEXT DEFAULT NULL,
   p_next_goal TEXT DEFAULT NULL
 )
@@ -19,23 +21,44 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_caller_id UUID;
+  v_effective_actor_id UUID;
   v_actor_role TEXT;
   v_session RECORD;
   v_act RECORD;
   v_now TIMESTAMPTZ := NOW();
   v_result JSONB;
 BEGIN
-  -- 1. Authorization check: verify actor is HOD
+  -- 1. Identify and verify caller identity (bind to auth.uid() when authenticated)
+  v_caller_id := auth.uid();
+
+  IF v_caller_id IS NOT NULL THEN
+    -- If caller is authenticated, prohibit impersonation of another actor ID
+    IF p_actor_id IS NOT NULL AND p_actor_id <> v_caller_id THEN
+      RAISE EXCEPTION 'FORBIDDEN: Caller identity does not match specified actor ID.'
+        USING ERRCODE = 'P0001';
+    END IF;
+    v_effective_actor_id := v_caller_id;
+  ELSE
+    -- If auth.uid() is null (e.g. administrative script / service_role session)
+    IF p_actor_id IS NULL THEN
+      RAISE EXCEPTION 'UNAUTHORIZED: Authentication required to finalize review sessions.'
+        USING ERRCODE = 'P0001';
+    END IF;
+    v_effective_actor_id := p_actor_id;
+  END IF;
+
+  -- 2. Authorization check: verify actor exists in public.users and holds trusted HOD role
   SELECT role INTO v_actor_role
   FROM public.users
-  WHERE id = p_actor_id;
+  WHERE id = v_effective_actor_id;
 
   IF v_actor_role IS NULL OR v_actor_role <> 'HOD' THEN
     RAISE EXCEPTION 'FORBIDDEN: Only authorized HOD can finalize review sessions.'
       USING ERRCODE = 'P0001';
   END IF;
 
-  -- 2. Lock & Re-read Review Session row (FOR UPDATE)
+  -- 3. Lock & Re-read Review Session row (FOR UPDATE)
   SELECT rs.*
   INTO v_session
   FROM public.review_sessions rs
@@ -47,7 +70,7 @@ BEGIN
       USING ERRCODE = 'P0005';
   END IF;
 
-  -- 3. Precondition check: verify status is SCHEDULED
+  -- 4. Precondition check: verify status is SCHEDULED
   IF v_session.status <> 'SCHEDULED' THEN
     RAISE EXCEPTION 'INVALID_TRANSITION: Cannot finalize review session in % status. Only SCHEDULED sessions can be finalized.', v_session.status
       USING ERRCODE = 'P0006';
@@ -56,7 +79,7 @@ BEGIN
   -- Read target activity info
   SELECT * INTO v_act FROM public.activities WHERE id = v_session.activity_id;
 
-  -- 4. Atomically update review_sessions
+  -- 5. Atomically update review_sessions (STRICTLY NON-EVALUATIVE - NO MARKS, GRADES OR SCORES)
   UPDATE public.review_sessions
   SET
     status = 'COMPLETED',
@@ -64,7 +87,7 @@ BEGIN
     next_week_goal = NULLIF(TRIM(p_next_goal), '')
   WHERE id = p_session_id;
 
-  -- 5. Atomically insert audit log
+  -- 6. Atomically insert audit log
   INSERT INTO public.audit_logs (
     actor_id,
     actor_role,
@@ -73,7 +96,7 @@ BEGIN
     target_id,
     created_at
   ) VALUES (
-    p_actor_id,
+    v_effective_actor_id,
     'HOD',
     'Review Finalized: ' || v_session.code,
     'HOD finalized review session ' || v_session.code || ' for activity ' || COALESCE(v_act.title, 'Activity') || '. Notes: "' || COALESCE(TRIM(p_notes), 'None') || '".',
@@ -81,7 +104,7 @@ BEGIN
     v_now
   );
 
-  -- 6. Atomically notify applicant student
+  -- 7. Atomically notify applicant student
   IF v_act.student_id IS NOT NULL THEN
     INSERT INTO public.notifications (
       user_id,
@@ -104,7 +127,7 @@ BEGIN
     WHERE s.id = v_act.student_id AND s.user_id IS NOT NULL;
   END IF;
 
-  -- 7. Return json payload matching API Contract v2.0
+  -- 8. Return json payload matching API Contract v2.0
   SELECT jsonb_build_object(
     'id', rs.id,
     'code', rs.code,
@@ -123,4 +146,7 @@ BEGIN
 END;
 $$;
 
+-- Security Grants & Hardening
+REVOKE ALL ON FUNCTION public.exec_hod_finalize_review(UUID, UUID, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.exec_hod_finalize_review(UUID, UUID, TEXT, TEXT) FROM anon;
 GRANT EXECUTE ON FUNCTION public.exec_hod_finalize_review(UUID, UUID, TEXT, TEXT) TO authenticated, service_role;

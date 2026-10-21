@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAuthenticatedUser, requireAuth } from '@/lib/api/auth';
+import { getAuthenticatedUser, requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
 
 // GET /api/v1/od-requests - Paginated & Filtered List
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
 // POST /api/v1/od-requests - Submit OD Request
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const authUser = await requireRole(['STUDENT']);
     const supabase = await createClient();
 
     // Verify student profile
@@ -133,15 +133,15 @@ export async function POST(request: NextRequest) {
       .eq('user_id', authUser.id)
       .single();
 
-    const studentId = studentRecord ? studentRecord.id : null;
-
-    if (!studentId && authUser.role === 'STUDENT') {
+    if (!studentRecord) {
       return apiError(
         'STUDENT_PROFILE_NOT_FOUND',
         'No student profile found for authenticated user.',
-        400
+        403
       );
     }
+
+    const studentId = studentRecord.id;
 
     const body = await request.json();
 
@@ -279,6 +279,9 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);
+    }
+    if (err instanceof Error && err.message === 'FORBIDDEN') {
+      return apiError('FORBIDDEN', 'Access denied. Student role required.', 403);
     }
     console.error('Error in POST /api/v1/od-requests:', err);
     return apiError('INTERNAL_SERVER_ERROR', 'Unexpected error occurred.', 500);
