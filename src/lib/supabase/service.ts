@@ -1,4 +1,9 @@
-import 'server-only';
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('server-only');
+} catch {
+  // Ignored in non-Next CLI/test runners
+}
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
