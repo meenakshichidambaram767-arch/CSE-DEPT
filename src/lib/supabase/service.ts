@@ -8,6 +8,9 @@ try {
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 export function createServiceClient() {
+  if (typeof (globalThis as any).__MOCK_SUPABASE_SERVICE_CLIENT__ === 'function') {
+    return (globalThis as any).__MOCK_SUPABASE_SERVICE_CLIENT__();
+  }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

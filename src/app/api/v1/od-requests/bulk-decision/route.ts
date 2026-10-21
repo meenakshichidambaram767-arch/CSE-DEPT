@@ -9,8 +9,8 @@ export async function POST(request: NextRequest) {
     const authUser = await requireRole(['HOD']);
     const body = await request.json();
 
+    const ids = body.ids || body.request_ids;
     const {
-      ids,
       decision,
       remarks,
       rejection_reason,

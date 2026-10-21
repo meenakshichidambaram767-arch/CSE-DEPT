@@ -45,17 +45,6 @@ import {
   mapApiReviewToReviewSession,
   formatDateToYYYYMMDD,
 } from '@/lib/api/mappers';
-import { fixtureApiODs } from '@/data/fixtures/odFixtures';
-import { fixtureApiActivities } from '@/data/fixtures/activitiesFixtures';
-import { fixtureApiReviews } from '@/data/fixtures/reviewsFixtures';
-import { fixtureApiNotifications } from '@/data/fixtures/notificationsFixtures';
-import {
-  mockActivities,
-  mockReviewSessions,
-  mockODApplications,
-  mockODEvents,
-  mockNotifications,
-} from '@/data/mock';
 
 // ==========================================
 // 1. DOMAIN STATE LIFECYCLE MODEL (RFC 7807)
@@ -210,69 +199,13 @@ export interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// ==========================================
-// 3. CONTRACT-COMPATIBLE INITIALIZERS
-// ==========================================
-
-function buildInitialActivities(): Activity[] {
-  const contractActs = fixtureApiActivities.map(mapApiActivityToActivity);
-  const contractIds = new Set(contractActs.map((a) => a.id));
-  const remainingMocks = mockActivities.filter((a) => !contractIds.has(a.id));
-  return [...contractActs, ...remainingMocks];
-}
-
-function buildInitialODApplications(): ODApplication[] {
-  const contractODs = fixtureApiODs.map(mapApiODToODApplication);
-  const contractIds = new Set(contractODs.map((o) => o.id));
-  const remainingMocks = mockODApplications.filter((o) => !contractIds.has(o.id));
-  return [...contractODs, ...remainingMocks];
-}
-
-function buildInitialReviews(): ReviewSession[] {
-  const contractRevs = fixtureApiReviews.map(mapApiReviewToReviewSession);
-  const contractIds = new Set(contractRevs.map((r) => r.id));
-  const remainingMocks = mockReviewSessions.filter((r) => !contractIds.has(r.id));
-  return [...contractRevs, ...remainingMocks];
-}
-
-function buildInitialNotifications(): Notification[] {
-  const contractNotifs: Notification[] = fixtureApiNotifications.map((n: ApiNotification) => ({
-    id: n.id,
-    userId: n.user_id || n.userId || '',
-    title: n.title,
-    message: n.message,
-    type: n.type,
-    isRead: n.is_read ?? n.isRead ?? false,
-    createdAt: n.created_at || n.createdAt || new Date().toISOString(),
-    linkUrl: n.link_url || n.linkUrl || '',
-  }));
-  const contractIds = new Set(contractNotifs.map((n) => n.id));
-  const remainingMocks = mockNotifications.filter((n) => !contractIds.has(n.id));
-  return [...contractNotifs, ...remainingMocks];
-}
-
-// ==========================================
-// 4. DATA PROVIDER COMPONENT
-// ==========================================
-
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  // Domain Entity Collections initialized from Contract Fixtures
-  // Domain Entity Collections initialized conditionally based on areDevMocksEnabled()
-  const [activities, setActivities] = useState<Activity[]>(() =>
-    areDevMocksEnabled() ? buildInitialActivities() : []
-  );
-  const [reviews, setReviews] = useState<ReviewSession[]>(() =>
-    areDevMocksEnabled() ? buildInitialReviews() : []
-  );
-  const [odApplications, setODApplications] = useState<ODApplication[]>(() =>
-    areDevMocksEnabled() ? buildInitialODApplications() : []
-  );
-  const [notifications, setNotifications] = useState<Notification[]>(() =>
-    areDevMocksEnabled() ? buildInitialNotifications() : []
-  );
-  const [odEvents, setODEvents] = useState<ODEvent[]>(() =>
-    areDevMocksEnabled() ? [...mockODEvents] : []
-  );
+  // Domain Entity Collections initialized to empty states (hydrated from API on mount)
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [reviews, setReviews] = useState<ReviewSession[]>([]);
+  const [odApplications, setODApplications] = useState<ODApplication[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [odEvents, setODEvents] = useState<ODEvent[]>([]);
 
   // Domain Lifecycle State & RFC 7807 Error Tracking
   const [odError, setOdError] = useState<ApiError | null>(null);

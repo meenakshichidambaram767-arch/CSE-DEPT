@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         .select('id, name, register_number, email')
         .in('register_number', Array.from(uniqueRegNos));
 
-      const foundRegMap = new Map((dbStudents || []).map((s) => [s.register_number, s]));
+      const foundRegMap = new Map((dbStudents || []).map((s: any) => [s.register_number, s]));
 
       for (const tm of team_members) {
         const rNo = (tm.register_number || tm.regNo || '').trim();
@@ -179,11 +179,11 @@ export async function POST(request: NextRequest) {
             { register_number: rNo }
           );
         }
-        const matched = foundRegMap.get(rNo)!;
+        const matched = foundRegMap.get(rNo) as any;
         validatedTeamMembers.push({
-          name: matched.name,
-          register_number: matched.register_number,
-          email: matched.email || tm.email || '',
+          name: matched?.name,
+          register_number: matched?.register_number,
+          email: matched?.email || tm.email || '',
           role: tm.role || 'MEMBER',
         });
       }

@@ -1,5 +1,5 @@
 /**
- * Activities (Projects, Hackathons, Internships) API Client
+ * Activities API Client (Projects, Hackathons, Internships)
  * SIET CSE Department Platform - API Contract v2.0
  */
 
@@ -23,16 +23,13 @@ export { ApiError };
 export interface ActivitiesQueryParams {
   type?: string;
   status?: string;
-  year?: string;
-  section?: string;
-  search?: string;
   page?: number;
   page_size?: number;
 }
 
 export const activitiesApi = {
   /**
-   * GET /api/v1/activities (Mapped to UI model)
+   * GET /api/v1/activities
    */
   async getActivities(params?: ActivitiesQueryParams): Promise<PaginatedResponse<Activity>> {
     const res = await this.getRawActivities(params);

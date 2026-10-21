@@ -50,16 +50,17 @@ export async function GET(
       .order('created_at', { ascending: false });
 
     // Calculate OD Statistics
-    const allODs = odRequests || [];
-    const approvedODs = allODs.filter((od) => od.status === 'APPROVED');
-    const pendingODs = allODs.filter((od) => od.status === 'PENDING');
-    const rejectedODs = allODs.filter((od) => od.status === 'REJECTED');
-    const revisionODs = allODs.filter((od) => od.status === 'REVISION_REQUESTED');
+    const allODs: any[] = odRequests || [];
+    const approvedODs = allODs.filter((od: any) => od.status === 'APPROVED');
+    const pendingODs = allODs.filter((od: any) => od.status === 'PENDING');
+    const rejectedODs = allODs.filter((od: any) => od.status === 'REJECTED');
+    const revisionODs = allODs.filter((od: any) => od.status === 'REVISION_REQUESTED');
 
-    const totalApprovedDays = approvedODs.reduce((sum, od) => sum + (od.total_days || 1), 0);
+    const totalApprovedDays = approvedODs.reduce((sum: number, od: any) => sum + (od.total_days || 1), 0);
 
     // Query student's review sessions via activities
-    const activityIds = (activities || []).map((a) => a.id);
+    const allActivities: any[] = activities || [];
+    const activityIds = allActivities.map((a: any) => a.id);
     let reviewSessions: any[] = [];
     if (activityIds.length > 0) {
       const { data: revs } = await supabase
@@ -77,12 +78,12 @@ export async function GET(
       .eq('student_id', student.id);
 
     const totalAttendanceMarked = (attendanceData || []).length;
-    const attendedCount = (attendanceData || []).filter((a) => a.attended).length;
+    const attendedCount = (attendanceData || []).filter((a: any) => a.attended).length;
     const attendanceRate = totalAttendanceMarked > 0 ? Math.round((attendedCount / totalAttendanceMarked) * 100) : 100;
 
-    const serializedODs = allODs.map((od) => serializeODRequest(od));
-    const serializedActivities = (activities || []).map((act) => serializeActivity(act));
-    const serializedReviews = reviewSessions.map((rev) => serializeReviewSession(rev));
+    const serializedODs = allODs.map((od: any) => serializeODRequest(od));
+    const serializedActivities = allActivities.map((act: any) => serializeActivity(act));
+    const serializedReviews = reviewSessions.map((rev: any) => serializeReviewSession(rev));
 
     const payload = {
       student: serializeStudentRecord(student),
@@ -93,9 +94,9 @@ export async function GET(
         rejected_ods: rejectedODs.length,
         revision_ods: revisionODs.length,
         total_approved_days: totalApprovedDays,
-        total_activities: (activities || []).length,
-        active_activities: (activities || []).filter(
-          (a) => a.status === 'ACTIVE' || a.status === 'APPROVED'
+        total_activities: allActivities.length,
+        active_activities: allActivities.filter(
+          (a: any) => a.status === 'ACTIVE' || a.status === 'APPROVED'
         ).length,
         total_reviews: reviewSessions.length,
         attendance_rate: attendanceRate,

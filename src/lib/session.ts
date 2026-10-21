@@ -1,5 +1,4 @@
 import { User, UserRole } from '@/types';
-import { studentUser, hodUser } from '@/data/mock/users';
 import { createClient } from '@/lib/supabase/client';
 
 export interface UserSession {
@@ -82,17 +81,28 @@ export function loginAsStudent(): User {
     throw new Error('Mock authentication is disabled in production.');
   }
 
-  const session: UserSession = {
-    userId: studentUser.id,
+  const devStudent: User = {
+    id: '00000000-0000-0000-0000-000000000001',
+    name: 'Aarav Sharma',
+    email: 'aarav.sharma@siet.ac.in',
     role: 'STUDENT',
-    user: studentUser,
+    department: 'CSE',
+    year: 'IV',
+    section: 'A',
+    registerNumber: '7376221CS101',
+  };
+
+  const session: UserSession = {
+    userId: devStudent.id,
+    role: 'STUDENT',
+    user: devStudent,
   };
   if (typeof window !== 'undefined') {
     localStorage.setItem('siet_cse_user_session', JSON.stringify(session));
     document.cookie = 'siet_cse_user_role=STUDENT; path=/; max-age=86400; SameSite=Lax';
     document.cookie = `siet_cse_user_session=${encodeURIComponent(JSON.stringify(session))}; path=/; max-age=86400; SameSite=Lax`;
   }
-  return studentUser;
+  return devStudent;
 }
 
 export function loginAsHod(): User {
@@ -100,17 +110,26 @@ export function loginAsHod(): User {
     throw new Error('Mock authentication is disabled in production.');
   }
 
-  const session: UserSession = {
-    userId: hodUser.id,
+  const devHod: User = {
+    id: '00000000-0000-0000-0000-000000000002',
+    name: 'Dr. K. R. Meenakshi',
+    email: 'hod.cse@siet.ac.in',
     role: 'HOD',
-    user: hodUser,
+    department: 'CSE',
+    designation: 'Head of Department & Professor',
+  };
+
+  const session: UserSession = {
+    userId: devHod.id,
+    role: 'HOD',
+    user: devHod,
   };
   if (typeof window !== 'undefined') {
     localStorage.setItem('siet_cse_user_session', JSON.stringify(session));
     document.cookie = 'siet_cse_user_role=HOD; path=/; max-age=86400; SameSite=Lax';
     document.cookie = `siet_cse_user_session=${encodeURIComponent(JSON.stringify(session))}; path=/; max-age=86400; SameSite=Lax`;
   }
-  return hodUser;
+  return devHod;
 }
 
 export async function logoutSupabase(): Promise<void> {

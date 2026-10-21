@@ -13,7 +13,8 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const { meeting_notes, next_week_goal } = body;
+    const meeting_notes = body.meeting_notes || body.notes;
+    const next_week_goal = body.next_week_goal || body.nextWeekGoal;
 
     if (!meeting_notes || typeof meeting_notes !== 'string' || !meeting_notes.trim()) {
       return apiError(

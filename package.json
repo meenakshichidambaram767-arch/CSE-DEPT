@@ -19,7 +19,9 @@
     "test:phase6": "npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts",
     "test:casing": "npx -y tsx scripts/test-contract-casing.ts",
     "test:codes": "npx -y tsx scripts/test-safe-unique-codes.ts",
-    "test": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts && npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts && npx -y tsx scripts/test-authorization-hardening.ts && npx -y tsx scripts/test-contract-casing.ts && npx -y tsx scripts/test-safe-unique-codes.ts"
+    "test:wiring": "npx -y tsx scripts/test-wiring-check.ts",
+    "test:contracts": "npx -y tsx scripts/test-route-contracts.ts",
+    "test": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts && npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts && npx -y tsx scripts/test-authorization-hardening.ts && npx -y tsx scripts/test-contract-casing.ts && npx -y tsx scripts/test-safe-unique-codes.ts && npx -y tsx scripts/test-wiring-check.ts && npx -y tsx scripts/test-route-contracts.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

@@ -27,18 +27,19 @@ export async function GET(request: NextRequest) {
     }
 
     const totalStudents = students?.length || 0;
+    const allStuds: any[] = students || [];
     const studentsByYear = {
-      I: students?.filter((s) => s.year === 'I').length || 0,
-      II: students?.filter((s) => s.year === 'II').length || 0,
-      III: students?.filter((s) => s.year === 'III').length || 0,
-      IV: students?.filter((s) => s.year === 'IV').length || 0,
+      I: allStuds.filter((s: any) => s.year === 'I').length || 0,
+      II: allStuds.filter((s: any) => s.year === 'II').length || 0,
+      III: allStuds.filter((s: any) => s.year === 'III').length || 0,
+      IV: allStuds.filter((s: any) => s.year === 'IV').length || 0,
     };
     const studentsBySection = {
-      A: students?.filter((s) => s.section === 'A').length || 0,
-      B: students?.filter((s) => s.section === 'B').length || 0,
-      C: students?.filter((s) => s.section === 'C').length || 0,
-      D: students?.filter((s) => s.section === 'D').length || 0,
-      E: students?.filter((s) => s.section === 'E').length || 0,
+      A: allStuds.filter((s: any) => s.section === 'A').length || 0,
+      B: allStuds.filter((s: any) => s.section === 'B').length || 0,
+      C: allStuds.filter((s: any) => s.section === 'C').length || 0,
+      D: allStuds.filter((s: any) => s.section === 'D').length || 0,
+      E: allStuds.filter((s: any) => s.section === 'E').length || 0,
     };
 
     // 2. Query OD Requests Summary
@@ -51,16 +52,16 @@ export async function GET(request: NextRequest) {
       return apiError('DATABASE_ERROR', odErr.message, 500);
     }
 
-    const allODs = odRequests || [];
+    const allODs: any[] = odRequests || [];
     const odSummary = {
       total: allODs.length,
-      pending: allODs.filter((o) => o.status === 'PENDING').length,
-      approved: allODs.filter((o) => o.status === 'APPROVED').length,
-      rejected: allODs.filter((o) => o.status === 'REJECTED').length,
-      revisionRequested: allODs.filter((o) => o.status === 'REVISION_REQUESTED').length,
+      pending: allODs.filter((o: any) => o.status === 'PENDING').length,
+      approved: allODs.filter((o: any) => o.status === 'APPROVED').length,
+      rejected: allODs.filter((o: any) => o.status === 'REJECTED').length,
+      revisionRequested: allODs.filter((o: any) => o.status === 'REVISION_REQUESTED').length,
       totalApprovedDays: allODs
-        .filter((o) => o.status === 'APPROVED')
-        .reduce((sum, o) => sum + (o.total_days || 1), 0),
+        .filter((o: any) => o.status === 'APPROVED')
+        .reduce((sum: number, o: any) => sum + (o.total_days || 1), 0),
     };
 
     // 3. Query Activities Summary
@@ -73,18 +74,18 @@ export async function GET(request: NextRequest) {
       return apiError('DATABASE_ERROR', actErr.message, 500);
     }
 
-    const allActs = activities || [];
+    const allActs: any[] = activities || [];
     const activitySummary = {
       total: allActs.length,
-      projects: allActs.filter((a) => a.type === 'PROJECT').length,
-      hackathons: allActs.filter((a) => a.type === 'HACKATHON').length,
-      internships: allActs.filter((a) => a.type === 'INTERNSHIP').length,
+      projects: allActs.filter((a: any) => a.type === 'PROJECT').length,
+      hackathons: allActs.filter((a: any) => a.type === 'HACKATHON').length,
+      internships: allActs.filter((a: any) => a.type === 'INTERNSHIP').length,
       statusBreakdown: {
-        submitted: allActs.filter((a) => a.status === 'SUBMITTED').length,
-        active: allActs.filter((a) => a.status === 'ACTIVE' || a.status === 'APPROVED').length,
-        rejected: allActs.filter((a) => a.status === 'REJECTED').length,
-        revisionRequested: allActs.filter((a) => a.status === 'REVISION_REQUESTED').length,
-        completed: allActs.filter((a) => a.status === 'COMPLETED').length,
+        submitted: allActs.filter((a: any) => a.status === 'SUBMITTED').length,
+        active: allActs.filter((a: any) => a.status === 'ACTIVE' || a.status === 'APPROVED').length,
+        rejected: allActs.filter((a: any) => a.status === 'REJECTED').length,
+        revisionRequested: allActs.filter((a: any) => a.status === 'REVISION_REQUESTED').length,
+        completed: allActs.filter((a: any) => a.status === 'COMPLETED').length,
       },
     };
 
@@ -98,11 +99,11 @@ export async function GET(request: NextRequest) {
       .select('id, attended')
       .eq('attended', true);
 
-    const allReviews = reviewSessions || [];
+    const allReviews: any[] = reviewSessions || [];
     const reviewSummary = {
       total: allReviews.length,
-      scheduled: allReviews.filter((r) => r.status === 'SCHEDULED').length,
-      completed: allReviews.filter((r) => r.status === 'COMPLETED').length,
+      scheduled: allReviews.filter((r: any) => r.status === 'SCHEDULED').length,
+      completed: allReviews.filter((r: any) => r.status === 'COMPLETED').length,
       totalAttendedCount: (attendanceList || []).length,
     };
 
@@ -111,12 +112,12 @@ export async function GET(request: NextRequest) {
       .from('events')
       .select('id, status');
 
-    const allEvents = events || [];
+    const allEvents: any[] = events || [];
     const eventSummary = {
       total: allEvents.length,
-      upcoming: allEvents.filter((e) => e.status === 'UPCOMING').length,
-      ongoing: allEvents.filter((e) => e.status === 'ONGOING').length,
-      completed: allEvents.filter((e) => e.status === 'COMPLETED').length,
+      upcoming: allEvents.filter((e: any) => e.status === 'UPCOMING').length,
+      ongoing: allEvents.filter((e: any) => e.status === 'ONGOING').length,
+      completed: allEvents.filter((e: any) => e.status === 'COMPLETED').length,
     };
 
     return apiSuccess(

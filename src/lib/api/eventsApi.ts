@@ -5,7 +5,6 @@
 
 import { apiClient, ApiError } from './client';
 import { ODEvent, PaginatedResponse } from '@/types';
-import { mockODEvents } from '@/data/mock';
 
 export { ApiError };
 
@@ -34,10 +33,6 @@ export const eventsApi = {
   async getEvents(params?: EventsQueryParams): Promise<PaginatedResponse<ODEvent>> {
     return apiClient.get<PaginatedResponse<ODEvent>>('/api/v1/events', {
       params: params ? { ...params } : undefined,
-      fallback: () => ({
-        data: [...mockODEvents],
-        meta: { page: params?.page || 1, page_size: params?.page_size || 20, total: mockODEvents.length },
-      }),
     });
   },
 
@@ -47,21 +42,15 @@ export const eventsApi = {
    */
   async getEventById(id: string): Promise<{ data: EventDetailResponse }> {
     return apiClient.get<{ data: EventDetailResponse }>(
-      `/api/v1/events/${encodeURIComponent(id)}`,
-      {
-        fallback: () => {
-          const found = mockODEvents.find((e) => e.id === id);
-          return { data: (found || mockODEvents[0]) as EventDetailResponse };
-        },
-      }
+      `/api/v1/events/${encodeURIComponent(id)}`
     );
   },
 
   /**
-   * Prototype fallback helper
+   * Fallback helper
    */
   getFallbackEvents(): ODEvent[] {
-    return [...mockODEvents];
+    return [];
   },
 };
 
