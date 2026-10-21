@@ -67,19 +67,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         uploadedItems.push(item);
       } catch (err: unknown) {
         if (err instanceof ApiError) {
-          if (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE') {
-            // Fallback: create local DocumentItem for client prototype
-            const fallbackItem: DocumentItem = {
-              id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-              name: f.name,
-              type: f.type || 'PROOF_DOCUMENT',
-              size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
-              uploadDate: new Date().toISOString().split('T')[0],
-            };
-            uploadedItems.push(fallbackItem);
-          } else {
-            setUploadError(err.message);
-          }
+          setUploadError(err.message);
+        } else if (err instanceof Error) {
+          setUploadError(err.message);
         } else {
           setUploadError(`Failed to upload ${f.name}. Please try again.`);
         }

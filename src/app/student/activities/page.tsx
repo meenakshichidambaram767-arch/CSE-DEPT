@@ -8,6 +8,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { EmptyState } from '@/components/common/EmptyState';
 import { activitiesApi } from '@/lib/api/activitiesApi';
 import { ApiError } from '@/lib/api/odApi';
+import { areDevMocksEnabled } from '@/lib/api/client';
 import { Activity } from '@/types';
 import {
   FolderKanban,
@@ -44,8 +45,12 @@ export default function StudentActivitiesPage() {
       }
     } catch (err: unknown) {
       if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        setBackendNotice('Backend endpoint GET /api/v1/activities returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
-        setActivities(activitiesApi.getFallbackActivities());
+        if (areDevMocksEnabled()) {
+          setBackendNotice('Backend endpoint GET /api/v1/activities returned HTTP 404. Displaying static reference records (DEV MOCK DATA).');
+          setActivities(activitiesApi.getFallbackActivities());
+        } else {
+          setErrorMsg(err.message || 'Activities service is currently unavailable.');
+        }
       } else if (err instanceof ApiError) {
         setErrorMsg(err.message);
       } else {
@@ -58,35 +63,8 @@ export default function StudentActivitiesPage() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
-    activitiesApi
-      .getActivities()
-      .then((res) => {
-        if (isMounted && res.data) {
-          setActivities(res.data);
-        }
-      })
-      .catch((err: unknown) => {
-        if (isMounted) {
-          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-            setBackendNotice('Backend endpoint GET /api/v1/activities returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
-            setActivities(activitiesApi.getFallbackActivities());
-          } else {
-            setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load activities.');
-          }
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    fetchActivitiesData();
+  }, [fetchActivitiesData]);
 
   const filtered = activities.filter((a) => {
     if (activeTab === 'PROJECT' && a.type !== 'PROJECT') return false;

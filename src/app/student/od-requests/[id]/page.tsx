@@ -115,7 +115,7 @@ export default function StudentODDetailPage({ params }: { params: Promise<{ id: 
 
     try {
       // Dispatch through Phase 2 DataContext state action / odApi abstraction
-      const updated = resubmitOD(id, revisionClarifications);
+      const updated = await resubmitOD(id, revisionClarifications);
       if (updated) {
         setOd(updated);
       } else {

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeReviewSession } from '@/lib/api/serializers';
 
 // GET /api/v1/reviews/sessions/[id] - Single Review Session Detail
 export async function GET(
@@ -66,58 +67,18 @@ export async function GET(
       .select('*, students(name, register_number)')
       .eq('review_session_id', session.id);
 
-    // Derive title
-    let title = `Weekly Review #${session.review_number}`;
-    if (session.review_type === 'HACKATHON_POST') {
-      title = 'Post-Hackathon Review';
-    } else if (session.review_type === 'INTERNSHIP_MID') {
-      title = 'Mid Internship Review';
-    } else if (session.review_type === 'INTERNSHIP_FINAL') {
-      title = 'Final Internship Review';
+    const responsePayload = serializeReviewSession(session, {
+      attendance: attendanceList || [],
+      progress: progressList || [],
+    });
+
+    if (authUser.role !== 'HOD') {
+      delete (responsePayload as Record<string, unknown>).qr_token;
+      delete (responsePayload as Record<string, unknown>).qr_code_token;
+      delete (responsePayload as Record<string, unknown>).qr_expires_at;
     }
 
-    const formattedProgress = (progressList || []).map((p: Record<string, unknown>) => ({
-      id: p.id as string,
-      studentId: p.student_id as string,
-      studentName: (p.students as Record<string, unknown>)?.name as string || '',
-      studentRegNo: (p.students as Record<string, unknown>)?.register_number as string || '',
-      completedWork: p.completed_this_week as string,
-      currentWork: p.currently_working_on as string,
-      nextSteps: p.next_week_goal as string,
-      blockers: p.blockers as string,
-      githubUrl: p.githubUrl as string | null,
-      submittedAt: p.submitted_at as string,
-    }));
-
-    const formattedAttendance = (attendanceList || []).map((a: Record<string, unknown>) => ({
-      id: a.id as string,
-      studentId: a.student_id as string,
-      studentName: (a.students as Record<string, unknown>)?.name as string || '',
-      studentRegNo: (a.students as Record<string, unknown>)?.register_number as string || '',
-      attended: a.attended as boolean,
-      checkInTime: a.check_in_time as string,
-    }));
-
-    return apiSuccess({
-      id: session.id,
-      code: session.code,
-      activityId: session.activity_id,
-      activityTitle: session.activities.title,
-      activityType: session.activities.type,
-      reviewNumber: session.review_number,
-      reviewType: session.review_type || 'PROJECT_WEEKLY',
-      title,
-      date: session.date,
-      time: session.time,
-      venue: session.venue,
-      status: session.status,
-      meetingNotes: session.meeting_notes,
-      nextWeekGoal: session.next_week_goal,
-      qrToken: authUser.role === 'HOD' ? session.qr_token : undefined,
-      qrExpiresAt: authUser.role === 'HOD' ? session.qr_expires_at : undefined,
-      progressReports: formattedProgress,
-      attendance: formattedAttendance,
-    });
+    return apiSuccess(responsePayload);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unexpected error occurred.';
     console.error('Error in GET /api/v1/reviews/sessions/[id]:', err);

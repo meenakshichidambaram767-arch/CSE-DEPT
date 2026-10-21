@@ -1,5 +1,8 @@
--- SIET CSE Department Platform - Development Seed Data
--- Safe, repeatable test accounts for Meena independent foundation testing
+-- ============================================================================
+-- SIET CSE Department Platform - DEVELOPMENT SEED DATA (DEV ONLY)
+-- WARNING: This seed script is strictly intended for local development and test
+-- environments. DO NOT apply or run this script in production environments.
+-- ============================================================================
 
 -- 1. Insert Auth Users
 INSERT INTO auth.users (

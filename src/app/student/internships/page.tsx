@@ -7,9 +7,9 @@ import { SearchBar } from '@/components/common/SearchBar';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/common/EmptyState';
 import { activitiesApi } from '@/lib/api/activitiesApi';
-import { ApiError } from '@/lib/api/odApi';
+import { ApiError, areDevMocksEnabled } from '@/lib/api/client';
 import { Activity } from '@/types';
-import { Plus, BriefcaseBusiness, Sparkles, Calendar, ArrowRight, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, BriefcaseBusiness, Sparkles, Calendar, ArrowRight, RefreshCw, AlertTriangle, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function StudentInternshipsPage() {
   const [internships, setInternships] = useState<Activity[]>([]);
@@ -17,19 +17,23 @@ export default function StudentInternshipsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fetchInternships = async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     else setIsLoading(true);
     setBackendNotice(null);
+    setErrorMsg(null);
 
     try {
       const res = await activitiesApi.getActivities({ type: 'INTERNSHIP' });
       if (res.data) setInternships(res.data);
     } catch (err: unknown) {
-      if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
+      if (areDevMocksEnabled() && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+        setBackendNotice('Displaying static reference records (DEV MOCK DATA).');
         setInternships(activitiesApi.getFallbackActivities('INTERNSHIP'));
+      } else {
+        setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load internships from server.');
       }
     } finally {
       setIsLoading(false);
@@ -45,9 +49,13 @@ export default function StudentInternshipsPage() {
         if (isMounted && res.data) setInternships(res.data);
       })
       .catch((err: unknown) => {
-        if (isMounted && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-          setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
-          setInternships(activitiesApi.getFallbackActivities('INTERNSHIP'));
+        if (isMounted) {
+          if (areDevMocksEnabled() && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setBackendNotice('Displaying static reference records (DEV MOCK DATA).');
+            setInternships(activitiesApi.getFallbackActivities('INTERNSHIP'));
+          } else {
+            setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load internships from server.');
+          }
         }
       })
       .finally(() => {

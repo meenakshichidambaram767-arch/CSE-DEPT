@@ -9,25 +9,16 @@
 import { ReviewSession, WeeklyProgress, AttendanceItem } from '@/types';
 import {
   ApiReviewSession,
-  BatchScheduleReviewsPayload,
   FinalizeReviewPayload,
   GenerateQrResponse,
   PaginatedResponse,
   ReviewCheckInPayload,
-  ReviewCheckInResponse,
   ReviewProgressPayload,
 } from '@/types/contract';
-import { mapApiReviewToReviewSession, mapWeeklyProgressToApiPayload } from './mappers';
-import {
-  fixtureApiReviews,
-  fixtureCheckInResponse,
-  fixtureGenerateQrResponse,
-} from '@/data/fixtures/reviewsFixtures';
-import { mockReviewSessions } from '@/data/mock';
-import { ApiError, assertNoLiveNetwork } from './client';
+import { mapApiReviewToReviewSession } from './mappers';
+import { ApiError, apiClient, areDevMocksEnabled } from './client';
 import {
   ReviewType,
-  ReviewTypeContract,
   ReviewSessionStatus,
   ReviewProgressContract,
   ScheduleReviewContractPayload,
@@ -45,10 +36,113 @@ import {
 
 export { ApiError };
 
-// In-memory contract mock store initialized from fixtures
+// In-memory contract mock store initialized for isolated dev & unit test fallbacks
 const defaultInitialStore: ReviewSessionContract[] = [
-  ...mockReviewSessions.map(mapReviewSessionToContract),
-  ...fixtureApiReviews.map(mapApiReviewToReviewSession).map(mapReviewSessionToContract),
+  {
+    id: 'rev-sess-001',
+    activity_id: 'act-exam-monitor-01',
+    activity_title: 'AI-Based Examination Monitoring System',
+    activity_type: 'PROJECT',
+    review_number: 1,
+    review_type: 'PROJECT_WEEKLY',
+    date: '2026-09-25',
+    raw_date: '2026-09-25',
+    time: '14:00',
+    venue: 'CSE Lab 2',
+    status: 'SCHEDULED',
+    student_team: [
+      { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+    ],
+    attendance: [
+      {
+        student_id: 'usr-student-001',
+        name: 'Meena C',
+        reg_no: '714023104088',
+        attended: false,
+      },
+    ],
+    created_at: '2026-09-20T10:00:00Z',
+  },
+  {
+    id: 'rev-sess-002',
+    activity_id: 'act-exam-monitor-01',
+    activity_title: 'AI-Based Examination Monitoring System',
+    activity_type: 'PROJECT',
+    review_number: 2,
+    review_type: 'PROJECT_WEEKLY',
+    date: '2026-10-02',
+    raw_date: '2026-10-02',
+    time: '14:00',
+    venue: 'CSE Lab 2',
+    status: 'SCHEDULED',
+    qr_code_token: 'HMAC_DYNAMIC_QR_TOKEN_002',
+    student_team: [
+      { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+    ],
+    attendance: [
+      {
+        student_id: 'usr-student-001',
+        name: 'Meena C',
+        reg_no: '714023104088',
+        attended: false,
+      },
+    ],
+    created_at: '2026-09-20T10:00:00Z',
+  },
+  {
+    id: 'rev-002',
+    activity_id: 'act-001',
+    activity_title: 'AI-Based Examination Monitoring System',
+    activity_type: 'PROJECT',
+    review_number: 2,
+    review_type: 'PROJECT_WEEKLY',
+    date: '2026-10-09',
+    raw_date: '2026-10-09',
+    time: '14:00',
+    venue: 'CSE Lab 2',
+    status: 'SCHEDULED',
+    student_team: [
+      { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+    ],
+    attendance: [
+      {
+        student_id: 'usr-student-001',
+        name: 'Meena C',
+        reg_no: '714023104088',
+        attended: false,
+      },
+    ],
+    created_at: '2026-09-20T10:00:00Z',
+  },
+  {
+    id: 'rev-003',
+    activity_id: 'act-002',
+    activity_title: 'Smart Water Management IoT',
+    activity_type: 'PROJECT',
+    review_number: 1,
+    review_type: 'PROJECT_WEEKLY',
+    date: '2026-09-25',
+    raw_date: '2026-09-25',
+    time: '10:00',
+    venue: 'IoT Lab',
+    status: 'COMPLETED',
+    student_team: [
+      { name: 'Nakshatra S V', reg_no: '714022104153', email: 'nakshatra.22cse@siet.ac.in', role: 'Team Lead' },
+    ],
+    attendance: [
+      {
+        student_id: 'usr-student-002',
+        name: 'Nakshatra S V',
+        reg_no: '714022104153',
+        attended: true,
+        check_in_time: '10:05 AM',
+      },
+    ],
+    meeting_notes: 'Initial sensor calibration completed successfully.',
+    next_week_goal: 'Integrate telemetry dashboard with Cloud MQTT broker.',
+    finalized_at: '2026-09-25T11:00:00Z',
+    created_at: '2026-09-18T10:00:00Z',
+  },
 ];
 let sessionStore: ReviewSessionContract[] = [...defaultInitialStore];
 
@@ -90,18 +184,13 @@ export const reviewsApi = {
     status?: ReviewSessionStatus;
     type?: ReviewType;
   }): Promise<ReviewSession[]> => {
-    assertNoLiveNetwork();
-    let results = [...sessionStore];
-    if (filter?.activityId) {
-      results = results.filter((s) => s.activity_id === filter.activityId);
-    }
-    if (filter?.status) {
-      results = results.filter((s) => s.status === filter.status);
-    }
-    if (filter?.type) {
-      results = results.filter((s) => s.review_type === filter.type);
-    }
-    return results.map(mapContractToReviewSession);
+    const raw = await reviewsApi.getRawSessions({
+      activity_id: filter?.activityId,
+      status: filter?.status,
+      type: filter?.type,
+      page_size: 100,
+    });
+    return raw.data.map(mapApiReviewToReviewSession);
   },
 
   /**
@@ -123,30 +212,42 @@ export const reviewsApi = {
   async getRawSessions(
     params?: ReviewSessionsQueryParams
   ): Promise<PaginatedResponse<ApiReviewSession>> {
-    assertNoLiveNetwork();
-    let filtered = [...sessionStore];
-    if (params?.activity_id) {
-      filtered = filtered.filter((r) => r.activity_id === params.activity_id);
-    }
-    if (params?.status && params.status !== 'ALL') {
-      filtered = filtered.filter((r) => r.status === params.status);
-    }
-    if (params?.type && params.type !== 'ALL') {
-      filtered = filtered.filter((r) => r.review_type === params.type);
-    }
-    const page = params?.page || 1;
-    const pageSize = params?.page_size || 20;
-    const startIndex = (page - 1) * pageSize;
-    const paginated = filtered.slice(startIndex, startIndex + pageSize);
-
-    return {
-      data: paginated as unknown as ApiReviewSession[],
-      meta: {
-        page,
-        page_size: pageSize,
-        total: filtered.length,
+    const res = await apiClient.get<PaginatedResponse<ApiReviewSession>>('/api/v1/reviews/sessions', {
+      params: {
+        ...(params?.activity_id ? { activity_id: params.activity_id } : {}),
+        ...(params?.status && params.status !== 'ALL' ? { status: params.status } : {}),
+        ...(params?.type && params.type !== 'ALL' ? { type: params.type } : {}),
+        page: params?.page || 1,
+        page_size: params?.page_size || 20,
       },
-    };
+      fallback: () => {
+        let filtered = [...sessionStore];
+        if (params?.activity_id) {
+          filtered = filtered.filter((r) => r.activity_id === params.activity_id);
+        }
+        if (params?.status && params.status !== 'ALL') {
+          filtered = filtered.filter((r) => r.status === params.status);
+        }
+        if (params?.type && params.type !== 'ALL') {
+          filtered = filtered.filter((r) => r.review_type === params.type);
+        }
+        const page = params?.page || 1;
+        const pageSize = params?.page_size || 20;
+        const startIndex = (page - 1) * pageSize;
+        const paginated = filtered.slice(startIndex, startIndex + pageSize);
+
+        return {
+          data: paginated as unknown as ApiReviewSession[],
+          meta: {
+            page,
+            page_size: pageSize,
+            total: filtered.length,
+          },
+        };
+      },
+    });
+
+    return res;
   },
 
   /**
@@ -162,16 +263,30 @@ export const reviewsApi = {
    * Prototype fallback helper to get local mock reviews
    */
   getFallbackReviewSessions(): ReviewSession[] {
-    return [...mockReviewSessions];
+    return sessionStore.map(mapContractToReviewSession);
   },
 
   /**
    * GET /api/v1/reviews/sessions/{id}
    */
   getById: async (id: string): Promise<ReviewSession | undefined> => {
-    assertNoLiveNetwork();
-    const found = sessionStore.find((r) => r.id === id);
-    return found ? mapContractToReviewSession(found) : undefined;
+    try {
+      const res = await apiClient.get<ApiReviewSession>(
+        `/api/v1/reviews/sessions/${encodeURIComponent(id)}`,
+        {
+          fallback: () => {
+            const found = sessionStore.find((r) => r.id === id);
+            if (!found) {
+              throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${id} not found`);
+            }
+            return found as unknown as ApiReviewSession;
+          },
+        }
+      );
+      return mapApiReviewToReviewSession(res);
+    } catch {
+      return undefined;
+    }
   },
 
   /**
@@ -192,21 +307,20 @@ export const reviewsApi = {
     payload: ScheduleReviewContractPayload,
     teamRoster?: Array<{ name: string; reg_no?: string; regNo?: string; email: string; role?: string }>
   ): Promise<ReviewSession[]> => {
-    assertNoLiveNetwork();
-
     if (!payload.activity_id) {
       throw new ApiError(400, 'VALIDATION_ERROR', 'activity_id is required', {
         activity_id: 'Cannot be empty',
       });
     }
 
-    if (!payload.scheduled_date) {
+    const scheduledDate = payload.scheduled_date || payload.start_date;
+    if (!scheduledDate) {
       throw new ApiError(400, 'VALIDATION_ERROR', 'scheduled_date is required', {
         scheduled_date: 'Must be a valid date YYYY-MM-DD',
       });
     }
 
-    const count = payload.total_reviews || (payload.review_type === 'HACKATHON_POST' ? 1 : payload.review_type.startsWith('INTERNSHIP') ? 2 : 8);
+    const count = payload.total_reviews || payload.count || (payload.review_type === 'HACKATHON_POST' ? 1 : payload.review_type.startsWith('INTERNSHIP') ? 2 : 8);
 
     if (payload.review_type === 'HACKATHON_POST' && count !== 1) {
       throw new ApiError(
@@ -216,85 +330,75 @@ export const reviewsApi = {
       );
     }
 
-    const createdContracts: ReviewSessionContract[] = [];
-    const baseDate = new Date(payload.scheduled_date);
-    const stepWeeks = payload.interval_weeks || 1;
+    const res = await apiClient.post<ApiReviewSession[]>('/api/v1/reviews/schedule', payload, {
+      fallback: () => {
+        const createdContracts: ReviewSessionContract[] = [];
+        const baseDate = new Date(scheduledDate);
 
-    const roster = teamRoster && teamRoster.length > 0
-      ? teamRoster.map((m) => ({
-          name: m.name,
-          reg_no: m.reg_no || m.regNo || '714023104088',
-          email: m.email,
-          role: m.role,
-        }))
-      : [
-          {
-            name: 'Meena C',
-            reg_no: '714023104088',
-            email: 'meena.23cse@siet.ac.in',
-            role: 'Team Lead',
-          },
-        ];
+        for (let i = 1; i <= count; i++) {
+          const sessionDate = new Date(baseDate);
+          sessionDate.setDate(baseDate.getDate() + (i - 1) * 7);
+          const dateStr = sessionDate.toISOString().split('T')[0];
 
-    for (let i = 1; i <= count; i++) {
-      const reviewDate = new Date(baseDate);
-      reviewDate.setDate(reviewDate.getDate() + (i - 1) * stepWeeks * 7);
-      const dateIso = reviewDate.toISOString().split('T')[0];
+          let sessionType = payload.review_type;
+          if (payload.review_type === 'INTERNSHIP_MID' && i === 2) {
+            sessionType = 'INTERNSHIP_FINAL';
+          }
 
-      const sessionReviewType: ReviewTypeContract = payload.review_type.startsWith('INTERNSHIP')
-        ? (i === 1 ? 'INTERNSHIP_MID' : 'INTERNSHIP_FINAL')
-        : payload.review_type;
+          const newId = `rev-${payload.activity_id}-${i}-${Date.now().toString(36)}`;
+          const initialAttendance = (teamRoster || [
+            { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+          ]).map((member) => ({
+            student_id: `std-${member.reg_no || member.regNo || 'unknown'}`,
+            name: member.name,
+            reg_no: member.reg_no || member.regNo || '',
+            attended: false,
+          }));
 
-      const newContract: ReviewSessionContract = {
-        id: `rev-${payload.activity_id}-${i}-${Date.now().toString(36)}`,
-        code: `REV-${sessionReviewType === 'PROJECT_WEEKLY' ? 'PRJ' : sessionReviewType.slice(0, 3)}-${100 + i}`,
-        activity_id: payload.activity_id,
-        activity_title: payload.activity_title || 'Review Activity',
-        activity_type: payload.review_type === 'PROJECT_WEEKLY' ? 'PROJECT' : payload.review_type === 'HACKATHON_POST' ? 'HACKATHON' : 'INTERNSHIP',
-        review_number: i,
-        review_type: sessionReviewType,
-        date: reviewDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        raw_date: dateIso,
-        time: payload.time,
-        venue: payload.venue,
-        faculty_reviewer: payload.faculty_reviewer || 'Dr. K. Senthil Kumar (HOD)',
-        status: 'SCHEDULED',
-        student_team: roster,
-        attendance: roster.map((m) => ({
-          student_id: m.reg_no || 'usr-student-001',
-          name: m.name,
-          reg_no: m.reg_no || '714023104088',
-          attended: false,
-        })),
-        created_at: new Date().toISOString(),
-      };
+          const contract: ReviewSessionContract = {
+            id: newId,
+            activity_id: payload.activity_id,
+            activity_title: payload.activity_title || 'Review Session',
+            activity_type: payload.review_type.startsWith('PROJECT') ? 'PROJECT' : payload.review_type.startsWith('HACKATHON') ? 'HACKATHON' : 'INTERNSHIP',
+            review_number: i,
+            review_type: sessionType,
+            date: dateStr,
+            raw_date: dateStr,
+            time: payload.time || '10:00 AM',
+            venue: payload.venue || 'CSE Department',
+            status: 'SCHEDULED',
+            student_team: (teamRoster || [
+              { name: 'Meena C', reg_no: '714023104088', email: 'meena.23cse@siet.ac.in', role: 'Team Lead' },
+            ]).map((t) => ({
+              name: t.name,
+              reg_no: t.reg_no || t.regNo || '',
+              email: t.email,
+              role: t.role,
+            })),
+            attendance: initialAttendance,
+            created_at: new Date().toISOString(),
+          };
 
-      createdContracts.push(newContract);
-      sessionStore.push(newContract);
-    }
+          createdContracts.push(contract);
+          sessionStore.push(contract);
+        }
 
-    return createdContracts.map(mapContractToReviewSession);
+        return createdContracts as unknown as ApiReviewSession[];
+      },
+    });
+
+    const list = Array.isArray(res) ? res : ((res as any).data || []);
+    return list.map(mapApiReviewToReviewSession);
   },
 
   /**
-   * Compatibility alias for batch review scheduling
+   * Alias for schedule
    */
   async scheduleReviews(
-    payload: BatchScheduleReviewsPayload | ScheduleReviewContractPayload
-  ): Promise<{ data: ReviewSession[] }> {
-    const p = payload as any;
-    const sessions = await this.schedule({
-      activity_id: p.activity_id,
-      activity_title: p.activity_title || 'Review Activity',
-      review_type: p.review_type || 'PROJECT_WEEKLY',
-      scheduled_date: p.start_date || p.scheduled_date || new Date().toISOString().split('T')[0],
-      time: p.time || '10:00 AM',
-      venue: p.venue || 'CSE Lab 2',
-      faculty_reviewer: p.faculty_reviewer,
-      total_reviews: p.total_reviews,
-      interval_weeks: p.interval_weeks,
-    });
-    return { data: sessions };
+    payload: ScheduleReviewContractPayload,
+    teamRoster?: Array<{ name: string; reg_no?: string; regNo?: string; email: string; role?: string }>
+  ): Promise<ReviewSession[]> {
+    return this.schedule(payload, teamRoster);
   },
 
   /**
@@ -304,8 +408,6 @@ export const reviewsApi = {
     sessionId: string,
     req: ReviewProgressContract | ReviewProgressPayload | Partial<WeeklyProgress>
   ): Promise<WeeklyProgress & { data: { id: string; success: boolean }; success: boolean }> => {
-    assertNoLiveNetwork();
-
     let contractReq: ReviewProgressContract;
     if ('completed_this_week' in req) {
       contractReq = req as ReviewProgressContract;
@@ -325,20 +427,34 @@ export const reviewsApi = {
       throw new ApiError(400, 'VALIDATION_ERROR', 'Validation failed for weekly progress payload', validation.errors);
     }
 
-    const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
-    }
+    const res = await apiClient.post<any>(
+      `/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/progress`,
+      contractReq,
+      {
+        fallback: () => {
+          const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
+          if (sessionIndex === -1) {
+            throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
+          }
+
+          const progress = mapContractToProgress(contractReq, sessionId);
+          sessionStore[sessionIndex] = {
+            ...sessionStore[sessionIndex],
+            progress: contractReq,
+          };
+
+          return Object.assign(progress, {
+            data: { id: progress.id, success: true },
+            success: true,
+          });
+        },
+      }
+    );
 
     const progress = mapContractToProgress(contractReq, sessionId);
-    sessionStore[sessionIndex] = {
-      ...sessionStore[sessionIndex],
-      progress: contractReq,
-    };
-
     return Object.assign(progress, {
       data: {
-        id: progress.id,
+        id: res?.id || progress.id,
         success: true,
       },
       success: true,
@@ -362,40 +478,45 @@ export const reviewsApi = {
     sessionId: string,
     expiresInSeconds: number = 1800
   ): Promise<GenerateQRResponse> => {
-    assertNoLiveNetwork();
+    return apiClient.post<GenerateQRResponse>(
+      `/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/generate-qr`,
+      { valid_seconds: expiresInSeconds },
+      {
+        fallback: () => {
+          const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
+          if (sessionIndex === -1) {
+            throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
+          }
 
-    const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
-    }
+          const session = sessionStore[sessionIndex];
+          if (session.status === 'COMPLETED') {
+            throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot generate QR code for completed review session');
+          }
+          if (session.status === 'CANCELLED') {
+            throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot generate QR code for cancelled review session');
+          }
 
-    const session = sessionStore[sessionIndex];
-    if (session.status === 'COMPLETED') {
-      throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot generate QR code for completed review session');
-    }
+          const now = Date.now();
+          const expiresAt = new Date(now + expiresInSeconds * 1000).toISOString();
+          const token = `QR-${sessionId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
-    if (session.status === 'CANCELLED') {
-      throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot generate QR code for cancelled review session');
-    }
+          sessionStore[sessionIndex] = {
+            ...session,
+            qr_code_token: token,
+            qr_expires_at: expiresAt,
+            qr_valid_seconds: expiresInSeconds,
+          };
 
-    const now = Date.now();
-    const expiresAt = new Date(now + expiresInSeconds * 1000).toISOString();
-    const token = `QR-${sessionId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-
-    sessionStore[sessionIndex] = {
-      ...session,
-      qr_code_token: token,
-      qr_expires_at: expiresAt,
-      qr_valid_seconds: expiresInSeconds,
-    };
-
-    return {
-      session_id: sessionId,
-      token,
-      expires_at: expiresAt,
-      valid_seconds: expiresInSeconds,
-      generated_at: new Date(now).toISOString(),
-    };
+          return {
+            session_id: sessionId,
+            token,
+            expires_at: expiresAt,
+            valid_seconds: expiresInSeconds,
+            generated_at: new Date(now).toISOString(),
+          };
+        },
+      }
+    );
   },
 
   /**
@@ -413,93 +534,108 @@ export const reviewsApi = {
     sessionId: string,
     req: CheckInQRRequest
   ): Promise<CheckInQRResponse & { data: ReviewCheckInResult }> => {
-    assertNoLiveNetwork();
-
     if (!req.token || req.token.trim().length === 0) {
       throw new ApiError(400, 'INVALID_TOKEN', 'QR token is required');
     }
 
-    const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
-    }
+    const res = await apiClient.post<any>(
+      `/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/check-in`,
+      req,
+      {
+        fallback: () => {
+          const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
+          if (sessionIndex === -1) {
+            throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
+          }
 
-    const session = sessionStore[sessionIndex];
+          const session = sessionStore[sessionIndex];
+          if (!session.qr_code_token || session.qr_code_token.trim() !== req.token.trim()) {
+            throw new ApiError(400, 'INVALID_TOKEN', 'The provided QR token does not match the active session');
+          }
 
-    if (!session.qr_code_token || session.qr_code_token.trim() !== req.token.trim()) {
-      throw new ApiError(400, 'INVALID_TOKEN', 'The provided QR token does not match the active session');
-    }
+          if (session.qr_expires_at) {
+            const expiry = new Date(session.qr_expires_at);
+            if (expiry.getTime() < Date.now()) {
+              throw new ApiError(410, 'TOKEN_EXPIRED', 'The QR code token has expired. Please request a new QR from HOD.');
+            }
+          }
 
-    if (session.qr_expires_at) {
-      const expiry = new Date(session.qr_expires_at);
-      if (expiry.getTime() < Date.now()) {
-        throw new ApiError(410, 'TOKEN_EXPIRED', 'The QR code token has expired. Please request a new QR from HOD.');
+          const studentIdMatch = req.student_id;
+          const studentRegMatch = req.student_reg_no;
+
+          const existingAtt = session.attendance.find(
+            (a) =>
+              a.student_id === studentIdMatch ||
+              (studentRegMatch && a.reg_no === studentRegMatch) ||
+              (req.student_name && a.name.toLowerCase().includes(req.student_name.toLowerCase()))
+          );
+
+          if (existingAtt && existingAtt.attended) {
+            throw new ApiError(409, 'ALREADY_CHECKED_IN', 'Student has already checked in for this review session');
+          }
+
+          const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const updatedAttendance = session.attendance.map((att) => {
+            if (
+              att.student_id === studentIdMatch ||
+              (studentRegMatch && att.reg_no === studentRegMatch) ||
+              (req.student_name && att.name.toLowerCase().includes(req.student_name.toLowerCase()))
+            ) {
+              return {
+                ...att,
+                attended: true,
+                check_in_time: nowTimeStr,
+              };
+            }
+            return att;
+          });
+
+          if (!existingAtt) {
+            updatedAttendance.push({
+              student_id: req.student_id,
+              name: req.student_name || 'Checked-in Student',
+              reg_no: req.student_reg_no || '714023104088',
+              attended: true,
+              check_in_time: nowTimeStr,
+            });
+          }
+
+          sessionStore[sessionIndex] = {
+            ...session,
+            attendance: updatedAttendance,
+          };
+
+          const checkedInAt = new Date().toISOString();
+          return {
+            success: true,
+            session_id: sessionId,
+            student_id: req.student_id,
+            checked_in_at: checkedInAt,
+            message: 'Attendance verified successfully via QR code.',
+            data: {
+              success: true,
+              session_id: sessionId,
+              student_id: req.student_id,
+              checked_in_at: checkedInAt,
+              message: 'Attendance check-in verified successfully.',
+            },
+          };
+        },
       }
-    }
-
-    const studentIdMatch = req.student_id;
-    const studentRegMatch = req.student_reg_no;
-
-    const existingAtt = session.attendance.find(
-      (a) =>
-        a.student_id === studentIdMatch ||
-        (studentRegMatch && a.reg_no === studentRegMatch) ||
-        (req.student_name && a.name.toLowerCase().includes(req.student_name.toLowerCase()))
     );
 
-    if (existingAtt && existingAtt.attended) {
-      throw new ApiError(409, 'ALREADY_CHECKED_IN', 'Student has already checked in for this review session');
-    }
-
-    const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const updatedAttendance = session.attendance.map((att) => {
-      if (
-        att.student_id === studentIdMatch ||
-        (studentRegMatch && att.reg_no === studentRegMatch) ||
-        (req.student_name && att.name.toLowerCase().includes(req.student_name.toLowerCase()))
-      ) {
-        return {
-          ...att,
-          attended: true,
-          check_in_time: nowTimeStr,
-        };
-      }
-      return att;
-    });
-
-    if (!existingAtt) {
-      updatedAttendance.push({
-        student_id: req.student_id,
-        name: req.student_name || 'Checked-in Student',
-        reg_no: req.student_reg_no || '714023104088',
-        attended: true,
-        check_in_time: nowTimeStr,
-      });
-    }
-
-    sessionStore[sessionIndex] = {
-      ...session,
-      attendance: updatedAttendance,
-    };
-
-    const checkedInAt = new Date().toISOString();
-    const resultObj: CheckInQRResponse = {
-      success: true,
-      session_id: sessionId,
-      student_id: req.student_id,
-      checked_in_at: checkedInAt,
-      message: 'Attendance verified successfully via QR code.',
-    };
-
     return {
-      ...resultObj,
+      success: res?.success ?? true,
+      session_id: res?.session_id ?? sessionId,
+      student_id: res?.student_id ?? req.student_id,
+      checked_in_at: res?.checked_in_at ?? new Date().toISOString(),
+      message: res?.message ?? 'Attendance check-in verified successfully.',
       data: {
-        success: true,
-        session_id: sessionId,
-        student_id: req.student_id,
-        checked_in_at: checkedInAt,
-        message: 'Attendance check-in verified successfully.',
+        success: res?.success ?? true,
+        session_id: res?.session_id ?? sessionId,
+        student_id: res?.student_id ?? req.student_id,
+        checked_in_at: res?.checked_in_at ?? new Date().toISOString(),
+        message: res?.message ?? 'Attendance check-in verified successfully.',
       },
     };
   },
@@ -511,35 +647,14 @@ export const reviewsApi = {
     id: string,
     payload: ReviewCheckInPayload | string
   ): Promise<{ data: ReviewCheckInResult } & CheckInQRResponse> {
-    assertNoLiveNetwork();
     const token = typeof payload === 'string' ? payload : payload.token;
     const studentId = typeof payload === 'string' ? 'usr-student-001' : (payload as any).student_id || 'usr-student-001';
 
-    // If fixture token matches from fixtureApiReviews
-    const res = await this.checkInQR(id, {
+    return this.checkInQR(id, {
       token,
       student_id: studentId,
-      student_name: 'Meena C',
-    }).catch(() => {
-      // Fallback response if session store was not initialized with this token
-      const now = new Date().toISOString();
-      return {
-        success: true,
-        session_id: id,
-        student_id: studentId,
-        checked_in_at: now,
-        message: 'Attendance check-in verified successfully.',
-        data: {
-          success: true,
-          session_id: id,
-          student_id: studentId,
-          checked_in_at: now,
-          message: 'Attendance check-in verified successfully.',
-        },
-      };
+      student_name: 'Student',
     });
-
-    return res;
   },
 
   /**
@@ -559,25 +674,33 @@ export const reviewsApi = {
     sessionId: string,
     attendance: AttendanceItem[]
   ): Promise<AttendanceItem[]> => {
-    assertNoLiveNetwork();
+    await apiClient.put(
+      `/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/attendance`,
+      { attendance },
+      {
+        fallback: () => {
+          const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
+          if (sessionIndex === -1) {
+            throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
+          }
 
-    const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
-    }
+          const contractAttendance = attendance.map((a) => ({
+            student_id: a.studentId,
+            name: a.name,
+            reg_no: a.regNo,
+            attended: a.attended,
+            check_in_time: a.checkInTime || (a.attended ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined),
+          }));
 
-    const contractAttendance = attendance.map((a) => ({
-      student_id: a.studentId,
-      name: a.name,
-      reg_no: a.regNo,
-      attended: a.attended,
-      check_in_time: a.checkInTime || (a.attended ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined),
-    }));
+          sessionStore[sessionIndex] = {
+            ...sessionStore[sessionIndex],
+            attendance: contractAttendance,
+          };
 
-    sessionStore[sessionIndex] = {
-      ...sessionStore[sessionIndex],
-      attendance: contractAttendance,
-    };
+          return attendance;
+        },
+      }
+    );
 
     return attendance;
   },
@@ -589,22 +712,33 @@ export const reviewsApi = {
     sessionId: string,
     notes: { meeting_notes: string; next_week_goal?: string }
   ): Promise<{ meetingNotes: string; nextWeekGoal?: string }> => {
-    assertNoLiveNetwork();
+    const res = await apiClient.put<any>(
+      `/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/notes`,
+      notes,
+      {
+        fallback: () => {
+          const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
+          if (sessionIndex === -1) {
+            throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
+          }
 
-    const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
-    }
+          sessionStore[sessionIndex] = {
+            ...sessionStore[sessionIndex],
+            meeting_notes: notes.meeting_notes,
+            next_week_goal: notes.next_week_goal || sessionStore[sessionIndex].next_week_goal,
+          };
 
-    sessionStore[sessionIndex] = {
-      ...sessionStore[sessionIndex],
-      meeting_notes: notes.meeting_notes,
-      next_week_goal: notes.next_week_goal || sessionStore[sessionIndex].next_week_goal,
-    };
+          return {
+            meetingNotes: notes.meeting_notes,
+            nextWeekGoal: notes.next_week_goal,
+          };
+        },
+      }
+    );
 
     return {
-      meetingNotes: notes.meeting_notes,
-      nextWeekGoal: notes.next_week_goal,
+      meetingNotes: res?.meeting_notes || res?.meetingNotes || notes.meeting_notes,
+      nextWeekGoal: res?.next_week_goal || res?.nextWeekGoal || notes.next_week_goal,
     };
   },
 
@@ -615,43 +749,59 @@ export const reviewsApi = {
     sessionId: string,
     payload?: FinalizeReviewRequest
   ): Promise<FinalizeReviewResponse & { data: { success: boolean; session_id: string } }> => {
-    assertNoLiveNetwork();
+    const res = await apiClient.post<any>(
+      `/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/finalize`,
+      payload,
+      {
+        fallback: () => {
+          const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
+          if (sessionIndex === -1) {
+            throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
+          }
 
-    const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
-    }
+          const session = sessionStore[sessionIndex];
+          if (session.status === 'COMPLETED') {
+            throw new ApiError(409, 'ALREADY_FINALIZED', 'This review session has already been finalized');
+          }
+          if (session.status === 'CANCELLED') {
+            throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot finalize a cancelled review session');
+          }
 
-    const session = sessionStore[sessionIndex];
-    if (session.status === 'COMPLETED') {
-      throw new ApiError(409, 'ALREADY_FINALIZED', 'This review session has already been finalized');
-    }
+          const finalizedAt = new Date().toISOString();
+          sessionStore[sessionIndex] = {
+            ...session,
+            status: 'COMPLETED',
+            meeting_notes: payload?.meeting_notes || session.meeting_notes,
+            next_week_goal: payload?.next_week_goal || session.next_week_goal,
+            finalized_at: finalizedAt,
+          };
 
-    if (session.status === 'CANCELLED') {
-      throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot finalize a cancelled review session');
-    }
+          const result: FinalizeReviewResponse = {
+            session_id: sessionId,
+            status: 'COMPLETED',
+            finalized_at: finalizedAt,
+            meeting_notes: payload?.meeting_notes || session.meeting_notes,
+            next_week_goal: payload?.next_week_goal || session.next_week_goal,
+          };
 
-    const finalizedAt = new Date().toISOString();
-
-    sessionStore[sessionIndex] = {
-      ...session,
-      status: 'COMPLETED',
-      meeting_notes: payload?.meeting_notes || session.meeting_notes,
-      next_week_goal: payload?.next_week_goal || session.next_week_goal,
-      finalized_at: finalizedAt,
-    };
-
-    const res: FinalizeReviewResponse = {
-      session_id: sessionId,
-      status: 'COMPLETED',
-      finalized_at: finalizedAt,
-      meeting_notes: payload?.meeting_notes || session.meeting_notes,
-      next_week_goal: payload?.next_week_goal || session.next_week_goal,
-    };
+          return {
+            ...result,
+            data: { success: true, session_id: sessionId },
+          };
+        },
+      }
+    );
 
     return {
-      ...res,
-      data: { success: true, session_id: sessionId },
+      session_id: res?.session_id || sessionId,
+      status: 'COMPLETED',
+      finalized_at: res?.finalized_at || new Date().toISOString(),
+      meeting_notes: res?.meeting_notes || payload?.meeting_notes,
+      next_week_goal: res?.next_week_goal || payload?.next_week_goal,
+      data: {
+        success: true,
+        session_id: res?.session_id || sessionId,
+      },
     };
   },
 
@@ -672,24 +822,61 @@ export const reviewsApi = {
    * POST /api/v1/reviews/sessions/{id}/cancel
    */
   cancelReview: async (sessionId: string): Promise<ReviewSession> => {
-    assertNoLiveNetwork();
+    const res = await apiClient.post<any>(
+      `/api/v1/reviews/sessions/${encodeURIComponent(sessionId)}/cancel`,
+      undefined,
+      {
+        fallback: () => {
+          const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
+          if (sessionIndex === -1) {
+            throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
+          }
 
-    const sessionIndex = sessionStore.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      throw new ApiError(404, 'SESSION_NOT_FOUND', `Review session ${sessionId} not found`);
-    }
+          const session = sessionStore[sessionIndex];
+          if (session.status === 'COMPLETED') {
+            throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot cancel an already completed review session');
+          }
 
-    const session = sessionStore[sessionIndex];
-    if (session.status === 'COMPLETED') {
-      throw new ApiError(409, 'INVALID_TRANSITION', 'Cannot cancel an already completed review session');
-    }
+          sessionStore[sessionIndex] = {
+            ...session,
+            status: 'CANCELLED',
+          };
 
-    sessionStore[sessionIndex] = {
-      ...session,
-      status: 'CANCELLED',
-    };
+          return mapContractToReviewSession(sessionStore[sessionIndex]);
+        },
+      }
+    );
 
-    return mapContractToReviewSession(sessionStore[sessionIndex]);
+    const mapped = res?.data ? mapApiReviewToReviewSession(res.data) : (res?.id ? mapApiReviewToReviewSession(res) : undefined);
+    if (mapped) return mapped;
+    const found = sessionStore.find((s) => s.id === sessionId);
+    return mapContractToReviewSession(found!);
+  },
+
+  /**
+   * Aliases for DataContext and component consumers
+   */
+  async cancelSession(sessionId: string, _reason?: string): Promise<ReviewSession> {
+    return this.cancelReview(sessionId);
+  },
+
+  async updateAttendance(sessionId: string, attendance: AttendanceItem[]): Promise<AttendanceItem[]> {
+    return this.recordAttendance(sessionId, attendance);
+  },
+
+  async updateNotes(
+    sessionId: string,
+    notes: { meetingNotes?: string; nextWeekGoal?: string } | { meeting_notes: string; next_week_goal?: string }
+  ): Promise<{ meetingNotes: string; nextWeekGoal?: string }> {
+    return this.saveMeetingNotes(
+      sessionId,
+      'meeting_notes' in notes
+        ? notes
+        : {
+            meeting_notes: notes.meetingNotes || '',
+            next_week_goal: notes.nextWeekGoal,
+          }
+    );
   },
 };
 

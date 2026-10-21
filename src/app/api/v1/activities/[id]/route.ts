@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeActivity } from '@/lib/api/serializers';
 
 // GET /api/v1/activities/[id] - Single Activity Detail
 export async function GET(
@@ -83,50 +84,11 @@ export async function GET(
       changedAt: h.changed_at as string,
     }));
 
-    const responsePayload = {
-      id: act.id,
-      code: act.code,
-      studentId: act.student_id,
-      studentName: act.students?.name || '',
-      studentRegNo: act.students?.register_number || '',
-      department: act.students?.department || 'CSE',
-      year: act.students?.year || 'II',
-      section: act.students?.section || 'A',
-      type: act.type,
-      title: act.title,
-      description: act.description,
-      technologies: act.technologies || [],
-      startDate: act.start_date,
-      endDate: act.end_date,
-      organization: act.organization,
-      companyName: act.company_name,
-      githubUrl: act.github_url,
-      demoUrl: act.demo_url,
-      status: act.status,
-      rejectionReason: act.rejection_reason,
-      revisionNotes: act.revision_notes,
-      odStatus: act.od_status,
-      reviewCount: act.review_count || 0,
-      guideName: act.guide_name,
-      createdAt: act.created_at,
-      updatedAt: act.updated_at,
-      teamMembers: (teamMembers || []).map((m: Record<string, unknown>) => ({
-        id: m.id as string,
-        name: m.name as string,
-        regNo: m.register_number as string,
-        email: m.email as string,
-        role: m.role as string,
-      })),
-      documents: (docs || []).map((d: Record<string, unknown>) => ({
-        id: d.id as string,
-        name: d.file_name as string,
-        type: d.document_type as string,
-        size: `${Math.round((d.size as number) / 1024)} KB`,
-        uploadDate: d.created_at as string,
-        path: d.storage_path as string,
-      })),
-      statusHistory: formattedHistory,
-    };
+    const responsePayload = serializeActivity(act, {
+      team_members: teamMembers || [],
+      documents: docs || [],
+      status_history: history || [],
+    });
 
     return apiSuccess(responsePayload);
   } catch (err: unknown) {

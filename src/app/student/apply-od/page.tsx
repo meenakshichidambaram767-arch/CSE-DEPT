@@ -255,7 +255,7 @@ function ApplyODContent() {
     };
 
     try {
-      addODApplication(payload);
+      await addODApplication(payload);
       setIsSubmitting(false);
       router.push('/student/od-requests');
     } catch (err: unknown) {

@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeActivity } from '@/lib/api/serializers';
+import { generateSafeActivityCode } from '@/lib/api/codeGenerator';
 
 // GET /api/v1/activities - List Activities (Projects, Hackathons, Internships)
 export async function GET(request: NextRequest) {
@@ -71,33 +73,10 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedData = (rawData || []).map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      code: row.code as string,
-      studentId: row.student_id as string,
-      studentName: (row.students as Record<string, unknown>)?.name as string || '',
-      studentRegNo: (row.students as Record<string, unknown>)?.register_number as string || '',
-      department: (row.students as Record<string, unknown>)?.department as string || 'CSE',
-      year: (row.students as Record<string, unknown>)?.year as string || 'II',
-      section: (row.students as Record<string, unknown>)?.section as string || 'A',
-      type: row.type as string,
-      title: row.title as string,
-      description: row.description as string,
-      technologies: row.technologies || [],
-      startDate: row.start_date,
-      endDate: row.end_date,
-      organization: row.organization,
-      companyName: row.company_name,
-      githubUrl: row.github_url,
-      demoUrl: row.demo_url,
-      status: row.status,
-      rejectionReason: row.rejection_reason,
-      revisionNotes: row.revision_notes,
-      odStatus: row.od_status,
-      reviewCount: row.review_count || 0,
-      guideName: row.guide_name,
-      createdAt: row.created_at,
-    }));
+    // Format data to match API contract in strict snake_case
+    const formattedData = (rawData || []).map((row: Record<string, unknown>) =>
+      serializeActivity(row)
+    );
 
     return apiSuccess(formattedData, 200, {
       page,
@@ -119,7 +98,7 @@ export async function POST(request: NextRequest) {
     // Verify student profile
     const { data: studentRecord } = await supabase
       .from('students')
-      .select('id, name, register_number, email')
+      .select('id, name, register_number, email, department, year, section')
       .eq('user_id', authUser.id)
       .single();
 
@@ -148,6 +127,7 @@ export async function POST(request: NextRequest) {
       demo_url,
       guide_name,
       team_members = [],
+      document_ids = [],
     } = body;
 
     // Validation constraints
@@ -187,7 +167,7 @@ export async function POST(request: NextRequest) {
         .select('id, name, register_number, email')
         .in('register_number', Array.from(uniqueRegNos));
 
-      const foundRegMap = new Map((dbStudents || []).map((s) => [s.register_number, s]));
+      const foundRegMap = new Map((dbStudents || []).map((s: any) => [s.register_number, s]));
 
       for (const tm of team_members) {
         const rNo = (tm.register_number || tm.regNo || '').trim();
@@ -199,23 +179,18 @@ export async function POST(request: NextRequest) {
             { register_number: rNo }
           );
         }
-        const matched = foundRegMap.get(rNo)!;
+        const matched = foundRegMap.get(rNo) as any;
         validatedTeamMembers.push({
-          name: matched.name,
-          register_number: matched.register_number,
-          email: matched.email || tm.email || '',
+          name: matched?.name,
+          register_number: matched?.register_number,
+          email: matched?.email || tm.email || '',
           role: tm.role || 'MEMBER',
         });
       }
     }
 
-    // Auto-generate code prefix (PRJ / HAK / INT)
-    const prefix = type === 'PROJECT' ? 'PRJ' : type === 'HACKATHON' ? 'HAK' : 'INT';
-    const { count } = await supabase
-      .from('activities')
-      .select('*', { count: 'exact', head: true });
-    
-    const activityCode = `${prefix}-2026-${String((count || 0) + 1).padStart(3, '0')}`;
+    // Generate collision-safe unique display code
+    const activityCode = await generateSafeActivityCode(supabase, type);
 
     // Insert Activity Record
     const { data: newActivity, error: insertError } = await supabase
@@ -256,6 +231,17 @@ export async function POST(request: NextRequest) {
       await supabase.from('activity_team_members').insert(tmRows);
     }
 
+    // Link uploaded documents to new Activity
+    if (Array.isArray(document_ids) && document_ids.length > 0) {
+      await supabase
+        .from('documents')
+        .update({
+          owner: 'activity',
+          owner_id: newActivity.id,
+        })
+        .in('id', document_ids);
+    }
+
     // Record Status History
     await supabase.from('activity_status_history').insert({
       activity_id: newActivity.id,
@@ -284,15 +270,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return apiSuccess({
-      id: newActivity.id,
-      code: newActivity.code,
-      studentId: newActivity.student_id,
-      type: newActivity.type,
-      title: newActivity.title,
-      status: newActivity.status,
-      createdAt: newActivity.created_at,
-    }, 201);
+    return apiSuccess(
+      serializeActivity({
+        ...newActivity,
+        student_name: studentRecord?.name || authUser.name,
+        student_reg_no: studentRecord?.register_number || '',
+        department: studentRecord?.department || 'CSE',
+        year: studentRecord?.year || 'II',
+        section: studentRecord?.section || 'A',
+      }, {
+        team_members: Array.isArray(team_members) ? team_members : [],
+      }),
+      201
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

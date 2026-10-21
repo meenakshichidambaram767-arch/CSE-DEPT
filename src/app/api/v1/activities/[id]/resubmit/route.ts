@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeActivity } from '@/lib/api/serializers';
 
 // PUT /api/v1/activities/[id]/resubmit - Resubmit Activity Proposal
 export async function PUT(
@@ -63,6 +64,7 @@ export async function PUT(
       technologies,
       github_url,
       demo_url,
+      document_ids = [],
     } = body;
 
     // 1. Update activity back to SUBMITTED
@@ -84,6 +86,17 @@ export async function PUT(
     if (updateError) {
       console.error('Error updating activity for resubmission:', updateError);
       return apiError('DATABASE_ERROR', updateError.message, 500);
+    }
+
+    // Link uploaded documents if provided on resubmission
+    if (Array.isArray(document_ids) && document_ids.length > 0) {
+      await supabase
+        .from('documents')
+        .update({
+          owner: 'activity',
+          owner_id: act.id,
+        })
+        .in('id', document_ids);
     }
 
     // 2. Append to activity_status_history
@@ -123,15 +136,12 @@ export async function PUT(
       });
     }
 
-    return apiSuccess({
-      id: updatedAct.id,
-      code: updatedAct.code,
-      studentId: updatedAct.student_id,
-      type: updatedAct.type,
-      title: updatedAct.title,
-      status: updatedAct.status,
-      updatedAt: updatedAct.updated_at,
-    });
+    return apiSuccess(
+      serializeActivity({
+        ...updatedAct,
+        student_name: studentRecord?.name || authUser.name,
+      })
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

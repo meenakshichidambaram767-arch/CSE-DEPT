@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/eventsApi';
 import { ApiError } from '@/lib/api/odApi';
+import { areDevMocksEnabled } from '@/lib/api/client';
 import { ODEvent, ODPurpose } from '@/types';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import {
@@ -102,50 +103,26 @@ export default function StudentEventsPage() {
         setEvents(res.data);
       }
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        if (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE') {
-          setBackendNotice('Backend endpoint GET /api/v1/events returned 404. Displaying cached fallback event dataset.');
+      if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+        if (areDevMocksEnabled()) {
+          setBackendNotice('Backend endpoint GET /api/v1/events returned 404. Displaying cached fallback event dataset (DEV MOCK DATA).');
           setEvents(eventsApi.getFallbackEvents());
         } else {
-          setErrorMsg(err.message);
+          setErrorMsg(err.message || 'Events service is currently unavailable.');
         }
+      } else if (err instanceof ApiError) {
+        setErrorMsg(err.message);
       } else {
         setErrorMsg('Failed to load department events.');
       }
     } finally {
       setIsRefreshing(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    eventsApi
-      .getEvents()
-      .then((res) => {
-        if (isMounted && res.data) {
-          setEvents(res.data);
-        }
-      })
-      .catch((err: unknown) => {
-        if (isMounted) {
-          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-            setBackendNotice('Backend endpoint GET /api/v1/events returned 404. Displaying cached fallback event dataset.');
-            setEvents(eventsApi.getFallbackEvents());
-          } else {
-            setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load department events.');
-          }
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    handleManualRefresh();
   }, []);
 
   const scrollCarousel = (catKey: string, direction: 'left' | 'right') => {

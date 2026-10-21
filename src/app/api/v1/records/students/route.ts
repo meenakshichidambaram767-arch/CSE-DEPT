@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeStudentRecord } from '@/lib/api/serializers';
 
 // GET /api/v1/records/students - Paginated & Filtered Student Directory (HOD Only)
 export async function GET(request: NextRequest) {
@@ -44,18 +45,9 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedStudents = (rawStudents || []).map((s: Record<string, unknown>) => ({
-      id: s.id as string,
-      userId: s.user_id as string,
-      registerNumber: s.register_number as string,
-      regNo: s.register_number as string,
-      name: s.name as string,
-      department: (s.department as string) || 'CSE',
-      year: s.year as string,
-      section: s.section as string,
-      email: (s.email as string) || ((s.users as Record<string, unknown>)?.email as string) || '',
-      createdAt: s.created_at as string,
-    }));
+    const formattedStudents = (rawStudents || []).map((s: Record<string, unknown>) =>
+      serializeStudentRecord(s)
+    );
 
     return apiSuccess(formattedStudents, 200, {
       page,

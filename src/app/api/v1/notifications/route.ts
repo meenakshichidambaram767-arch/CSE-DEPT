@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       created_at: row.created_at,
     }));
 
-    const unreadCount = notifications.filter((n) => !n.is_read).length;
+    const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
     return apiSuccess({
       notifications,

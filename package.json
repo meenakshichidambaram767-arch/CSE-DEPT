@@ -17,9 +17,11 @@
     "test:phase3": "npx -y tsx scripts/test-phase3-od-ui-compatibility.ts",
     "test:phase5": "npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts",
     "test:phase6": "npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts",
-    "test:auth-hardening": "npx -y tsx scripts/test-authorization-hardening.ts",
-    "test:live-auth": "npx -y tsx scripts/verify-live-supabase-auth.ts",
-    "test": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts && npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts && npx -y tsx scripts/test-authorization-hardening.ts"
+    "test:casing": "npx -y tsx scripts/test-contract-casing.ts",
+    "test:codes": "npx -y tsx scripts/test-safe-unique-codes.ts",
+    "test:wiring": "npx -y tsx scripts/test-wiring-check.ts",
+    "test:contracts": "npx -y tsx scripts/test-route-contracts.ts",
+    "test": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts && npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts && npx -y tsx scripts/test-authorization-hardening.ts && npx -y tsx scripts/test-contract-casing.ts && npx -y tsx scripts/test-safe-unique-codes.ts && npx -y tsx scripts/test-wiring-check.ts && npx -y tsx scripts/test-route-contracts.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -42,5 +44,15 @@
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-darwin-arm64": "4.3.3",
+    "@tailwindcss/oxide-darwin-x64": "4.3.3",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.3.3",
+    "@tailwindcss/oxide-linux-x64-musl": "4.3.3",
+    "lightningcss-darwin-arm64": "1.32.0",
+    "lightningcss-darwin-x64": "1.32.0",
+    "lightningcss-linux-x64-gnu": "1.32.0",
+    "lightningcss-linux-x64-musl": "1.32.0"
   }
 }

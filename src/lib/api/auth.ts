@@ -8,7 +8,8 @@ export interface AuthenticatedUserContext {
   name: string;
   studentProfile?: {
     id: string;
-    registerNumber: string;
+    register_number: string;
+    registerNumber?: string;
     department: string;
     year: string;
     section: string;
@@ -58,7 +59,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUserContext |
       if (sp) {
         studentProfile = {
           id: sp.id,
-          registerNumber: sp.register_number,
+          register_number: sp.register_number,
           department: sp.department,
           year: sp.year,
           section: sp.section,

@@ -57,21 +57,37 @@ export const documentsApi = {
    */
   async uploadDocument(
     file: File,
-    owner: string = 'od_request',
-    ownerId: string = 'unassigned',
+    owner: string = 'draft',
+    ownerId: string = '',
     documentType: string = 'PROOF'
   ): Promise<DocumentUploadResponse> {
-    const storagePath = `${owner}/${ownerId}/${Date.now()}_${file.name}`;
-    const payload: DocumentUploadPayload = {
-      file_name: file.name,
-      document_type: documentType,
-      storage_path: storagePath,
-      size: file.size,
-      owner: owner as ApiDocumentOwner,
-      owner_id: ownerId,
-    };
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('document_type', documentType);
+    formData.append('owner', owner);
+    if (ownerId && ownerId !== 'unassigned') {
+      formData.append('owner_id', ownerId);
+    }
 
-    const res = await this.registerDocumentMetadata(payload);
+    const res = await apiClient.upload<{ data: DocumentUploadResponse }>(
+      '/api/v1/documents/upload',
+      formData,
+      {
+        fallback: () => ({
+          data: {
+            id: `doc-${Date.now()}`,
+            file_name: file.name,
+            document_type: documentType,
+            storage_path: `documents/${file.name}`,
+            size: file.size,
+            owner: (owner as ApiDocumentOwner) || 'draft',
+            owner_id: ownerId || '',
+            uploaded_by: 'usr-current',
+            created_at: new Date().toISOString(),
+          },
+        }),
+      }
+    );
     return res.data;
   },
 
@@ -79,13 +95,17 @@ export const documentsApi = {
    * Transforms raw API DocumentUploadResponse to UI DocumentItem
    */
   toDocumentItem(doc: DocumentUploadResponse): DocumentItem {
+    const fileName = doc.file_name || doc.fileName || 'Untitled';
+    const docType = doc.document_type || doc.documentType || 'DOCUMENT';
+    const createdAt = doc.created_at || doc.createdAt || new Date().toISOString();
+    const storagePath = doc.storage_path || doc.storagePath || '';
     return {
       id: doc.id,
-      name: doc.fileName,
-      type: doc.documentType,
-      size: `${(doc.size / (1024 * 1024)).toFixed(2)} MB`,
-      uploadDate: doc.createdAt.split('T')[0],
-      url: doc.storagePath,
+      name: fileName,
+      type: docType,
+      size: `${((doc.size || 0) / (1024 * 1024)).toFixed(2)} MB`,
+      uploadDate: createdAt.split('T')[0],
+      url: storagePath,
     };
   },
 
@@ -94,28 +114,34 @@ export const documentsApi = {
    * Fetches 15-minute expiring private signed URL for preview or download
    */
   async getSignedUrl(id: string): Promise<SignedUrlResult> {
-    const res = await apiClient.get<{ data: DocumentSignedUrlResponse }>(
+    const res = await apiClient.get<DocumentSignedUrlResponse>(
       `/api/v1/documents/${encodeURIComponent(id)}/url`,
       {
         fallback: () => ({
-          data: {
-            id,
-            fileName: 'Document_Preview.pdf',
-            documentType: 'PROOF',
-            storagePath: `documents/${id}.pdf`,
-            size: 1024000,
-            signedUrl: '#',
-            expiresInSeconds: 900,
-            createdAt: new Date().toISOString(),
-          },
+          id,
+          file_name: 'Document_Preview.pdf',
+          document_type: 'PROOF',
+          storage_path: `documents/${id}.pdf`,
+          size: 1024000,
+          signed_url: '#',
+          expires_in_seconds: 900,
+          created_at: new Date().toISOString(),
         }),
       }
     );
 
+    const signedUrl = res.signed_url || res.signedUrl;
+    if (!signedUrl || signedUrl === '#') {
+      if (process.env.NODE_ENV === 'production') {
+        throw new ApiError('DOCUMENT_NOT_FOUND', 'Signed preview URL is not available.', 404);
+      }
+    }
+    const expiresInSeconds = res.expires_in_seconds || res.expiresInSeconds || 900;
+
     return {
-      data: res.data,
-      signedUrl: res.data.signedUrl,
-      expiresInSeconds: res.data.expiresInSeconds,
+      data: res,
+      signedUrl: signedUrl || '#',
+      expiresInSeconds,
     };
   },
 

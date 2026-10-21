@@ -32,25 +32,37 @@ The primary goal of this platform is to eliminate administrative workload for th
 - **Language**: TypeScript
 - **Styling**: Tailored Modern CSS & TailwindCSS Design System (SIET Institutional Forest Green `#064e3b` & Warm Gold `#f3b72b`)
 - **Icons**: Lucide React
-- **State Management**: React Context & Persistent Local Storage Engine
+- **Backend & Database**: Supabase (PostgreSQL 15+ with Row-Level Security, Auth, Storage, and ACID RPC functions)
+- **State Management**: React Context (`DataContext`) hydrated directly via REST `/api/v1/*` endpoints
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Install Dependencies
+### 1. Prerequisites & Environment Variables
+Copy `.env.example` to `.env.local` and configure your Supabase project keys:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+
+# Dev Only: Set to true only if you wish to run with mock fixtures without live Supabase
+# NEXT_PUBLIC_USE_MOCKS=true
+```
+
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Run the Development Server
+### 3. Run the Development Server
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 3. Build for Production
+### 4. Build for Production
 ```bash
 npm run build
 npm run start
@@ -58,12 +70,13 @@ npm run start
 
 ---
 
-## 👥 Demo Profiles
+## 🔒 Authentication & Role Access
 
-| Role | Name | Identifier | Access Scope |
-| :--- | :--- | :--- | :--- |
-| **Student** | Meena C | Reg: `714023104088` (II Year CSE) | Activity submission, OD tracking, weekly review logging |
-| **HOD** | Dr. Priya Kumar | Professor & Head of Department | Proposal evaluations, review scheduling, OD clearances |
+Authentication is backed by Supabase Auth with server-side verified PostgreSQL role enforcement (`STUDENT` vs `HOD`).
+
+- In production, authenticating via valid institutional credentials issued in Supabase Auth is strictly required.
+- In local development mode with `NEXT_PUBLIC_USE_MOCKS=true`, dev mock accounts may be used for isolated UI iteration.
+- Refer to `FIX_REPORT.md` for complete integration defect resolution and manual testing checklist.
 
 ---
 

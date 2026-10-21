@@ -1,8 +1,6 @@
 /**
- * On-Duty (OD) Management API Client
+ * On-Duty (OD) Requests API Client
  * SIET CSE Department Platform - API Contract v2.0
- *
- * Implements 5-step form lifecycle, conflict detection, revision loop, and bulk decisions.
  */
 
 import { apiClient, ApiError } from './client';
@@ -29,15 +27,16 @@ export interface ODQueryParams {
   page?: number;
   page_size?: number;
   status?: string;
+  purpose?: string;
   year?: string;
   section?: string;
-  purpose?: string;
+  department?: string;
   search?: string;
 }
 
 export const odApi = {
   /**
-   * GET /api/v1/od-requests (Mapped to UI model)
+   * GET /api/v1/od-requests
    */
   async getODRequests(params?: ODQueryParams): Promise<PaginatedResponse<ODApplication>> {
     const res = await this.getRawODRequests(params);

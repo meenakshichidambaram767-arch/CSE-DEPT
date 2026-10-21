@@ -4,7 +4,7 @@
  * Offline mock resolver & Central API Client support
  */
 
-import { assertNoLiveNetwork, ApiError, apiClient } from './client';
+import { ApiError, apiClient } from './client';
 import {
   NotificationContract,
   NotificationListResponse,
@@ -14,11 +14,10 @@ import {
   ApiNotification,
   NotificationReadResponse,
 } from '@/types/contract';
-import { fixtureApiNotifications } from '@/data/fixtures/notificationsFixtures';
 
 export { ApiError };
 
-// Initial contract-compatible notification dataset
+// Initial contract-compatible notification dataset (used as dev fallback)
 let notificationsStore: NotificationContract[] = [
   {
     id: 'notif-001',
@@ -90,27 +89,32 @@ export const notificationsApi = {
     user_id?: string;
     unread_only?: boolean;
   }): Promise<NotificationListResponse & { data: any }> => {
-    assertNoLiveNetwork();
-
-    let filtered = [...notificationsStore];
-
-    if (params?.user_id) {
-      filtered = filtered.filter(
-        (n) => n.user_id === params.user_id || n.user_id === 'all'
-      );
-    }
-
-    if (params?.unread_only) {
-      filtered = filtered.filter((n) => !n.is_read);
-    }
-
-    const unreadCount = filtered.filter((n) => !n.is_read).length;
-
-    return {
-      notifications: filtered,
-      data: filtered,
-      unread_count: unreadCount,
-    };
+    return apiClient.get<NotificationListResponse & { data: any }>(
+      '/api/v1/notifications',
+      {
+        params: {
+          ...(params?.user_id ? { user_id: params.user_id } : {}),
+          ...(params?.unread_only !== undefined ? { unread_only: String(params.unread_only) } : {}),
+        },
+        fallback: () => {
+          let filtered = [...notificationsStore];
+          if (params?.user_id) {
+            filtered = filtered.filter(
+              (n) => n.user_id === params.user_id || n.user_id === 'all'
+            );
+          }
+          if (params?.unread_only) {
+            filtered = filtered.filter((n) => !n.is_read);
+          }
+          const unreadCount = filtered.filter((n) => !n.is_read).length;
+          return {
+            notifications: filtered,
+            data: filtered,
+            unread_count: unreadCount,
+          };
+        },
+      }
+    );
   },
 
   /**
@@ -124,48 +128,56 @@ export const notificationsApi = {
    * PATCH /api/v1/notifications/{id}/read
    */
   markAsRead: async (id: string): Promise<MarkNotificationReadResponse & { data: any }> => {
-    assertNoLiveNetwork();
-
-    const notifIndex = notificationsStore.findIndex((n) => n.id === id);
-    if (notifIndex === -1) {
-      throw new ApiError(404, 'NOTIFICATION_NOT_FOUND', `Notification not found with ID: ${id}`, {
-        notification_id: id,
-      });
-    }
-
-    notificationsStore[notifIndex] = {
-      ...notificationsStore[notifIndex],
-      is_read: true,
-    };
-
-    const res = {
-      id,
-      is_read: true,
-      updated_at: new Date().toISOString(),
-    };
-
-    return {
-      ...res,
-      data: { success: true, id },
-    };
+    return apiClient.patch<MarkNotificationReadResponse & { data: any }>(
+      `/api/v1/notifications/${encodeURIComponent(id)}/read`,
+      undefined,
+      {
+        fallback: () => {
+          const notifIndex = notificationsStore.findIndex((n) => n.id === id);
+          if (notifIndex === -1) {
+            throw new ApiError(404, 'NOTIFICATION_NOT_FOUND', `Notification not found with ID: ${id}`, {
+              notification_id: id,
+            });
+          }
+          notificationsStore[notifIndex] = {
+            ...notificationsStore[notifIndex],
+            is_read: true,
+          };
+          const res = {
+            id,
+            is_read: true,
+            updated_at: new Date().toISOString(),
+          };
+          return {
+            ...res,
+            data: { success: true, id },
+          };
+        },
+      }
+    );
   },
 
   /**
    * POST /api/v1/notifications/mark-all-read
    */
   markAllAsRead: async (userId?: string): Promise<{ data: any }> => {
-    assertNoLiveNetwork();
-
-    notificationsStore = notificationsStore.map((n) => {
-      if (!userId || n.user_id === userId || n.user_id === 'all') {
-        return { ...n, is_read: true };
+    return apiClient.post<{ data: any }>(
+      '/api/v1/notifications/mark-all-read',
+      userId ? { user_id: userId } : {},
+      {
+        fallback: () => {
+          notificationsStore = notificationsStore.map((n) => {
+            if (!userId || n.user_id === userId || n.user_id === 'all') {
+              return { ...n, is_read: true };
+            }
+            return n;
+          });
+          return {
+            data: { success: true, readCount: notificationsStore.length },
+          };
+        },
       }
-      return n;
-    });
-
-    return {
-      data: { success: true, readCount: notificationsStore.length },
-    };
+    );
   },
 
   /**

@@ -7,9 +7,9 @@ import { SearchBar } from '@/components/common/SearchBar';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/common/EmptyState';
 import { activitiesApi } from '@/lib/api/activitiesApi';
-import { ApiError } from '@/lib/api/odApi';
+import { ApiError, areDevMocksEnabled } from '@/lib/api/client';
 import { Activity } from '@/types';
-import { Plus, FolderKanban, Sparkles, Calendar, Users, ArrowRight, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, FolderKanban, Sparkles, Calendar, Users, ArrowRight, RefreshCw, AlertTriangle, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function StudentProjectsPage() {
   const [projects, setProjects] = useState<Activity[]>([]);
@@ -17,19 +17,23 @@ export default function StudentProjectsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fetchProjects = async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     else setIsLoading(true);
     setBackendNotice(null);
+    setErrorMsg(null);
 
     try {
       const res = await activitiesApi.getActivities({ type: 'PROJECT' });
       if (res.data) setProjects(res.data);
     } catch (err: unknown) {
-      if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-        setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
+      if (areDevMocksEnabled() && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+        setBackendNotice('Displaying static reference records (DEV MOCK DATA).');
         setProjects(activitiesApi.getFallbackActivities('PROJECT'));
+      } else {
+        setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load projects from server.');
       }
     } finally {
       setIsLoading(false);
@@ -45,9 +49,13 @@ export default function StudentProjectsPage() {
         if (isMounted && res.data) setProjects(res.data);
       })
       .catch((err: unknown) => {
-        if (isMounted && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-          setBackendNotice('Backend endpoint returned HTTP 404 (Endpoint not deployed). Displaying static reference records (LOCAL / UNPERSISTED PROTOTYPE DATA).');
-          setProjects(activitiesApi.getFallbackActivities('PROJECT'));
+        if (isMounted) {
+          if (areDevMocksEnabled() && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setBackendNotice('Displaying static reference records (DEV MOCK DATA).');
+            setProjects(activitiesApi.getFallbackActivities('PROJECT'));
+          } else {
+            setErrorMsg(err instanceof ApiError ? err.message : 'Failed to load projects from server.');
+          }
         }
       })
       .finally(() => {
@@ -108,8 +116,15 @@ export default function StudentProjectsPage() {
             <span>{backendNotice}</span>
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded border border-amber-300">
-            Nattu Client Mode
+            Dev Mode
           </span>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 

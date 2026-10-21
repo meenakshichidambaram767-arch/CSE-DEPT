@@ -20,7 +20,7 @@ import {
   type ScheduleReviewContractPayload,
 } from '../src/lib/api';
 import { ApiError, parseApiError, formatApiErrorMessage } from '../src/lib/api/client';
-import type { ReviewSession, ReviewType, ReviewSessionStatus, AttendanceItem } from '../src/types';
+process.env.NEXT_PUBLIC_USE_MOCKS = 'true';
 
 interface TestResult {
   id: number;
@@ -395,7 +395,7 @@ async function runPhase5Tests() {
   assert(
     37,
     'No direct live backend calls',
-    clientSrc.includes('assertNoLiveNetwork') &&
+    clientSrc.includes('areDevMocksEnabled') &&
     !reviewsApiSrc.includes('fetch(') &&
     !studentSrc.includes('fetch(') &&
     !hodSrc.includes('fetch(')

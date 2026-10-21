@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeODConflict } from '@/lib/api/serializers';
 
 // GET /api/v1/od-requests/[id]/conflicts - Detect OD Schedule Conflicts
 export async function GET(
@@ -35,37 +36,35 @@ export async function GET(
     const targetStart = new Date(od.start_date).getTime();
     const targetEnd = new Date(od.end_date).getTime();
 
-    const conflictingRequests: Record<string, unknown>[] = [];
+    const conflicts = (otherODs || [])
+      .filter((other: Record<string, unknown>) => {
+        const otherStart = new Date(other.start_date as string).getTime();
+        const otherEnd = new Date(other.end_date as string).getTime();
+        return targetStart <= otherEnd && targetEnd >= otherStart;
+      })
+      .map((other: Record<string, unknown>) =>
+        serializeODConflict({
+          ...other,
+          conflict_type:
+            other.status === 'APPROVED' ? 'APPROVED_OVERLAP' : 'PENDING_OVERLAP',
+        }, {
+          name: (other.students as Record<string, unknown>)?.name as string || od.students?.name,
+          register_number:
+            (other.students as Record<string, unknown>)?.register_number as string ||
+            od.students?.register_number,
+        })
+      );
 
-    (otherODs || []).forEach((other: Record<string, unknown>) => {
-      const otherStart = new Date(other.start_date as string).getTime();
-      const otherEnd = new Date(other.end_date as string).getTime();
-
-      // Check date range overlap: (startA <= endB) AND (endA >= startB)
-      if (targetStart <= otherEnd && targetEnd >= otherStart) {
-        conflictingRequests.push({
-          id: other.id,
-          code: other.code,
-          eventName: other.event_name,
-          purpose: other.purpose,
-          startDate: other.start_date,
-          endDate: other.end_date,
-          status: other.status,
-          conflictType: other.status === 'APPROVED' ? 'APPROVED_OVERLAP' : 'PENDING_OVERLAP',
-        });
-      }
-    });
-
-    const hasConflict = conflictingRequests.length > 0;
+    const hasConflict = conflicts.length > 0;
 
     return apiSuccess({
-      odId: od.id,
-      studentId: od.student_id,
-      studentRegNo: od.students?.register_number,
-      studentName: od.students?.name,
-      hasConflict,
-      conflictCount: conflictingRequests.length,
-      conflictingRequests,
+      od_id: od.id,
+      student_id: od.student_id,
+      student_reg_no: od.students?.register_number || '',
+      student_name: od.students?.name || '',
+      has_conflict: hasConflict,
+      conflict_count: conflicts.length,
+      conflicts,
     });
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {

@@ -22,6 +22,7 @@ import {
   parseApiError,
   getFieldError,
 } from '../src/lib/api/client';
+process.env.NEXT_PUBLIC_USE_MOCKS = 'true';
 import {
   odApi,
 } from '../src/lib/api/odApi';

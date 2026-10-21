@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -38,7 +38,25 @@ function ActivitySubmissionForm() {
   const { user } = useSession();
   const { showToast } = useToast();
 
-  const realStudents: User[] = studentsApi.getRealStudents();
+  const [realStudents, setRealStudents] = useState<Array<{ name: string; registerNumber: string; email?: string }>>([]);
+
+  useEffect(() => {
+    studentsApi.getStudents({ page_size: 100 })
+      .then((res) => {
+        if (res.data) {
+          setRealStudents(
+            res.data.map((s) => ({
+              name: s.name,
+              registerNumber: s.registerNumber || '',
+              email: s.email,
+            }))
+          );
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load registered students list:', err);
+      });
+  }, []);
 
   const [activityType, setActivityType] = useState<ActivityType>(() => {
     const qType = searchParams.get('type') as ActivityType;
@@ -117,7 +135,7 @@ function ActivitySubmissionForm() {
           ...updated[index],
           regNo: matched.registerNumber || val,
           name: matched.name,
-          email: matched.email,
+          email: matched.email || '',
         };
         setTeamMembers(updated);
         return;
@@ -278,6 +296,7 @@ function ActivitySubmissionForm() {
         email: m.email,
         role: m.role || 'MEMBER',
       })),
+      document_ids: attachedDocs.map((d) => d.id),
     };
 
     try {

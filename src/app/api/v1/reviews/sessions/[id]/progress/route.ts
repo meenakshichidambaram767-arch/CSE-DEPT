@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeWeeklyProgress } from '@/lib/api/serializers';
 
 // POST /api/v1/reviews/sessions/[id]/progress - Student Progress Report Submission
 export async function POST(
@@ -82,17 +83,7 @@ export async function POST(
       return apiError('DATABASE_ERROR', progErr.message, 500);
     }
 
-    return apiSuccess({
-      id: progressRecord.id,
-      reviewSessionId: session.id,
-      studentId,
-      completedWork: progressRecord.completed_this_week,
-      currentWork: progressRecord.currently_working_on,
-      nextSteps: progressRecord.next_week_goal,
-      blockers: progressRecord.blockers,
-      githubUrl: progressRecord.githubUrl,
-      submittedAt: progressRecord.submitted_at,
-    });
+    return apiSuccess(serializeWeeklyProgress(progressRecord));
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

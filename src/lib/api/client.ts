@@ -128,14 +128,16 @@ export function formatApiErrorMessage(error: unknown): string {
 }
 
 /**
- * Verified offline guard to guarantee NO network calls to live backends
+ * Development Mock Gate:
+ * Fixtures are strictly permitted ONLY when NODE_ENV !== 'production'
+ * and NEXT_PUBLIC_USE_MOCKS === 'true'.
+ * In production or default development, live API requests are always executed.
  */
-export const IS_OFFLINE_MODE = true;
-
-export function assertNoLiveNetwork(): void {
-  if (!IS_OFFLINE_MODE) {
-    throw new ApiError(500, 'LIVE_NETWORK_FORBIDDEN', 'Live network connections are strictly forbidden in Phase 5.');
-  }
+export function areDevMocksEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+  );
 }
 
 
@@ -271,6 +273,14 @@ export async function unwrapResponse<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+function getFullUrl(path: string, query: string): string {
+  const full = `${path}${query}`;
+  if (full.startsWith('http://') || full.startsWith('https://')) return full;
+  if (typeof window !== 'undefined') return full;
+  const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  return `${base.replace(/\/$/, '')}${full.startsWith('/') ? '' : '/'}${full}`;
+}
+
 // ==========================================
 // 4. CENTRAL HTTP CLIENT
 // ==========================================
@@ -282,7 +292,7 @@ export const apiClient = {
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
     const authHeaders = await getAuthHeaders(false);
     const query = buildQueryString(options?.params);
-    const url = `${path}${query}`;
+    const url = getFullUrl(path, query);
 
     try {
       const res = await fetch(url, {
@@ -292,8 +302,34 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * HTTP GET (Text / CSV)
+   */
+  async getText(path: string, options?: RequestOptions): Promise<string> {
+    const authHeaders = await getAuthHeaders(false);
+    const query = buildQueryString(options?.params);
+    const url = getFullUrl(path, query);
+
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { ...authHeaders, ...options?.headers },
+        signal: options?.signal,
+      });
+      if (!res.ok) {
+        throw new ApiError(res.status, 'HTTP_ERROR', `HTTP ${res.status}: ${res.statusText}`);
+      }
+      return await res.text();
+    } catch (err) {
+      if (areDevMocksEnabled() && options?.fallback) {
+        return options.fallback() as string;
       }
       throw err;
     }
@@ -305,7 +341,7 @@ export const apiClient = {
   async post<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {
     const authHeaders = await getAuthHeaders(false);
     const query = buildQueryString(options?.params);
-    const url = `${path}${query}`;
+    const url = getFullUrl(path, query);
 
     try {
       const res = await fetch(url, {
@@ -316,7 +352,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -329,7 +365,7 @@ export const apiClient = {
   async put<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {
     const authHeaders = await getAuthHeaders(false);
     const query = buildQueryString(options?.params);
-    const url = `${path}${query}`;
+    const url = getFullUrl(path, query);
 
     try {
       const res = await fetch(url, {
@@ -340,7 +376,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -353,7 +389,7 @@ export const apiClient = {
   async patch<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {
     const authHeaders = await getAuthHeaders(false);
     const query = buildQueryString(options?.params);
-    const url = `${path}${query}`;
+    const url = getFullUrl(path, query);
 
     try {
       const res = await fetch(url, {
@@ -364,7 +400,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -377,7 +413,7 @@ export const apiClient = {
   async delete<T>(path: string, options?: RequestOptions): Promise<T> {
     const authHeaders = await getAuthHeaders(false);
     const query = buildQueryString(options?.params);
-    const url = `${path}${query}`;
+    const url = getFullUrl(path, query);
 
     try {
       const res = await fetch(url, {
@@ -387,7 +423,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production' && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;
@@ -400,7 +436,7 @@ export const apiClient = {
   async upload<T>(path: string, formData: FormData, options?: RequestOptions): Promise<T> {
     const authHeaders = await getAuthHeaders(true); // omit Content-Type so browser sets boundary
     const query = buildQueryString(options?.params);
-    const url = `${path}${query}`;
+    const url = getFullUrl(path, query);
 
     try {
       const res = await fetch(url, {
@@ -411,7 +447,7 @@ export const apiClient = {
       });
       return await unwrapResponse<T>(res);
     } catch (err) {
-      if (options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
+      if (areDevMocksEnabled() && options?.fallback && (err instanceof ApiError ? err.status === 404 || err.status >= 500 : true)) {
         return options.fallback() as T;
       }
       throw err;

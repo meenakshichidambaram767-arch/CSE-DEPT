@@ -12,7 +12,7 @@ import { useData } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
 import { activitiesApi } from '@/lib/api/activitiesApi';
 import { reviewsApi } from '@/lib/api/reviewsApi';
-import { ApiError } from '@/lib/api/odApi';
+import { ApiError, areDevMocksEnabled } from '@/lib/api/client';
 import { Activity, ReviewSession } from '@/types';
 import {
   FileCheck,
@@ -54,8 +54,8 @@ export default function StudentProjectDetailPage() {
       })
       .catch((err: unknown) => {
         if (isMounted) {
-          if (err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
-            setBackendNotice(`Backend endpoint GET /api/v1/activities/${id} returned HTTP 404 (Endpoint not deployed). Displaying static reference record (LOCAL / UNPERSISTED PROTOTYPE DATA).`);
+          if (areDevMocksEnabled() && err instanceof ApiError && (err.status === 404 || err.code === 'BACKEND_DEPENDENCY_UNAVAILABLE')) {
+            setBackendNotice(`Displaying static reference record (DEV MOCK DATA).`);
             const fallback = activitiesApi.getFallbackById(id);
             if (fallback) setActivity(fallback);
             else setError(`Activity record '${id}' not found.`);

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
+import { serializeEvent } from '@/lib/api/serializers';
 
 // GET /api/v1/events - List Department Events
 export async function GET(request: NextRequest) {
@@ -40,18 +41,9 @@ export async function GET(request: NextRequest) {
       return apiError('QUERY_ERROR', error.message, 500);
     }
 
-    const formattedEvents = (rawEvents || []).map((e: Record<string, unknown>) => ({
-      id: e.id,
-      code: e.code,
-      title: e.title,
-      purpose: e.purpose,
-      date: e.date,
-      endDate: e.end_date || e.date,
-      venue: e.venue,
-      city: e.city || '',
-      status: e.status,
-      createdAt: e.created_at,
-    }));
+    const formattedEvents = (rawEvents || []).map((e: Record<string, unknown>) =>
+      serializeEvent(e)
+    );
 
     return apiSuccess(formattedEvents, 200, {
       page,
@@ -129,21 +121,7 @@ export async function POST(request: NextRequest) {
       return apiError('DATABASE_ERROR', insertError.message, 500);
     }
 
-    return apiSuccess(
-      {
-        id: newEvent.id,
-        code: newEvent.code,
-        title: newEvent.title,
-        purpose: newEvent.purpose,
-        date: newEvent.date,
-        endDate: newEvent.end_date,
-        venue: newEvent.venue,
-        city: newEvent.city,
-        status: newEvent.status,
-        createdAt: newEvent.created_at,
-      },
-      201
-    );
+    return apiSuccess(serializeEvent(newEvent), 201);
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'UNAUTHORIZED') {
       return apiError('UNAUTHORIZED', 'Authentication required.', 401);

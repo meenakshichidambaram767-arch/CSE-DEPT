@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
       .eq('type', 'PROJECT');
 
     const totalProjects = projectList?.length || 0;
-    const activeCapstones = projectList?.filter(
-      (p) => p.status === 'ACTIVE' || p.status === 'APPROVED'
+    const activeCapstones = (projectList as any[])?.filter(
+      (p: any) => p.status === 'ACTIVE' || p.status === 'APPROVED'
     ).length || 0;
 
     // 2. NAAC Criterion 5.3.1: Hackathon Entries / Awards
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const totalHackathons = hackathonList?.length || 0;
     const uniqueStudentsHackathon = new Set(
-      (hackathonList || []).map((h) => h.student_id).filter(Boolean)
+      ((hackathonList as any[]) || []).map((h: any) => h.student_id).filter(Boolean)
     ).size;
 
     // 3. NAAC Criterion 1.3.3: Industry Internships (NOC Issued)
@@ -41,8 +41,8 @@ export async function GET(request: NextRequest) {
       .eq('type', 'INTERNSHIP');
 
     const totalInternships = internshipList?.length || 0;
-    const verifiedInternships = internshipList?.filter(
-      (i) => i.status === 'ACTIVE' || i.status === 'APPROVED' || i.status === 'COMPLETED'
+    const verifiedInternships = (internshipList as any[])?.filter(
+      (i: any) => i.status === 'ACTIVE' || i.status === 'APPROVED' || i.status === 'COMPLETED'
     ).length || 0;
 
     // 4. NAAC Criterion 5.3.3: Total Approved OD Clearances

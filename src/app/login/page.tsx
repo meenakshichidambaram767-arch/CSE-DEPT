@@ -8,6 +8,8 @@ import { SietLogo } from '@/components/common/SietLogo';
 import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 
+import { areDevMocksEnabled } from '@/lib/api/client';
+
 export default function LoginPage() {
   const router = useRouter();
   const { user, role, loginAsStudent, loginAsHod } = useSession();
@@ -50,7 +52,7 @@ export default function LoginPage() {
       let email = username.trim();
       if (!email.includes('@')) {
         const lower = email.toLowerCase();
-        if (process.env.NODE_ENV !== 'production') {
+        if (areDevMocksEnabled()) {
           if (lower.includes('hod') || lower.includes('priya')) {
             email = 'test-hod@siet.ac.in';
           } else if (email === '714023104088' || lower.includes('meena')) {
@@ -98,20 +100,24 @@ export default function LoginPage() {
   };
 
   const handleDemoStudent = async () => {
+    if (!areDevMocksEnabled()) return;
     setIsSubmitting(true);
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'test-student@siet.ac.in',
-        password: 'password123',
-      });
-      if (!error && data.session) {
-        showToast('Signed in as Student (Meena C)', 'success');
-        router.push('/student/dashboard');
-        return;
+    const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || '';
+    if (demoPassword) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: 'test-student@siet.ac.in',
+          password: demoPassword,
+        });
+        if (!error && data.session) {
+          showToast('Signed in as Student (Meena C)', 'success');
+          router.push('/student/dashboard');
+          return;
+        }
+      } catch {
+        // Fallback in case of network issue
       }
-    } catch {
-      // Fallback in case of network issue
     }
     loginAsStudent();
     showToast('Signed in as Student (Meena C)', 'success');
@@ -119,20 +125,24 @@ export default function LoginPage() {
   };
 
   const handleDemoHod = async () => {
+    if (!areDevMocksEnabled()) return;
     setIsSubmitting(true);
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'test-hod@siet.ac.in',
-        password: 'password123',
-      });
-      if (!error && data.session) {
-        showToast('Signed in as HOD (Dr. Priya Kumar)', 'success');
-        router.push('/hod/dashboard');
-        return;
+    const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || '';
+    if (demoPassword) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: 'test-hod@siet.ac.in',
+          password: demoPassword,
+        });
+        if (!error && data.session) {
+          showToast('Signed in as HOD (Dr. Priya Kumar)', 'success');
+          router.push('/hod/dashboard');
+          return;
+        }
+      } catch {
+        // Fallback in case of network issue
       }
-    } catch {
-      // Fallback in case of network issue
     }
     loginAsHod();
     showToast('Signed in as HOD (Dr. Priya Kumar)', 'success');
@@ -276,8 +286,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Access Switchers (Development & Staging Only) */}
-          {process.env.NODE_ENV !== 'production' && (
+          {/* Quick Demo Access Switchers (Development & Staging Only behind explicit dev mock flag) */}
+          {areDevMocksEnabled() && (
             <div className="pt-2 border-t border-[#c4e6ce] space-y-2.5">
               <div className="text-[11px] font-bold text-[#064024] text-center uppercase tracking-wider">
                 Quick Demo Sign In (Dev Mode)

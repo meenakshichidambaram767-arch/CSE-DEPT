@@ -1,9 +1,17 @@
-import 'server-only';
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('server-only');
+} catch {
+  // Allow test runners and CLI scripts to run without Next.js server-only bundling error
+}
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
 
 export async function createClient() {
+  if (typeof (globalThis as any).__MOCK_SUPABASE_CLIENT__ === 'function') {
+    return (globalThis as any).__MOCK_SUPABASE_CLIENT__();
+  }
   const cookieStore = await cookies();
   let authHeader: string | null = null;
   try {

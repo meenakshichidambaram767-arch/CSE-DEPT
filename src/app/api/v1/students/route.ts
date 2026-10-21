@@ -56,10 +56,9 @@ export async function GET(request: NextRequest) {
       email?: string;
     }) => ({
       id: s.id,
+      user_id: s.user_id,
       name: s.name,
-      registerNumber: s.register_number,
       register_number: s.register_number,
-      regNo: s.register_number,
       department: s.department || 'CSE',
       year: s.year || 'II',
       section: s.section || 'A',

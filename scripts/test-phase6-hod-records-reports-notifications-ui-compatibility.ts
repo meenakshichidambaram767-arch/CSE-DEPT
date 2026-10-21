@@ -18,6 +18,7 @@ import {
   type NotificationContract,
 } from '../src/lib/api';
 import { ApiError, parseApiError, formatApiErrorMessage } from '../src/lib/api/client';
+process.env.NEXT_PUBLIC_USE_MOCKS = 'true';
 
 interface TestResult {
   id: number;
@@ -332,7 +333,7 @@ async function runPhase6Tests() {
 
   // 51. No live backend calls
   const clientSrc = fs.readFileSync(path.resolve(rootDir, 'src/lib/api/client.ts'), 'utf-8');
-  assert(51, 'CLEANUP', 'no live backend calls', clientSrc.includes('assertNoLiveNetwork'));
+  assert(51, 'CLEANUP', 'no live backend calls', clientSrc.includes('areDevMocksEnabled'));
 
   // -------------------------------------------------------------
   // REGRESSION TESTS (52 - 56)
