@@ -4,6 +4,7 @@ import { getAuthenticatedUser, requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
 
 import { serializeODRequest } from '@/lib/api/serializers';
+import { generateSafeODCode } from '@/lib/api/codeGenerator';
 
 // GET /api/v1/od-requests - Paginated & Filtered List
 export async function GET(request: NextRequest) {
@@ -155,12 +156,8 @@ export async function POST(request: NextRequest) {
       return apiError('VALIDATION_ERROR', 'Start date is required.', 400, { field: 'start_date' });
     }
 
-    // Generate display code OD-2026-NNN
-    const { count } = await supabase
-      .from('od_requests')
-      .select('*', { count: 'exact', head: true });
-    
-    const odCode = `OD-2026-${String((count || 0) + 1).padStart(3, '0')}`;
+    // Generate collision-safe unique display code
+    const odCode = await generateSafeODCode(supabase);
 
     // Insert OD Request
     const { data: newOD, error: insertError } = await supabase

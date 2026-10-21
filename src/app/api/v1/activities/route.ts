@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, requireAuth, requireRole } from '@/lib/api/auth';
 import { apiError, apiSuccess } from '@/lib/api/response';
 import { serializeActivity } from '@/lib/api/serializers';
+import { generateSafeActivityCode } from '@/lib/api/codeGenerator';
 
 // GET /api/v1/activities - List Activities (Projects, Hackathons, Internships)
 export async function GET(request: NextRequest) {
@@ -188,13 +189,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Auto-generate code prefix (PRJ / HAK / INT)
-    const prefix = type === 'PROJECT' ? 'PRJ' : type === 'HACKATHON' ? 'HAK' : 'INT';
-    const { count } = await supabase
-      .from('activities')
-      .select('*', { count: 'exact', head: true });
-    
-    const activityCode = `${prefix}-2026-${String((count || 0) + 1).padStart(3, '0')}`;
+    // Generate collision-safe unique display code
+    const activityCode = await generateSafeActivityCode(supabase, type);
 
     // Insert Activity Record
     const { data: newActivity, error: insertError } = await supabase
