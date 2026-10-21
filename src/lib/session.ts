@@ -49,9 +49,13 @@ export async function getSupabaseSession(): Promise<UserSession | null> {
   }
 }
 
+import { areDevMocksEnabled } from '@/lib/api/client';
+
 export function getCurrentSession(): UserSession | null {
   if (typeof window === 'undefined') return null;
-  // Fallback dev mode mock session if Supabase credentials are unset
+  if (!areDevMocksEnabled()) return null;
+
+  // Fallback dev mode mock session if dev mocks are explicitly enabled
   const stored = localStorage.getItem('siet_cse_user_session');
   if (stored) {
     try {
@@ -74,6 +78,10 @@ export function getCurrentRole(): UserRole | null {
 }
 
 export function loginAsStudent(): User {
+  if (!areDevMocksEnabled()) {
+    throw new Error('Mock authentication is disabled in production.');
+  }
+
   const session: UserSession = {
     userId: studentUser.id,
     role: 'STUDENT',
@@ -88,6 +96,10 @@ export function loginAsStudent(): User {
 }
 
 export function loginAsHod(): User {
+  if (!areDevMocksEnabled()) {
+    throw new Error('Mock authentication is disabled in production.');
+  }
+
   const session: UserSession = {
     userId: hodUser.id,
     role: 'HOD',
