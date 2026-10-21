@@ -17,9 +17,8 @@
     "test:phase3": "npx -y tsx scripts/test-phase3-od-ui-compatibility.ts",
     "test:phase5": "npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts",
     "test:phase6": "npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts",
-    "test:auth-hardening": "npx -y tsx scripts/test-authorization-hardening.ts",
-    "test:live-auth": "npx -y tsx scripts/verify-live-supabase-auth.ts",
-    "test": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts && npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts && npx -y tsx scripts/test-authorization-hardening.ts"
+    "test:casing": "npx -y tsx scripts/test-contract-casing.ts",
+    "test": "npx -y tsx scripts/test-frontend-compatibility.ts && npx -y tsx scripts/test-phase2-state-compatibility.ts && npx -y tsx scripts/test-phase3-od-ui-compatibility.ts && npx -y tsx scripts/test-phase5-reviews-ui-compatibility.ts && npx -y tsx scripts/test-phase6-hod-records-reports-notifications-ui-compatibility.ts && npx -y tsx scripts/test-authorization-hardening.ts && npx -y tsx scripts/test-contract-casing.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

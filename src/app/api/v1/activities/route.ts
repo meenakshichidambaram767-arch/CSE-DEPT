@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     // Verify student profile
     const { data: studentRecord } = await supabase
       .from('students')
-      .select('id, name, register_number, email')
+      .select('id, name, register_number, email, department, year, section')
       .eq('user_id', authUser.id)
       .single();
 

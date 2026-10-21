@@ -79,13 +79,17 @@ export const documentsApi = {
    * Transforms raw API DocumentUploadResponse to UI DocumentItem
    */
   toDocumentItem(doc: DocumentUploadResponse): DocumentItem {
+    const fileName = doc.file_name || doc.fileName || 'Untitled';
+    const docType = doc.document_type || doc.documentType || 'DOCUMENT';
+    const createdAt = doc.created_at || doc.createdAt || new Date().toISOString();
+    const storagePath = doc.storage_path || doc.storagePath || '';
     return {
       id: doc.id,
-      name: doc.fileName,
-      type: doc.documentType,
-      size: `${(doc.size / (1024 * 1024)).toFixed(2)} MB`,
-      uploadDate: doc.createdAt.split('T')[0],
-      url: doc.storagePath,
+      name: fileName,
+      type: docType,
+      size: `${((doc.size || 0) / (1024 * 1024)).toFixed(2)} MB`,
+      uploadDate: createdAt.split('T')[0],
+      url: storagePath,
     };
   },
 
@@ -94,28 +98,35 @@ export const documentsApi = {
    * Fetches 15-minute expiring private signed URL for preview or download
    */
   async getSignedUrl(id: string): Promise<SignedUrlResult> {
-    const res = await apiClient.get<{ data: DocumentSignedUrlResponse }>(
+    const res = await apiClient.get<DocumentSignedUrlResponse>(
       `/api/v1/documents/${encodeURIComponent(id)}/url`,
       {
         fallback: () => ({
-          data: {
-            id,
-            fileName: 'Document_Preview.pdf',
-            documentType: 'PROOF',
-            storagePath: `documents/${id}.pdf`,
-            size: 1024000,
-            signedUrl: '#',
-            expiresInSeconds: 900,
-            createdAt: new Date().toISOString(),
-          },
+          id,
+          file_name: 'Document_Preview.pdf',
+          document_type: 'PROOF',
+          storage_path: `documents/${id}.pdf`,
+          size: 1024000,
+          signed_url: '#',
+          expires_in_seconds: 900,
+          created_at: new Date().toISOString(),
+          fileName: 'Document_Preview.pdf',
+          documentType: 'PROOF',
+          storagePath: `documents/${id}.pdf`,
+          signedUrl: '#',
+          expiresInSeconds: 900,
+          createdAt: new Date().toISOString(),
         }),
       }
     );
 
+    const signedUrl = res.signed_url || res.signedUrl || '#';
+    const expiresInSeconds = res.expires_in_seconds || res.expiresInSeconds || 900;
+
     return {
-      data: res.data,
-      signedUrl: res.data.signedUrl,
-      expiresInSeconds: res.data.expiresInSeconds,
+      data: res,
+      signedUrl,
+      expiresInSeconds,
     };
   },
 

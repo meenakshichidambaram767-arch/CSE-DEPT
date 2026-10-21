@@ -60,7 +60,9 @@ export async function GET(
       signedUrl = urlData.signedUrl;
     } else if (doc.storage_path.startsWith('http://') || doc.storage_path.startsWith('https://')) {
       signedUrl = doc.storage_path;
-    } else {
+    }
+
+    if (!signedUrl) {
       console.warn('Storage signed URL failed:', storageErr);
       return apiError('NOT_FOUND', 'Document file not found in storage bucket.', 404);
     }

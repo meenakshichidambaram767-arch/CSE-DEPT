@@ -11,7 +11,9 @@ import { fixtureApiReviews } from './reviewsFixtures';
 export const fixtureApiStudents: ApiStudentRecord[] = [
   {
     id: 'rec-std-001',
+    user_id: 'usr-student-001',
     userId: 'usr-student-001',
+    register_number: '714023104088',
     registerNumber: '714023104088',
     regNo: '714023104088',
     name: 'Meena C',
@@ -19,11 +21,14 @@ export const fixtureApiStudents: ApiStudentRecord[] = [
     year: 'III',
     section: 'B',
     email: 'meena.23cse@siet.ac.in',
+    created_at: '2026-08-01T00:00:00Z',
     createdAt: '2026-08-01T00:00:00Z',
   },
   {
     id: 'rec-std-002',
+    user_id: 'usr-student-002',
     userId: 'usr-student-002',
+    register_number: '714022104153',
     registerNumber: '714022104153',
     regNo: '714022104153',
     name: 'Nakshatra S V',
@@ -31,11 +36,14 @@ export const fixtureApiStudents: ApiStudentRecord[] = [
     year: 'IV',
     section: 'C',
     email: 'nakshatra.22cse@siet.ac.in',
+    created_at: '2026-08-01T00:00:00Z',
     createdAt: '2026-08-01T00:00:00Z',
   },
   {
     id: 'rec-std-003',
+    user_id: 'usr-student-003',
     userId: 'usr-student-003',
+    register_number: '714022104210',
     registerNumber: '714022104210',
     regNo: '714022104210',
     name: 'Vishwanath M',
@@ -43,6 +51,7 @@ export const fixtureApiStudents: ApiStudentRecord[] = [
     year: 'IV',
     section: 'D',
     email: 'vishwanath.22cse@siet.ac.in',
+    created_at: '2026-08-01T00:00:00Z',
     createdAt: '2026-08-01T00:00:00Z',
   },
 ];

@@ -229,13 +229,13 @@ function buildInitialReviews(): ReviewSession[] {
 function buildInitialNotifications(): Notification[] {
   const contractNotifs: Notification[] = fixtureApiNotifications.map((n: ApiNotification) => ({
     id: n.id,
-    userId: n.userId,
+    userId: n.user_id || n.userId || '',
     title: n.title,
     message: n.message,
     type: n.type,
-    isRead: n.isRead,
-    createdAt: n.createdAt,
-    linkUrl: n.linkUrl,
+    isRead: n.is_read ?? n.isRead ?? false,
+    createdAt: n.created_at || n.createdAt || new Date().toISOString(),
+    linkUrl: n.link_url || n.linkUrl || '',
   }));
   const contractIds = new Set(contractNotifs.map((n) => n.id));
   const remainingMocks = mockNotifications.filter((n) => !contractIds.has(n.id));
