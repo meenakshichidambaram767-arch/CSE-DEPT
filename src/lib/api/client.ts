@@ -302,6 +302,32 @@ export const apiClient = {
   },
 
   /**
+   * HTTP GET (Text / CSV)
+   */
+  async getText(path: string, options?: RequestOptions): Promise<string> {
+    const authHeaders = await getAuthHeaders(false);
+    const query = buildQueryString(options?.params);
+    const url = `${path}${query}`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { ...authHeaders, ...options?.headers },
+        signal: options?.signal,
+      });
+      if (!res.ok) {
+        throw new ApiError(res.status, 'HTTP_ERROR', `HTTP ${res.status}: ${res.statusText}`);
+      }
+      return await res.text();
+    } catch (err) {
+      if (areDevMocksEnabled() && options?.fallback) {
+        return options.fallback() as string;
+      }
+      throw err;
+    }
+  },
+
+  /**
    * HTTP POST
    */
   async post<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {

@@ -192,8 +192,8 @@ export const recordsApi = {
   ): Promise<StudentRecordListResponse & PaginatedResponse<any>> => {
     const res = await apiClient.get<PaginatedResponse<any>>('/api/v1/records/students', {
       params: {
-        ...(query?.year && query.year !== 'ALL' ? { year: query.year } : {}),
-        ...(query?.section && query.section !== 'ALL' ? { section: query.section } : {}),
+        ...(query?.year && (query.year as string) !== 'ALL' ? { year: query.year } : {}),
+        ...(query?.section && (query.section as string) !== 'ALL' ? { section: query.section } : {}),
         ...(query?.search ? { search: query.search } : {}),
         page: query?.page || 1,
         page_size: query?.page_size || 20,
@@ -364,17 +364,9 @@ export const recordsApi = {
    * RFC 4180 CSV generation & export
    */
   exportRecords: async (query?: StudentRecordQuery | RecordsExportParams): Promise<string> => {
-    const queryStr = buildQueryString(query as Record<string, string>);
-    const url = `/api/v1/records/export${queryStr}`;
-
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new ApiError(res.status, 'EXPORT_FAILED', `Failed to export records CSV (HTTP ${res.status})`);
-      }
-      return await res.text();
-    } catch (err) {
-      if (areDevMocksEnabled()) {
+    return apiClient.getText('/api/v1/records/export', {
+      params: query as Record<string, string>,
+      fallback: () => {
         let filtered = [...studentRecordsStore];
 
         if (query?.year && query.year !== 'ALL') {
@@ -422,9 +414,8 @@ export const recordsApi = {
         ]);
 
         return [header.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-      }
-      throw err;
-    }
+      },
+    });
   },
 
   /**

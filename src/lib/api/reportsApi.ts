@@ -188,17 +188,17 @@ export const reportsApi = {
    * GET /api/v1/reports/export?academic_year=YYYY-YYYY
    */
   exportReportCSV: async (academicYear: string = '2026-2027'): Promise<string> => {
-    const queryStr = buildQueryString({ academic_year: academicYear });
-    const url = `/api/v1/reports/export${queryStr}`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new ApiError(res.status, 'EXPORT_FAILED', `Failed to export reports CSV (HTTP ${res.status})`);
-      }
-      return await res.text();
-    } catch (err) {
-      if (areDevMocksEnabled()) {
-        const report = await reportsApi.getAccreditationReport(academicYear);
+    return apiClient.getText('/api/v1/reports/export', {
+      params: { academic_year: academicYear },
+      fallback: () => {
+        const report = {
+          metrics: {
+            criteria_1_3_2: { label: 'Value-Added Projects', count: 48, active_capstones: 32 },
+            criteria_5_3_1: { label: 'Hackathon Entries / Awards', count: 26, unique_students: 64 },
+            criteria_1_3_3: { label: 'Industry Internships (NOC Issued)', count: 39, verified: 37 },
+            total_approved_od_clearances: 312,
+          },
+        };
         const headers = ['NAAC Criteria Code', 'Description', 'Verified Count', 'Sub-Metric Description', 'Sub-Metric Value'];
         const rows = [
           ['NAAC Criteria 1.3.2', `"${report.metrics.criteria_1_3_2.label}"`, report.metrics.criteria_1_3_2.count.toString(), 'Active Capstones', (report.metrics.criteria_1_3_2.active_capstones || 0).toString()],
@@ -207,9 +207,8 @@ export const reportsApi = {
           ['NAAC Criteria 5.3.3', '"Total Approved OD Clearances"', report.metrics.total_approved_od_clearances.toString(), 'Total Clearances', report.metrics.total_approved_od_clearances.toString()],
         ];
         return [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-      }
-      throw err;
-    }
+      },
+    });
   },
 
   /**
